@@ -1,0 +1,15 @@
+import "./math.css";
+import "./style.css";
+import "./hints.css";
+import "./menubar.css";
+import "./input-area.css";
+import "./markdown.css";
+import "./notifications.css";
+import "./coqdoc.css";
+import "./progressBar.css";
+import "./spinner.css";
+import "./freeze.css";
+import "./context-menu.css";
+import "./autocomplete.css";
+import "./waterproof.css";
+//# sourceMappingURL=index.d.ts.map

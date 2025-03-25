@@ -1,0 +1,6 @@
+node_modules/
+.vscode/settings.json
+.DS_store
+__tests_output__/
+/cypress/screenshots/
+tsconfig.tsbuildinfo
