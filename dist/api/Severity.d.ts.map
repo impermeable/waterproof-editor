@@ -1,0 +1,1 @@
+{"version":3,"file":"Severity.d.ts","sourceRoot":"","sources":["../../src/api/Severity.ts"],"names":[],"mappings":"AACA;;GAEG;AACH,oBAAY,QAAQ;IACnB,KAAK,IAAI;IACT,OAAO,IAAI;IACX,WAAW,IAAI;IACZ,IAAI,IAAI;CACX;AAED,MAAM,MAAM,aAAa,GAAG,MAAM,GAAG,MAAM,GAAG,SAAS,GAAG,OAAO,CAAC;AAElE,eAAO,MAAM,gBAAgB,EAAE,MAAM,CAAC,QAAQ,EAAE,aAAa,CAK5D,CAAC"}

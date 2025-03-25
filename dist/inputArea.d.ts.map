@@ -1,0 +1,1 @@
+{"version":3,"file":"inputArea.d.ts","sourceRoot":"","sources":["../src/inputArea.ts"],"names":[],"mappings":"AAAA,OAAO,EAAe,MAAM,EAAE,SAAS,EAA2B,MAClE,mBAAmB,CAAC;AAEpB;;;;GAIG;AACH,MAAM,WAAW,qBAAqB;IACrC,OAAO,EAAE,OAAO,CAAC;IACd,UAAU,EAAE,OAAO,CAAC;CACvB;AAED,+CAA+C;AAC/C,eAAO,MAAM,qBAAqB,kCAA8D,CAAC;AAiFjG,eAAO,MAAM,eAAe,+BAAkC,CAAC"}
