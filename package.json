@@ -29,7 +29,9 @@
     "unit-tests": "npx jest",
     "lezer-generator": "npx lezer-generator ./src/codeview/lang-pack/syntax.grammar -o ./src/codeview/lang-pack/syntax.ts",
     "typecheck": "npx tsc -b",
-    "build": "node esbuild.mjs --minify"
+    "build": "node esbuild.mjs --minify",
+    "lint": "npx eslint .",
+    "lint-fix": "npx eslint . --fix"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
