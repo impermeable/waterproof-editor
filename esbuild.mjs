@@ -23,9 +23,8 @@ let minify = process.argv.includes("--minify");
 let disableSourcemap = process.argv.includes("--sourcemap=no");
 let genSourcemap = disableSourcemap ? null : { sourcemap: "inline" };
 
-// Setting to empty means we don't bundle the fonts
-// Setting to copy means we bundle the fonts
-const fontLoader = "empty";
+// Setting to `copy` means we bundle the fonts in dist. Setting this to `dataurl` includes the fonts as base64 encoded data in the generated css file.
+const fontLoader = "base64";
 
 esbuild.build({
   entryPoints: ["src/index.ts"],

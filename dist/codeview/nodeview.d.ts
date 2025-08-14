@@ -2,7 +2,6 @@ import { Completion, CompletionSource } from "@codemirror/autocomplete";
 import { Node, Schema } from "prosemirror-model";
 import { EditorView } from "prosemirror-view";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
-import { Severity } from "../api";
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
  * Corresponds with the example as can be found here:
@@ -16,7 +15,7 @@ export declare class CodeBlockView extends EmbeddedCodeMirrorEditor {
     private _readOnlyCompartment;
     private _diags;
     private debouncer;
-    constructor(node: Node, view: EditorView, getPos: (() => number | undefined), schema: Schema);
+    constructor(node: Node, view: EditorView, getPos: (() => number | undefined), schema: Schema, completions: Array<Completion>);
     private partOfInputArea;
     handleSnippet(template: string, posFrom: number, posTo: number): void;
     private lintingFunction;
@@ -44,7 +43,7 @@ export declare class CodeBlockView extends EmbeddedCodeMirrorEditor {
          * @param message The message attached to this error.
          * @param severity The severity attached to this error.
          */
-    addCoqError(from: number, to: number, message: string, severity: Severity): void;
+    addCoqError(from: number, to: number, message: string, severity: number): void;
     private updateDiagnostics;
     private showCopyNotification;
     /**

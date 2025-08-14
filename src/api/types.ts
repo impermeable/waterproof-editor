@@ -1,5 +1,5 @@
 import { Step } from "prosemirror-transform";
-import { DocChange, WrappingDocChange, Severity } from ".";
+import { DocChange, WrappingDocChange, Severity, WaterproofCompletion } from ".";
 import { Block } from "../document";
 
 /**
@@ -53,6 +53,7 @@ export abstract class WaterproofMapping {
  * - `mapping` is a constructor for the WaterproofMapping class, which handles the mapping between the ProseMirror document and the text document in the host application.
  */
 export type WaterproofEditorConfig = {
+    completions: Array<WaterproofCompletion>,
     api: WaterproofCallbacks,
     documentConstructor: (document: string) => WaterproofDocument,
     mapping: new (inputString: string, versionNum: number) => WaterproofMapping,

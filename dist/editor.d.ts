@@ -74,7 +74,6 @@ export declare class WaterproofEditor {
     updateLockingState(isTeacher: boolean): void;
     updateProgressBar(progressParams: SimpleProgressParams): void;
     updateQedStatus(status: InputAreaStatus[]): void;
-    initTacticCompletion(useTacticsCoq: boolean): void;
     parseCoqDiagnostics(msg: DiagnosticMessage): void;
     getDiagnosticsInRange(low: number, high: number, truncationLevel?: number): Array<DiagnosticObjectProse>;
     executeCommand(command: string): void;

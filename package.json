@@ -14,14 +14,11 @@
   "author": "impermeable",
   "exports": {
     ".": "./dist/index.js",
-    "./api": "./dist/api/index.js",
-    "./document": "./dist/document/index.js"
+    "./styles.css": "./dist/index.css"
   },
   "typesVersions": {
     "*": {
-      ".": ["./dist/index.d.ts"],
-      "./api": ["./dist/api/index.d.ts"],
-      "./document": ["./dist/document/index.d.ts"]
+      ".": ["./dist/index.d.ts"]
     }
   },
   "scripts": {
