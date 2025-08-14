@@ -9,12 +9,11 @@ import {
 import { Node, Schema } from "prosemirror-model"
 import { EditorView } from "prosemirror-view"
 import { customTheme } from "./color-scheme"
-import { symbolCompletionSource, coqCompletionSource, tacticCompletionSource, renderIcon } from "../autocomplete";
+import { symbolCompletionSource, coqCompletionSource, renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, setDiagnosticsEffect, lintGutter } from "@codemirror/lint";
 import { Debouncer } from "./debouncer";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
-import { Severity, SeverityLabelMap } from "../api";
 
 
 /**
@@ -37,7 +36,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		node: Node,
 		view: EditorView,
 		getPos: (() => number | undefined),
-		schema: Schema
+		schema: Schema,
+		completions: Array<Completion>
 	) {
 		super(node, view, getPos, schema);
 		this._node = node;
@@ -47,6 +47,25 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._lineNumberCompartment = new Compartment;
 		this._readOnlyCompartment = new Compartment;
 		this._diags = [];
+
+		const tacticCompletionSource: CompletionSource = function(context: CompletionContext): Promise<CompletionResult | null> {
+			return new Promise((resolve, _reject) => {
+				const before = context.matchBefore(/([^\s.\n\t\-+*])[^\s\n\t\-+*]*/gm);
+				const period = /\./gm 
+				const line = context.state.doc.lineAt(context.pos);
+				const firstletter = line.text.match(/[a-zA-Z]/);
+				const lineBeforeCursor = line.text.slice(0, context.pos - line.from);
+				
+				if ((!context.explicit && !before) || period.test(lineBeforeCursor)) resolve(null);
+				resolve({
+				// start completion instance from first letter of line
+				from: firstletter ? line.from + firstletter.index!: context.pos,
+				// non-null assertion operator "!" used to remove 'possibly null' error
+				options: completions,
+				validFor: /^[\t]*[^.]*/gm
+				})
+			});
+  		}
 
 		// Shadow this._outerView for use in the next function.
 		const outerView = this._outerView;
@@ -241,8 +260,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	 * @param message The message attached to this error.
 	 * @param severity The severity attached to this error.
 	 */
-	public addCoqError(from: number, to: number, message: string, severity: Severity) {
-		const severityString = SeverityLabelMap[severity];
+	public addCoqError(from: number, to: number, message: string, severity: number) {
+		const severityString = severityToString(severity);
 		const errorsCount = this._diags.filter(diag => diag.from === from && diag.to === to && diag.severity === "error").length;
 		//all diags have the copy action
 		const actions = [{
@@ -384,8 +403,6 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			setTimeout(() => notification.remove(), 500);
 		}, 1000);
 	}
-	
-	
 
 	/**
 	 * Helper function that forces the linter function to run.
@@ -403,5 +420,20 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	public clearCoqErrors() {
 		this._diags = [];
 		this.debouncer.call();
+	}
+}
+
+const severityToString = (sv: number) => {
+	switch (sv) {
+		case 0:
+			return "error";
+		case 1:
+			return "warning";
+		case 2:
+			return "info";
+		case 3:
+			return "hint";
+		default:
+			return "error";
 	}
 }
