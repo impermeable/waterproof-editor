@@ -2,7 +2,6 @@ import { Completion, CompletionContext, CompletionResult, CompletionSource } fro
 import symbols from "./symbols.json";
 
 // Completions for common mathematical symbols.
-// const symbolCompletions: Completion[] = symbols;
 const symbolCompletions: Completion[] = symbols;
 
 /**

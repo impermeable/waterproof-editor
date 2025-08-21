@@ -249,7 +249,7 @@ export class WaterproofEditor {
 			mathPlugin,
 			realMarkdownPlugin(this._schema),
 			coqdocPlugin(this._schema),
-			codePlugin(this._editorConfig.completions),
+			codePlugin(this._editorConfig.completions, this._editorConfig.symbols),
 			progressBarPlugin,
 			menuPlugin(WaterproofSchema, FileFormat.MarkdownV, this._userOS),
 			keymap({

@@ -15,7 +15,7 @@ export declare class CodeBlockView extends EmbeddedCodeMirrorEditor {
     private _readOnlyCompartment;
     private _diags;
     private debouncer;
-    constructor(node: Node, view: EditorView, getPos: (() => number | undefined), schema: Schema, completions: Array<Completion>);
+    constructor(node: Node, view: EditorView, getPos: (() => number | undefined), schema: Schema, completions: Array<Completion>, symbols: Array<Completion>);
     private partOfInputArea;
     handleSnippet(template: string, posFrom: number, posTo: number): void;
     private lintingFunction;

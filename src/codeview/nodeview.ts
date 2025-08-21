@@ -9,7 +9,7 @@ import {
 import { Node, Schema } from "prosemirror-model"
 import { EditorView } from "prosemirror-view"
 import { customTheme } from "./color-scheme"
-import { symbolCompletionSource, coqCompletionSource, renderIcon } from "../autocomplete";
+import { renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, setDiagnosticsEffect, lintGutter } from "@codemirror/lint";
 import { Debouncer } from "./debouncer";
@@ -37,7 +37,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		view: EditorView,
 		getPos: (() => number | undefined),
 		schema: Schema,
-		completions: Array<Completion>
+		completions: Array<Completion>,
+		symbols: Array<Completion>
 	) {
 		super(node, view, getPos, schema);
 		this._node = node;
@@ -66,6 +67,21 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				})
 			});
   		}
+
+		// inline definition of the symbol completion source. (Used for completions of the form `\reals` for ℝ).
+		const symbolCompletionSource: CompletionSource = (context: CompletionContext): Promise<CompletionResult | null> => {
+			return new Promise((resolve, _reject) => {
+				const before = context.matchBefore(/\\/);
+				// If completion wasn't explicitly started and there
+				// is no word before the cursor, don't open completions.
+				if (!context.explicit && !before) resolve(null);
+				resolve({
+					from: before ? before.from : context.pos,
+					options: symbols,
+					validFor: /\\[^ ]*/
+				});
+			});	
+		}
 
 		// Shadow this._outerView for use in the next function.
 		const outerView = this._outerView;
@@ -115,8 +131,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 					override: [
 						tacticCompletionSource,
 						this.dynamicCompletionSource,
-						symbolCompletionSource,
-						coqCompletionSource
+						symbolCompletionSource
 					],
 					icons: false,
 					addToOptions: [renderIcon],

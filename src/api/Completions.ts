@@ -10,3 +10,13 @@ export type WaterproofCompletion = {
     detail: string,
     template: string
 }
+
+/**
+ * Completion that can always be inserted. 
+ * Does not support templating.
+ */
+export type WaterproofSymbol = {
+    label: string,
+    type: string,
+    apply: string
+}

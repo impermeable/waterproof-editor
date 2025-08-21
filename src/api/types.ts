@@ -1,5 +1,5 @@
 import { Step } from "prosemirror-transform";
-import { DocChange, WrappingDocChange, Severity, WaterproofCompletion } from ".";
+import { DocChange, WrappingDocChange, Severity, WaterproofCompletion, WaterproofSymbol } from ".";
 import { Block } from "../document";
 
 /**
@@ -54,6 +54,7 @@ export abstract class WaterproofMapping {
  */
 export type WaterproofEditorConfig = {
     completions: Array<WaterproofCompletion>,
+    symbols: Array<WaterproofSymbol>,
     api: WaterproofCallbacks,
     documentConstructor: (document: string) => WaterproofDocument,
     mapping: new (inputString: string, versionNum: number) => WaterproofMapping,

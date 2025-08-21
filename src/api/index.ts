@@ -12,7 +12,7 @@ export { SimpleProgressInfo, SimpleProgressParams, CoqFileProgressKind, Diagnost
     HistoryChange, OffsetDiagnostic, Positioned, StringCell, WaterproofCallbacks, WaterproofDocument, 
     WaterproofEditorConfig, WaterproofMapping } from "./types";
 
-export { WaterproofCompletion } from "./Completions";
+export { WaterproofCompletion, WaterproofSymbol } from "./Completions";
 
 export { Completion } from "@codemirror/autocomplete";
 export { Step, ReplaceStep, ReplaceAroundStep } from "prosemirror-transform";

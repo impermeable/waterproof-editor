@@ -26,11 +26,12 @@ let genSourcemap = disableSourcemap ? null : { sourcemap: "inline" };
 // Setting to `copy` means we bundle the fonts in dist. Setting this to `dataurl` includes the fonts as base64 encoded data in the generated css file.
 const fontLoader = "base64";
 
+// This builds, bundles and optionally minifies the editor package
 esbuild.build({
   entryPoints: ["src/index.ts"],
   outfile: "dist/index.js",
   bundle: true,
-  format: "esm",
+  format: "cjs",
   ...genSourcemap,
   platform: "browser",
   loader: {
@@ -45,48 +46,6 @@ esbuild.build({
   console.log("[watch] build finished (waterproof-editor)");
 }).catch((err) => {
   console.error("[watch] build failed (waterproof-editor),", err);
-});
-
-esbuild.build({
-  entryPoints: ["src/document/index.ts"],
-  outfile: "dist/document/index.js",
-  bundle: true,
-  format: "esm",
-  ...genSourcemap,
-  platform: "browser",
-  loader: {
-    ".woff": fontLoader,
-    ".woff2": fontLoader,
-    ".ttf": fontLoader,
-    ".grammar": "file"
-  },
-  minify,
-  watch: watch("waterproof-editor/document/index.ts")
-}).then((_value) => {
-  console.log("[watch] build finished (waterproof-editor/document)");
-}).catch((err) => {
-  console.error("[watch] build failed (waterproof-editor/document),", err);
-});
-
-esbuild.build({
-  entryPoints: ["src/api/index.ts"],
-  outfile: "dist/api/index.js",
-  bundle: true,
-  format: "esm",
-  ...genSourcemap,
-  platform: "browser",
-  loader: {
-    ".woff": fontLoader,
-    ".woff2": fontLoader,
-    ".ttf": fontLoader,
-    ".grammar": "file"
-  },
-  minify,
-  watch: watch("waterproof-editor/api/index.ts")
-}).then((_value) => {
-  console.log("[watch] build finished (waterproof-editor/api)");
-}).catch((err) => {
-  console.error("[watch] build failed (waterproof-editor/api),", err);
 });
 
 

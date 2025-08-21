@@ -12,6 +12,7 @@
   },
   "license": "MIT",
   "author": "impermeable",
+  "main": "./dist/index.js",
   "exports": {
     ".": "./dist/index.js",
     "./styles.css": "./dist/index.css"

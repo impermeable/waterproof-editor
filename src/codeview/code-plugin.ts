@@ -8,7 +8,7 @@ import { Plugin as ProsePlugin, PluginKey, PluginSpec } from "prosemirror-state"
 import { EditorView } from "prosemirror-view";
 import { CodeBlockView } from "./nodeview";
 import { ReplaceStep } from "prosemirror-transform";
-import { LineNumber, WaterproofCompletion } from "../api";
+import { LineNumber, WaterproofCompletion, WaterproofSymbol } from "../api";
 import { Completion, snippetCompletion } from "@codemirror/autocomplete";
 
 ////////////////////////////////////////////////////////////
@@ -31,7 +31,7 @@ export const CODE_PLUGIN_KEY = new PluginKey<ICodePluginState>("waterproof-edito
  * Returns a function suitable for passing as a field in `EditorProps.nodeViews`.
  * @see https://prosemirror.net/docs/ref/#view.EditorProps.nodeViews
  */
-export function createCoqCodeView(completions: Array<Completion>){
+export function createCoqCodeView(completions: Array<Completion>, symbols: Array<Completion>){
 	return (node: ProseNode, view: EditorView, getPos: () => number | undefined): CodeBlockView => {
 		/** @todo is this necessary?
 		* Docs says that for any function proprs, the current plugin instance
@@ -42,7 +42,7 @@ export function createCoqCodeView(completions: Array<Completion>){
 		const nodeViews = pluginState.activeNodeViews;
 
 		// set up NodeView
-		const nodeView = new CodeBlockView(node, view, getPos, pluginState.schema, completions);
+		const nodeView = new CodeBlockView(node, view, getPos, pluginState.schema, completions, symbols);
 
 		nodeViews.add(nodeView);
 		return nodeView;
@@ -50,7 +50,7 @@ export function createCoqCodeView(completions: Array<Completion>){
 }
 
 
-const CoqCodePluginSpec = (completions: Array<Completion>) : PluginSpec<ICodePluginState> => { return {
+const CoqCodePluginSpec = (completions: Array<Completion>, symbols: Array<Completion>) : PluginSpec<ICodePluginState> => { return {
 	key: CODE_PLUGIN_KEY,
 	state: {
 		init(config, instance){
@@ -106,18 +106,18 @@ const CoqCodePluginSpec = (completions: Array<Completion>) : PluginSpec<ICodePlu
 	},
 	props: {
 		nodeViews: {
-			"coqcode" : createCoqCodeView(completions)
+			"coqcode" : createCoqCodeView(completions, symbols)
 		}
 	}
 }};
 
 
-export const codePlugin = (completions: Array<WaterproofCompletion>) => {
+export const codePlugin = (completions: Array<WaterproofCompletion>, symbols: Array<WaterproofSymbol>) => {
 	// Here we turn the waterproof completions into proper codemirror completions
 	//   with template 'holes'
 	const cmCompletions =  completions.map((value) => {
 		return snippetCompletion(value.template, value);
 	}); 
-	return new ProsePlugin(CoqCodePluginSpec(cmCompletions));
+	return new ProsePlugin(CoqCodePluginSpec(cmCompletions, symbols));
 };
 
