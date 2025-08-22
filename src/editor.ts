@@ -65,6 +65,11 @@ export class WaterproofEditor {
 
 	private _lineNumbersShown: boolean = false;
 
+	/**
+	 * Create a new WaterproofEditor instance.
+	 * @param editorElement The HTML element where the editor will be inserted in the document
+	 * @param config The configuration of the editor to use.
+	 */
 	constructor (editorElement: HTMLElement, config: WaterproofEditorConfig) {
 		this._schema = WaterproofSchema;
 		this._editorElem = editorElement;
@@ -271,6 +276,10 @@ export class WaterproofEditor {
 		];
 	}
 
+	/**
+	 * Handle a snippet that should be inserted into the editor.
+	 * @param template The template string of the snippet that should be inserted.
+	 */
 	public handleSnippet(template: string) {
 		const view = this._view!;
 		// Get the first selection.
@@ -365,7 +374,7 @@ export class WaterproofEditor {
 	}
 
 	/**
-	 * Insert a symbol at the cursor position (or overwrite the current selection).
+	 * Insert a symbol at the cursor position (replaces the current selection if there is one).
 	 *
 	 * @param symbolUnicode The unicode character to insert.
 	 * @returns Whether the operation was a success.
@@ -423,6 +432,7 @@ export class WaterproofEditor {
 
 	/**
 	 * Toggles line numbers for all codeblocks.
+	 * @param show The editor will show line numbers in the code cells when set to `true`.
 	 */
 	public setShowLineNumbers(show: boolean) {
 		this._lineNumbersShown = show;
@@ -434,6 +444,10 @@ export class WaterproofEditor {
 		this.sendLineNumbers();
 	}
 
+	/**
+	 * Toggles showing menu items in the editor for students.
+	 * @param show The editor will show menu items to students when set to `true`.
+	 */
 	public setShowMenuItems(show: boolean) {
 		const view = this._view;
 		if (view === undefined) return;
@@ -461,7 +475,12 @@ export class WaterproofEditor {
 		trans.setMeta(INPUT_AREA_PLUGIN_KEY, {teacher: isTeacher});
 		this._view.dispatch(trans);
 	}
-
+    
+	/**
+	 * Updates the state of the progress bar in the editor. 
+	 * 
+	 * @param progressParams The type used to store information on the status of the checking of the current file
+	 */
 	public updateProgressBar(progressParams: SimpleProgressParams): void {
 		if (!this._view) return;
 		const state = this._view.state;
@@ -470,6 +489,11 @@ export class WaterproofEditor {
 		this._view.dispatch(tr);
 	}
 
+	/**
+	 * Updates the status of the input areas in the editor.
+	 * 
+	 * @param status Array containing the status of the input areas within the current document, where `status[i]` corresponds to the i-th input area (starting at zero for the first input area). 
+	 */
 	public updateQedStatus(status: InputAreaStatus[]) : void {
 		if (!this._view) return;
 		const state = this._view.state;
@@ -478,6 +502,11 @@ export class WaterproofEditor {
 		this._view.dispatch(tr);
 	}
 
+	/**
+	 * Updates the current set of diagnostics in the document. This function takes in the set of all diagnostics in the current document and assigns them to the correct code cell in the document.
+	 * 
+	 * @param msg The set of diagnostics for the current document. 
+	 */
 	public parseCoqDiagnostics(msg: DiagnosticMessage) {
 		if (this._mapping === undefined || msg.version < this._mapping.version) return;
 
