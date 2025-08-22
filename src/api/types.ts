@@ -53,10 +53,15 @@ export abstract class WaterproofMapping {
  * - `mapping` is a constructor for the WaterproofMapping class, which handles the mapping between the ProseMirror document and the text document in the host application.
  */
 export type WaterproofEditorConfig = {
+    /** Set of  (static) completions that should be shown to the user. */
     completions: Array<WaterproofCompletion>,
+    /** Set of (static) symbol completions that should be shown to the user. */
     symbols: Array<WaterproofSymbol>,
+    /** How the editor communicates to the parent process */
     api: WaterproofCallbacks,
+    /** Determines how the editor document gets constructed from a string input */
     documentConstructor: (document: string) => WaterproofDocument,
+    /** How to construct a mapping for this editor. The mapping is responsible for mapping changes from the underlying ProseMirror instance into changes that can be applied to the underlying document. */
     mapping: new (inputString: string, versionNum: number) => WaterproofMapping,
     /** THIS IS A TEMPORARY FEATURE THAT WILL GET REMOVED */
     documentPreprocessor?: (inputString: string) => {resultingDocument: string, documentChange: DocChange | WrappingDocChange | undefined},
