@@ -28,6 +28,11 @@ export declare class WaterproofEditor {
     private readonly _userOS;
     private currentProseDiagnostics;
     private _lineNumbersShown;
+    /**
+     * Create a new WaterproofEditor instance.
+     * @param editorElement The HTML element where the editor will be inserted in the document
+     * @param config The configuration of the editor to use.
+     */
     constructor(editorElement: HTMLElement, config: WaterproofEditorConfig);
     init(content: string, version?: number): void;
     get state(): EditorState | undefined;
@@ -36,6 +41,10 @@ export declare class WaterproofEditor {
     createState(proseDoc: ProseNode): EditorState;
     /** Create the array of plugins used by the prosemirror editor */
     createPluginsArray(): Plugin[];
+    /**
+     * Handle a snippet that should be inserted into the editor.
+     * @param template The template string of the snippet that should be inserted.
+     */
     handleSnippet(template: string): void;
     /** Called on every selection update. */
     updateCursor(pos: Selection): void;
@@ -54,7 +63,7 @@ export declare class WaterproofEditor {
      */
     handleHistoryChange(type: HistoryChange): void;
     /**
-     * Insert a symbol at the cursor position (or overwrite the current selection).
+     * Insert a symbol at the cursor position (replaces the current selection if there is one).
      *
      * @param symbolUnicode The unicode character to insert.
      * @returns Whether the operation was a success.
@@ -62,8 +71,13 @@ export declare class WaterproofEditor {
     insertSymbol(symbolUnicode: string): boolean;
     /**
      * Toggles line numbers for all codeblocks.
+     * @param show The editor will show line numbers in the code cells when set to `true`.
      */
     setShowLineNumbers(show: boolean): void;
+    /**
+     * Toggles showing menu items in the editor for students.
+     * @param show The editor will show menu items to students when set to `true`.
+     */
     setShowMenuItems(show: boolean): void;
     private createAndDispatchInsertionTransaction;
     /**
@@ -72,8 +86,23 @@ export declare class WaterproofEditor {
      * @param isTeacher Whether teacher mode is enabled
      */
     updateLockingState(isTeacher: boolean): void;
+    /**
+     * Updates the state of the progress bar in the editor.
+     *
+     * @param progressParams The type used to store information on the status of the checking of the current file
+     */
     updateProgressBar(progressParams: SimpleProgressParams): void;
+    /**
+     * Updates the status of the input areas in the editor.
+     *
+     * @param status Array containing the status of the input areas within the current document, where `status[i]` corresponds to the i-th input area (starting at zero for the first input area).
+     */
     updateQedStatus(status: InputAreaStatus[]): void;
+    /**
+     * Updates the current set of diagnostics in the document. This function takes in the set of all diagnostics in the current document and assigns them to the correct code cell in the document.
+     *
+     * @param msg The set of diagnostics for the current document.
+     */
     parseCoqDiagnostics(msg: DiagnosticMessage): void;
     getDiagnosticsInRange(low: number, high: number, truncationLevel?: number): Array<DiagnosticObjectProse>;
     executeCommand(command: string): void;

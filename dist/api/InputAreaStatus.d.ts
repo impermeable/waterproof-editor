@@ -1,5 +1,5 @@
 /**
- * The proof status of an input area.
+ * The status of an input area.
  */
 export declare enum InputAreaStatus {
     /** The proof is correct. */
