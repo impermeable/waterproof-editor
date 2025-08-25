@@ -10,6 +10,8 @@ npx tsc -b --watch
 ```
 To build the sources. Note that setting the `watch` flag means that compilation starts over once file changes have been detected.
 
+Alternatively, inside of VSCode/Codium run the `watch` task by opening the command pallete, using the command `Tasks: Run Task` and selecting `watch`.
+
 ## Linking the editor project during development
 
 Running
