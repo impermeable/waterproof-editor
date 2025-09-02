@@ -17,7 +17,7 @@ export declare class CodeBlockView extends EmbeddedCodeMirrorEditor {
     private debouncer;
     constructor(node: Node, view: EditorView, getPos: (() => number | undefined), schema: Schema, completions: Array<Completion>, symbols: Array<Completion>);
     private partOfInputArea;
-    handleSnippet(template: string, posFrom: number, posTo: number): void;
+    handleSnippet(template: string, posFrom: number, posTo: number, completion?: Completion | undefined): void;
     private lintingFunction;
     /**
      * set edit permission
@@ -44,7 +44,6 @@ export declare class CodeBlockView extends EmbeddedCodeMirrorEditor {
          * @param severity The severity attached to this error.
          */
     addCoqError(from: number, to: number, message: string, severity: number): void;
-    private updateDiagnostics;
     private showCopyNotification;
     /**
      * Helper function that forces the linter function to run.
