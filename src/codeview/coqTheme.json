@@ -40,7 +40,7 @@
 		"color": "var(--vscode-list-activeSelectionForeground)"
 	},
 
-	".cm-activeLine": {"backgroundColor": "#6699ff0b"},
+	".cm-activeLine": {"backgroundColor": "var(--vscode-editor-lineHighlightBackground)"},
     "&:not(.cm-focused) .cm-activeLine": { "backgroundColor": "transparent"},
 	".cm-selectionMatch": {"backgroundColor": "#aafe661a"},
 	"&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket": {
@@ -73,7 +73,7 @@
 		"flexFlow": "column"
 	},
 	".cm-lintRange-active": {
-		"backgroundColor": "var(--vscode-editor-selectionHighlightBackground)"
+		"backgroundColor": "transparent"
 	},
 	".cm-tooltip .cm-tooltip-arrow:before": {
 	  "borderTopColor": "transparent",
