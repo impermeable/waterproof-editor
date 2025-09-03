@@ -36,7 +36,8 @@
 		"flexFlow": "column"
 	},
 	".cm-panel.cm-panel-lint ul [aria-selected]": {
-		"background-color": "var(--vscode-list-focusOutline)"
+		"background-color": "var(--vscode-list-activeSelectionBackground)",
+		"color": "var(--vscode-list-activeSelectionForeground)"
 	},
 
 	".cm-activeLine": {"backgroundColor": "#6699ff0b"},
@@ -70,6 +71,9 @@
 	".cm-tooltip-lint": {
 		"display": "flex",
 		"flexFlow": "column"
+	},
+	".cm-lintRange-active": {
+		"backgroundColor": "var(--vscode-editor-selectionHighlightBackground)"
 	},
 	".cm-tooltip .cm-tooltip-arrow:before": {
 	  "borderTopColor": "transparent",
