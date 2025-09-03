@@ -35,6 +35,9 @@
 		"display": "flex", 
 		"flexFlow": "column"
 	},
+	".cm-panel.cm-panel-lint ul [aria-selected]": {
+		"background-color": "var(--vscode-list-focusOutline)"
+	},
 
 	".cm-activeLine": {"backgroundColor": "#6699ff0b"},
     "&:not(.cm-focused) .cm-activeLine": { "backgroundColor": "transparent"},
@@ -63,6 +66,10 @@
 	  "border": "none",
 	  "color": "var(--vscode-menu-foreground)",
 	  "backgroundColor": "var(--vscode-menu-background)"
+	},
+	".cm-tooltip-lint": {
+		"display": "flex",
+		"flexFlow": "column"
 	},
 	".cm-tooltip .cm-tooltip-arrow:before": {
 	  "borderTopColor": "transparent",
