@@ -15,8 +15,6 @@ import { linter, LintSource, Diagnostic, setDiagnosticsEffect, lintGutter } from
 import { Debouncer } from "./debouncer";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 
-
-
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
  * Corresponds with the example as can be found here:
@@ -46,6 +44,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._outerView = view;
 		this._getPos = getPos;
 		this._lineNumbersExtension = [];
+
 		this._lineNumberCompartment = new Compartment;
 		this._readOnlyCompartment = new Compartment;
 		this._diags = [];
