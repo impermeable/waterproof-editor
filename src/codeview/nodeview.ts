@@ -14,6 +14,8 @@ import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, setDiagnosticsEffect, lintGutter } from "@codemirror/lint";
 import { Debouncer } from "./debouncer";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
+import { getCurrentTheme } from "../themeStore";
+import { ThemeStyle } from "../api";
 
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
@@ -27,7 +29,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _lineNumbersExtension: Extension;
 	private _dynamicCompletions: Completion[] = [];
 	private _readOnlyCompartment: Compartment;
+	private _themeCompartment: Compartment;
 	private _diags : Diagnostic[];
+	private _themeColor: ThemeStyle;
 
 	private debouncer: Debouncer;
 
@@ -45,9 +49,14 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._getPos = getPos;
 		this._lineNumbersExtension = [];
 
+		// Set initial theme color based on VSCode theme
+		this._themeColor =  getCurrentTheme(); // Default to light theme
+
 		this._lineNumberCompartment = new Compartment;
 		this._readOnlyCompartment = new Compartment;
+		this._themeCompartment = new Compartment;
 		this._diags = [];
+		
 
 		const tacticCompletionSource: CompletionSource = function(context: CompletionContext): Promise<CompletionResult | null> {
 			return new Promise((resolve, _reject) => {
@@ -126,6 +135,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				...optional, 
 				this._readOnlyCompartment.of(EditorState.readOnly.of(!this._outerView.editable)),
 				this._lineNumberCompartment.of(this._lineNumbersExtension),
+				this._themeCompartment.of(coqSyntaxHighlighting(this._themeColor)),
 
 				autocompletion({
 					override: [
@@ -145,7 +155,6 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				syntaxHighlighting(defaultHighlightStyle),
 				coq(),
                 highlightActiveLine(),
-				coqSyntaxHighlighting(),
 				CodeMirror.updateListener.of(update => this.forwardUpdate(update)),
 				placeholder(placeholderContent())
 			],
@@ -225,6 +234,17 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._codemirror?.dispatch({
 			effects: this._readOnlyCompartment.reconfigure(
 				EditorState.readOnly.of(!this._outerView.editable)
+			)
+		});
+	}
+
+	/**
+	 * Update the theme of the editor.
+	 */
+	public updateThemeFromVSCode(theme: ThemeStyle): void {
+		this._codemirror?.dispatch({
+			effects: this._themeCompartment.reconfigure(
+				coqSyntaxHighlighting(theme)
 			)
 		});
 	}

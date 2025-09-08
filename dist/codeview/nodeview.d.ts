@@ -2,6 +2,7 @@ import { Completion, CompletionSource } from "@codemirror/autocomplete";
 import { Node, Schema } from "prosemirror-model";
 import { EditorView } from "prosemirror-view";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
+import { ThemeStyle } from "../api";
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
  * Corresponds with the example as can be found here:
@@ -13,7 +14,9 @@ export declare class CodeBlockView extends EmbeddedCodeMirrorEditor {
     private _lineNumbersExtension;
     private _dynamicCompletions;
     private _readOnlyCompartment;
+    private _themeCompartment;
     private _diags;
+    private _themeColor;
     private debouncer;
     constructor(node: Node, view: EditorView, getPos: (() => number | undefined), schema: Schema, completions: Array<Completion>, symbols: Array<Completion>);
     private partOfInputArea;
@@ -23,6 +26,10 @@ export declare class CodeBlockView extends EmbeddedCodeMirrorEditor {
      * set edit permission
      */
     setEditPermission(): void;
+    /**
+     * Update the theme of the editor.
+     */
+    updateThemeFromVSCode(theme: ThemeStyle): void;
     /**
      * Update the line numbers extension
      */

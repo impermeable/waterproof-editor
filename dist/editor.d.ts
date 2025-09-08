@@ -4,7 +4,7 @@ import { LineNumber, InputAreaStatus, SimpleProgressParams, HistoryChange, Sever
 import "katex/dist/katex.min.css";
 import "prosemirror-view/style/prosemirror.css";
 import "./styles";
-import { WaterproofEditorConfig, DiagnosticMessage } from "./api/types";
+import { WaterproofEditorConfig, DiagnosticMessage, ThemeStyle } from "./api";
 import { Completion } from "@codemirror/autocomplete";
 import { ServerStatus } from "./api";
 /** Type that contains a coq diagnostics object fit for use in the ProseMirror editor context. */
@@ -42,6 +42,7 @@ export declare class WaterproofEditor {
     createState(proseDoc: ProseNode): EditorState;
     /** Create the array of plugins used by the prosemirror editor */
     createPluginsArray(): Plugin[];
+    updateNodeViewThemes(theme: ThemeStyle): void;
     /**
      * Handle a snippet that should be inserted into the editor.
      * @param template The template string of the snippet that should be inserted.
