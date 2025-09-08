@@ -7,6 +7,7 @@ import "./markdown.css";
 import "./notifications.css";
 import "./coqdoc.css";
 import "./progressBar.css";
+import "./documentProgressDecorator.css";
 import "./spinner.css";
 import "./freeze.css";
 import "./context-menu.css";

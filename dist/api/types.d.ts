@@ -31,6 +31,7 @@ export type WaterproofCallbacks = {
     applyStepError: (errorMessage: string) => void;
     cursorChange: (cursorPosition: number) => void;
     lineNumbers: (linenumbers: Array<number>, version: number) => void;
+    viewportHint: (start: number, end: number) => void;
 };
 export declare abstract class WaterproofMapping {
     abstract getMapping: () => Map<number, StringCell>;

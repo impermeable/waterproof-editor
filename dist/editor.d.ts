@@ -6,6 +6,7 @@ import "prosemirror-view/style/prosemirror.css";
 import "./styles";
 import { WaterproofEditorConfig, DiagnosticMessage, ThemeStyle } from "./api";
 import { Completion } from "@codemirror/autocomplete";
+import { ServerStatus } from "./api";
 /** Type that contains a coq diagnostics object fit for use in the ProseMirror editor context. */
 type DiagnosticObjectProse = {
     message: string;
@@ -51,6 +52,7 @@ export declare class WaterproofEditor {
     updateCursor(pos: Selection): void;
     /** Called on every transaction update in which the textdocument was modified */
     sendLineNumbers(): void;
+    private updateDocumentProgress;
     /**
      * Updates the dynamic autocomplete suggestions shown in the editor.
      * @param completions Array of completions.
@@ -63,6 +65,7 @@ export declare class WaterproofEditor {
      * @param type Type of the change
      */
     handleHistoryChange(type: HistoryChange): void;
+    handleScroll(innerHeight: number): void;
     /**
      * Insert a symbol at the cursor position (replaces the current selection if there is one).
      *
@@ -93,6 +96,7 @@ export declare class WaterproofEditor {
      * @param progressParams The type used to store information on the status of the checking of the current file
      */
     updateProgressBar(progressParams: SimpleProgressParams): void;
+    updateServerStatus(status: ServerStatus): void;
     /**
      * Updates the status of the input areas in the editor.
      *
