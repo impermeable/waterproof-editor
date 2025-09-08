@@ -28,9 +28,10 @@ import { UPDATE_STATUS_PLUGIN_KEY, updateStatusPlugin } from "./qedStatus";
 import { CodeBlockView } from "./codeview/nodeview";
 import { InsertionPlace, cmdInsertCode, cmdInsertLatex, cmdInsertMarkdown } from "./commands";
 import { OS } from "./osType";
-import { Positioned, WaterproofMapping, WaterproofEditorConfig, DiagnosticMessage } from "./api/types";
+import { Positioned, WaterproofMapping, WaterproofEditorConfig, DiagnosticMessage, ThemeStyle } from "./api";
 import { Completion } from "@codemirror/autocomplete";
 import { FileFormat } from "./api/FileFormat";
+import { setCurrentTheme } from "./themeStore";
 
 
 /** Type that contains a coq diagnostics object fit for use in the ProseMirror editor context. */
@@ -274,6 +275,20 @@ export class WaterproofEditor {
 				"Mod-.": selectParentNode
 			})
 		];
+	}
+
+	public updateNodeViewThemes(theme: ThemeStyle) {
+		setCurrentTheme(theme);
+		const view = this._view!;
+		const state = view.state;
+
+		// Get all nodeViews
+		const nodeViews = CODE_PLUGIN_KEY.getState(state)?.activeNodeViews;
+
+		for (const nodeView of nodeViews ?? []) {
+			// Update the theme of the nodeView
+			nodeView.updateThemeFromVSCode(theme);
+		}
 	}
 
 	/**

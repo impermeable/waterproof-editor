@@ -8,9 +8,7 @@ export { Severity, SeverityLabel, SeverityLabelMap } from "./Severity";
 
 export { FileFormat } from "./FileFormat";
 
-export { SimpleProgressInfo, SimpleProgressParams, CoqFileProgressKind, DiagnosticMessage, 
-    HistoryChange, OffsetDiagnostic, Positioned, StringCell, WaterproofCallbacks, WaterproofDocument, 
-    WaterproofEditorConfig, WaterproofMapping } from "./types";
+export * from "./types";
 
 export { WaterproofCompletion, WaterproofSymbol } from "./Completions";
 

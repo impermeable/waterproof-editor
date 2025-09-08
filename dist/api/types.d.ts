@@ -100,4 +100,5 @@ export type DiagnosticMessage = {
     positionedDiagnostics: OffsetDiagnostic[];
     version: number;
 };
+export type ThemeStyle = "light" | "dark";
 //# sourceMappingURL=types.d.ts.map
