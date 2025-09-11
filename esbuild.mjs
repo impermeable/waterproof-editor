@@ -2,32 +2,14 @@
 import process from "process";
 import * as esbuild from "esbuild";
 
-const watchConfig = (filename) => {
-  return {
-    onRebuild(error, result) {
-      if (error) {
-        error.errors.forEach((error) =>
-          console.error(
-            `> ${error.location.file}:${error.location.line}:${error.location.column}: error: ${error.text}`
-          )
-        );
-      } else {
-        console.log(`[watch] (re)build finished (${filename})`);
-      }
-    }
-  }
-};
-
-let watch = (filename) => process.argv.includes("--watch") ? watchConfig(filename) : false;
-let minify = process.argv.includes("--minify");
-let disableSourcemap = process.argv.includes("--sourcemap=no");
-let genSourcemap = disableSourcemap ? null : { sourcemap: "inline" };
+const watch = process.argv.includes("--watch");
+const minify = process.argv.includes("--minify");
+const disableSourcemap = process.argv.includes("--sourcemap=no");
+const genSourcemap = disableSourcemap ? null : { sourcemap: "inline" };
 
 // Setting to `copy` means we bundle the fonts in dist. Setting this to `dataurl` includes the fonts as base64 encoded data in the generated css file.
 const fontLoader = "base64";
-
-// This builds, bundles and optionally minifies the editor package
-esbuild.build({
+const sharedConfig = {
   entryPoints: ["src/index.ts"],
   outfile: "dist/index.js",
   bundle: true,
@@ -41,11 +23,36 @@ esbuild.build({
     ".grammar": "file"
   },
   minify,
-  watch: watch("waterproof-editor/index.ts")
-}).then((_value) => {
-  console.log("[watch] build finished (waterproof-editor)");
-}).catch((err) => {
-  console.error("[watch] build failed (waterproof-editor),", err);
-});
+  plugins: [
+    {
+      name: "log build status",
+      setup(build) {
+        build.onEnd(result => {
+          const errCount = result.errors.length;
+          if (errCount > 0) {
+            console.error(`❌ Build failed with ${errCount} error${errCount > 1 ? "s" : ""}`);
+          } else {
+            console.log("✅ Build finished");
+          }
+        });
+      }
+    },
+    {
+      name: "testingtest",
+      setup(build) {
+
+      }
+    }
+  ]
+}
+
+if (!watch) {
+  // This builds, bundles and optionally minifies the editor package
+  await esbuild.build(sharedConfig);
+} else {
+  const ctx = await esbuild.context(sharedConfig);
+  console.log("Watching for file changes...");
+  ctx.watch();
+}
 
 
