@@ -1,0 +1,15 @@
+/.github
+/.vscode
+/__tests__
+/documentation
+/node_modules
+/src
+LICENSE
+README.md
+/esbuild.mjs
+/eslint.config.mjs
+/jest.config.js
+package-lock.json
+package.json
+/tsconfig.json
+/tsconfig.tsbuildinfo

@@ -1,1 +1,0 @@
-{"version":3,"file":"documentProgressDecorator.d.ts","sourceRoot":"","sources":["../src/documentProgressDecorator.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,SAAS,EAAc,MAAM,mBAAmB,CAAC;AAGlE,MAAM,WAAW,+BAA+B;IAC9C,KAAK,EAAE,MAAM,CAAC;IACd,iBAAiB,EAAE,MAAM,CAAC;IAC1B,kBAAkB,EAAE,MAAM,CAAC;CAC5B;AAGD,eAAO,MAAM,+BAA+B,4CAA4F,CAAC;AA+DzI,eAAO,MAAM,+BAA+B,yCAAkD,CAAC"}
