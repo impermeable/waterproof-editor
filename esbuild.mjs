@@ -37,12 +37,6 @@ const sharedConfig = {
         });
       }
     },
-    {
-      name: "testingtest",
-      setup(build) {
-
-      }
-    }
   ]
 }
 
