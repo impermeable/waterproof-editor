@@ -1,6 +1,6 @@
 {
-  "name": "waterproof-editor",
-  "version": "1.0.0",
+  "name": "@impermeable/waterproof-editor",
+  "version": "0.9.0",
   "description": "Waterproof Editor ",
   "homepage": "https://github.com/impermeable/waterproof-editor#readme",
   "bugs": {
