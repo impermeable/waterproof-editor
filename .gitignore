@@ -1,7 +1,6 @@
 node_modules/
-/dist
+dist/
 .vscode/settings.json
 .DS_store
 __tests_output__/
-/cypress/screenshots/
 tsconfig.tsbuildinfo
