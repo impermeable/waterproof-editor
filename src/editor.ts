@@ -139,12 +139,10 @@ export class WaterproofEditor {
 			if (resultingDocument !== content) version = version + 1;
 		}
 
-		const parsedContent = this._translator.toProsemirror(resultingDocument);
-		// this._contentElem.innerHTML = parsedContent;
+		const blocks = this._editorConfig.documentConstructor(resultingDocument);
+		const proseDoc = constructDocument(blocks);
 
-		const proseDoc = constructDocument(this._editorConfig.documentConstructor(resultingDocument));
-
-		this._mapping = new this._editorConfig.mapping(parsedContent, version);
+		this._mapping = new this._editorConfig.mapping(blocks, version);
 		this.createProseMirrorEditor(proseDoc);
 
 		/** Ask for line numbers */
@@ -261,7 +259,7 @@ export class WaterproofEditor {
 			codePlugin(this._editorConfig.completions, this._editorConfig.symbols),
 			progressBarPlugin,
 			documentProgressDecoratorPlugin,
-			menuPlugin(WaterproofSchema, FileFormat.MarkdownV, this._userOS),
+			menuPlugin(FileFormat.MarkdownV, this._userOS),
 			keymap({
 				"Mod-h": () => {
 					this.executeCommand("Help.");
@@ -269,12 +267,12 @@ export class WaterproofEditor {
 				},
 				"Backspace": deleteSelection,
 				"Delete": deleteSelection,
-				"Mod-m": cmdInsertMarkdown(WaterproofSchema, FileFormat.MarkdownV, InsertionPlace.Underneath),
-				"Mod-M": cmdInsertMarkdown(WaterproofSchema, FileFormat.MarkdownV, InsertionPlace.Above),
-				"Mod-q": cmdInsertCode(WaterproofSchema, FileFormat.MarkdownV, InsertionPlace.Underneath),
-				"Mod-Q": cmdInsertCode(WaterproofSchema, FileFormat.MarkdownV, InsertionPlace.Above),
-				"Mod-l": cmdInsertLatex(WaterproofSchema, FileFormat.MarkdownV, InsertionPlace.Underneath),
-				"Mod-L": cmdInsertLatex(WaterproofSchema, FileFormat.MarkdownV, InsertionPlace.Above),
+				"Mod-m": cmdInsertMarkdown(FileFormat.MarkdownV, InsertionPlace.Underneath),
+				"Mod-M": cmdInsertMarkdown(FileFormat.MarkdownV, InsertionPlace.Above),
+				"Mod-q": cmdInsertCode(FileFormat.MarkdownV, InsertionPlace.Underneath),
+				"Mod-Q": cmdInsertCode(FileFormat.MarkdownV, InsertionPlace.Above),
+				"Mod-l": cmdInsertLatex(FileFormat.MarkdownV, InsertionPlace.Underneath),
+				"Mod-L": cmdInsertLatex(FileFormat.MarkdownV, InsertionPlace.Above),
 				// We bind Ctrl/Cmd+. to selecting the parent node of the currently selected node.
 				"Mod-.": selectParentNode
 			})

@@ -1,4 +1,4 @@
-import { NodeRange, Schema } from "prosemirror-model";
+import { NodeRange } from "prosemirror-model";
 import { Command, EditorState, NodeSelection, Transaction } from "prosemirror-state";
 import { insertAbove, insertUnder } from "./command-helpers";
 import { InsertionPlace } from "./types";
@@ -6,6 +6,7 @@ import { getCodeInsertCommand, getLatexInsertCommand, getMdInsertCommand } from 
 import { EditorView } from "prosemirror-view";
 import { liftTarget } from "prosemirror-transform";
 import { FileFormat } from "../api";
+import { WaterproofSchema } from "../schema";
 
 /**
  * Get the insertion function needed for insertion at `place`.
@@ -27,17 +28,13 @@ function getInsertionFunction(place: InsertionPlace) {
 
 /**
  * Creates a command that creates a new code cell above/underneath the currently selected node.
- * @param schema The schema to use
  * @param filef The format of the currently opened file.
  * @param insertionPlace The place to insert the new node into: Underneath or Above the current node.
  * @returns The `Command`.
  */
-export function cmdInsertCode(schema: Schema, filef: FileFormat, insertionPlace: InsertionPlace): Command {
-    // Get node types for coqblock container and coqcode cell from the schema.
-    const coqblockNodeType = schema.nodes["coqblock"];
-    const coqcodeNodeType = schema.nodes["coqcode"];
+export function cmdInsertCode(filef: FileFormat, insertionPlace: InsertionPlace): Command {
     // Return a command with the correct insertion place and function.
-    return getCodeInsertCommand(filef, getInsertionFunction(insertionPlace), insertionPlace, coqblockNodeType, coqcodeNodeType);
+    return getCodeInsertCommand(filef, getInsertionFunction(insertionPlace), insertionPlace, WaterproofSchema.nodes.code);
 }
 
 //// MARKDOWN //// 
@@ -56,18 +53,16 @@ export function cmdInsertCode(schema: Schema, filef: FileFormat, insertionPlace:
 
 /**
  * Creates a command that creates a new markdown cell underneath/above the currently selected node.
- * @param schema The schema to use
  * @param filef The fileformat of the file currently opened.
  * @param insertionPlace The place to insert at: Above or Underneath current node.
  * @returns The `Command`.
  */
-export function cmdInsertMarkdown(schema: Schema, filef: FileFormat, insertionPlace: InsertionPlace): Command {
+export function cmdInsertMarkdown(filef: FileFormat, insertionPlace: InsertionPlace): Command {
     // Retrieve the node types for both markdown and coqdoc markdown (coqdown) from the schema.
-    const mdNodeType = schema.nodes["markdown"];
-    const coqMdNodeType = schema.nodes["coqdown"];
+    const mdNodeType = WaterproofSchema.nodes.markdown;
     // Return a command with the correct insertion command and place.
     return getMdInsertCommand(filef, getInsertionFunction(insertionPlace), 
-        insertionPlace, mdNodeType, coqMdNodeType);
+        insertionPlace, mdNodeType);
 }
 
 //// DISPlAY MATH //// 
@@ -79,14 +74,13 @@ export function cmdInsertMarkdown(schema: Schema, filef: FileFormat, insertionPl
 
 /**
  * Returns a command that inserts a new Display Math cell above/underneath the currently selected cell.
- * @param schema The schema in use.
  * @param filef The file format of the current file.
  * @param insertionPlace The place to insert the node at Above or Underneath the current node.
  * @returns The `Command`
  */
-export function cmdInsertLatex(schema: Schema, filef: FileFormat, insertionPlace: InsertionPlace): Command {
+export function cmdInsertLatex(filef: FileFormat, insertionPlace: InsertionPlace): Command {
     // Get latex node type from the schema.
-    const latexNodeType = schema.nodes["math_display"];
+    const latexNodeType = WaterproofSchema.nodes.math_display;
     // Return the command with correct insertion place.
     return getLatexInsertCommand(filef, getInsertionFunction(insertionPlace), insertionPlace, latexNodeType);
 }

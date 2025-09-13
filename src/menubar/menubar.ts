@@ -1,11 +1,11 @@
 import { selectParentNode, wrapIn } from "prosemirror-commands";
-import { Schema } from "prosemirror-model";
 import { Command, PluginView, Plugin, PluginKey } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { cmdInsertCode, cmdInsertLatex, cmdInsertMarkdown, InsertionPlace, liftWrapper } from "../commands";
 import { OS } from "../osType";
 import { FileFormat } from "../api/FileFormat";
+import { WaterproofSchema } from "../schema";
 
 /** MenuEntry type contains the DOM, whether to only show it in teacher mode and the command to execute on click */
 type MenuEntry = {
@@ -149,12 +149,11 @@ function teacherOnlyWrapper(cmd: Command): Command {
 
 /**
  * Creates the default menu bar.
- * @param schema The schema in use for the editor.
  * @param outerView The outer (prosemirror)editor.
  * @param filef The file format of the current file. Some commands will behave differently in `.mv` vs `.v` context.
  * @returns A new `MenuView` filled with default menu items.
  */
-function createDefaultMenu(schema: Schema, outerView: EditorView, filef: FileFormat, os: OS): MenuView {
+function createDefaultMenu(outerView: EditorView, filef: FileFormat, os: OS): MenuView {
 
     // Platform specific keybinding string:
     const cmdOrCtrl = os == OS.MacOS ? "Cmd" : "Ctrl";
@@ -165,19 +164,19 @@ function createDefaultMenu(schema: Schema, outerView: EditorView, filef: FileFor
     // Create the list of menu entries.
     const items: MenuEntry[] = [
         // Insert Coq command
-        createMenuItem("Math↓", `Insert new verified math block underneath (${keyBinding("q")})`, cmdInsertCode(schema, filef, InsertionPlace.Underneath)),
-        createMenuItem("Math↑", `Insert new verified math block above (${keyBinding("Q")})`, cmdInsertCode(schema, filef, InsertionPlace.Above)),
+        createMenuItem("Math↓", `Insert new verified math block underneath (${keyBinding("q")})`, cmdInsertCode(filef, InsertionPlace.Underneath)),
+        createMenuItem("Math↑", `Insert new verified math block above (${keyBinding("Q")})`, cmdInsertCode(filef, InsertionPlace.Above)),
         // Insert Markdown
-        createMenuItem("Text↓", `Insert new text block underneath (${keyBinding("m")})`, cmdInsertMarkdown(schema, filef, InsertionPlace.Underneath)),
-        createMenuItem("Text↑", `Insert new text block above (${keyBinding("M")})`, cmdInsertMarkdown(schema, filef, InsertionPlace.Above)),
+        createMenuItem("Text↓", `Insert new text block underneath (${keyBinding("m")})`, cmdInsertMarkdown(filef, InsertionPlace.Underneath)),
+        createMenuItem("Text↑", `Insert new text block above (${keyBinding("M")})`, cmdInsertMarkdown(filef, InsertionPlace.Above)),
         // Insert LaTeX
-        createMenuItem(`${LaTeX_SVG} <div>↓</div>`, `Insert new LaTeX block underneath (${keyBinding("l")})`, cmdInsertLatex(schema, filef, InsertionPlace.Underneath)),
-        createMenuItem(`${LaTeX_SVG} <div>↑</div>`, `Insert new LaTeX block above (${keyBinding("L")})`, cmdInsertLatex(schema, filef, InsertionPlace.Above)),
+        createMenuItem(`${LaTeX_SVG} <div>↓</div>`, `Insert new LaTeX block underneath (${keyBinding("l")})`, cmdInsertLatex(filef, InsertionPlace.Underneath)),
+        createMenuItem(`${LaTeX_SVG} <div>↑</div>`, `Insert new LaTeX block above (${keyBinding("L")})`, cmdInsertLatex(filef, InsertionPlace.Above)),
         // Select the parent node.
         createMenuItem("Parent", `Select the parent node (${keyBinding(".")})`, selectParentNode),
         // in teacher mode, display input area, hint and lift buttons.
-        createMenuItem("ⵊ...", "Make selection an input area", teacherOnlyWrapper(wrapIn(schema.nodes["input"])), teacherOnly),
-        createMenuItem("<strong>?</strong>", "Make selection a hint element", teacherOnlyWrapper(wrapIn(schema.nodes["hint"])), teacherOnly),
+        createMenuItem("ⵊ...", "Make selection an input area", teacherOnlyWrapper(wrapIn(WaterproofSchema.nodes.input)), teacherOnly),
+        createMenuItem("<strong>?</strong>", "Make selection a hint element", teacherOnlyWrapper(wrapIn(WaterproofSchema.nodes.hint)), teacherOnly),
         createMenuItem("↑", "Lift selected node (Reverts the effect of making a 'hint' or 'input area')", teacherOnlyWrapper(liftWrapper), teacherOnly)
     ]
 
@@ -212,16 +211,15 @@ export const MENU_PLUGIN_KEY = new PluginKey<IMenuPluginState>("prosemirror-menu
 
 /**
  * Create a new menu plugin given the schema and file format.
- * @param schema The schema in use for the editor.
  * @param filef The file format of the currently opened file.
  * @returns A prosemirror `Plugin` type containing the menubar.
  */
-export function menuPlugin(schema: Schema, filef: FileFormat, os: OS) {
+export function menuPlugin(filef: FileFormat, os: OS) {
     return new Plugin({
         // This plugin has an associated `view`. This allows it to add DOM elements.
         view(outerView: EditorView) {
             // Create the default menu.
-            const menuView = createDefaultMenu(schema, outerView, filef, os);
+            const menuView = createDefaultMenu(outerView, filef, os);
             // Get the parent node (the parent node of the outer prosemirror dom)
             const parentNode = outerView.dom.parentNode;
             if (parentNode == null) {
