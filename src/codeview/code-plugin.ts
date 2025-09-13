@@ -106,7 +106,7 @@ const CoqCodePluginSpec = (completions: Array<Completion>, symbols: Array<Comple
 	},
 	props: {
 		nodeViews: {
-			"coqcode" : createCoqCodeView(completions, symbols)
+			"code" : createCoqCodeView(completions, symbols)
 		}
 	}
 }};

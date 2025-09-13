@@ -16,6 +16,7 @@ import { Debouncer } from "./debouncer";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { getCurrentTheme } from "../themeStore";
 import { ThemeStyle } from "../api";
+import { WaterproofSchema } from "../schema";
 
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
@@ -103,8 +104,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				div.innerText = "Empty code cell";
 				return div;
 			}
-			const name = outerView.state.doc.resolve(pos).node(1).type.name;
-			if (name === "input") {
+			const parentNodeType = outerView.state.doc.resolve(pos).parent.type;
+			if (parentNodeType === WaterproofSchema.nodes.input) {
 				// This codemirror cell is part of an input area, we change
 				// the placeholder to `(* Type your proof here *)` and apply
 				// the appropriate styling.
@@ -176,11 +177,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 						// in student mode.
 						const pos = getPos();
 						if (pos === undefined) return;
-						// Resolve the position in the prosemirror document and get the node one level underneath the root.
-						// TODO: Assumption that `<input-area>`s only ever appear one level beneath the root node.
-						// TODO: Hardcoded node names.
-						const name = outerView.state.doc.resolve(pos).node(1).type.name;
-						if (name !== "input") return; // This node is not part of an input area.
+						// We check whether the parent node is an input area.
+						const parentNodeType = outerView.state.doc.resolve(pos).parent.type;
+						if (parentNodeType !== WaterproofSchema.nodes.input) return; // This node is not part of an input area.
 					}
 
 					view.update([tr]);
@@ -206,11 +205,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private partOfInputArea(): boolean {
 		const pos = this._getPos();
 		if (pos === undefined) return false;
-		// Resolve the position in the prosemirror document and get the node one level underneath the root.
-		// TODO: Assumption that `<input-area>`s only ever appear one level beneath the root node.
-		// TODO: Hardcoded node names.
-		const name = this._outerView.state.doc.resolve(pos).node(1).type.name;
-		if (name !== "input") return false;
+		// We check whether the parent node is an input area.
+		const parentNodeType = this._outerView.state.doc.resolve(pos).parent.type;
+		if (parentNodeType !== WaterproofSchema.nodes.input) return false;
 		return true; 
 	}
 

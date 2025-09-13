@@ -21,9 +21,6 @@ import "./markdown.css";
 // for popover notifications
 import "./notifications.css";
 
-// for the coqdoc outline
-import "./coqdoc.css";
-
 // for the progressBar
 import "./progressBar.css";
 
