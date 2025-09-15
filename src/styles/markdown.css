@@ -22,7 +22,7 @@
     font-size: var(--vscode-font-size);
     font-weight: var(--vscode-font-weight);
     border-radius: 0px 0px 5px 0px;
-    content: "Markdown";
+    content: attr(markup-name);
     padding: 0.2em;
 }
 

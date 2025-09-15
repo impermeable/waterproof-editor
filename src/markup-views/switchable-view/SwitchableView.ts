@@ -2,13 +2,14 @@ import { Decoration, EditorView, NodeView } from "prosemirror-view";
 import { EditableView } from "./EditableView";
 import { RenderedView } from "./RenderedView";
 import { NodeSelection, PluginKey } from "prosemirror-state";
-import { Node as PNode, Schema } from "prosemirror-model";
+import { Node as PNode } from "prosemirror-model";
+import { WaterproofSchema } from "../../schema";
 
 /**
  * Abstract class for a switchable view. 
  * Switchable views allow for editing and rendering. 
  */
-export abstract class SwitchableView implements NodeView {
+export class SwitchableView implements NodeView {
     /** The DOM for this nodeview. */
     dom: HTMLElement;
     /** The currently active view. */
@@ -24,11 +25,8 @@ export abstract class SwitchableView implements NodeView {
 
     /** Represents whether the view is currently updating */
     private _updating : boolean;
-    private _getPos: (() => number | undefined);
-    private _outerSchema;
+    private _getPos: (() => number | undefined);    
     
-    
-    private _viewName: string;
     private _pluginKey: PluginKey;
 
     private _emptyClassName: string;
@@ -36,26 +34,21 @@ export abstract class SwitchableView implements NodeView {
     private _editorClassName: string;
     private _renderedClassName: string;
 
-    private _usingCoqdocSyntax: boolean;
-
     public get content() {
         return this._node.textContent;
     }
 
     constructor(
         getPos: (() => number | undefined), outerView: EditorView, 
-        content: string, node: PNode, schema: Schema, 
+        content: string, node: PNode,
         pluginKey: PluginKey, viewName: string,
-        usingCoqdocSyntax: boolean
+        private processForRendering: (input: string) => string
     ) {
         // Store parameters
         this._node = node;
         this._getPos = getPos;
         this._outerView = outerView;
-        this._outerSchema = schema;
-        this._viewName = viewName;
         this._pluginKey = pluginKey;
-        this._usingCoqdocSyntax = usingCoqdocSyntax;
         
         // Set-up dom related things.
         const container = document.createElement("div");
@@ -63,7 +56,7 @@ export abstract class SwitchableView implements NodeView {
         this.dom = container;
 
         // Create class names
-        this._viewClassName = `${viewName}-view`;
+        this._viewClassName = `markdown-view`;
         this._emptyClassName = `${this._viewClassName}-empty`;
         this._renderedClassName = `${this._viewClassName}-rendered`;
         this._editorClassName = `${this._viewClassName}-editor`;
@@ -71,14 +64,15 @@ export abstract class SwitchableView implements NodeView {
         this.dom.appendChild(this._place);
 
         this.dom.classList.add(this._viewClassName);
+        this.dom.setAttribute("markup-name", viewName);
 
         // If the content is an empty string add an empty class to the dom element.
         if (content === "") {
             this.dom.classList.add(this._emptyClassName);
         }
         // We start with a rendered markdown view.
-        const processedContent = this.preprocessContentForRendering(this._node.textContent);
-        this.view = new RenderedView(this._place, processedContent, this._outerView, this, usingCoqdocSyntax, this._getPos);
+        const processedContent = this.processForRendering(this._node.textContent);
+        this.view = new RenderedView(this._place, processedContent, this._outerView, this, this._getPos);
 
         // eventHandler for the onclick event. 
         // Creates a new node selection that selects 'this' node. 
@@ -120,7 +114,7 @@ export abstract class SwitchableView implements NodeView {
      */ 
     makeRenderedView() {
         this.view.destroy();
-        const inputContent = this.preprocessContentForRendering(this._node.textContent);
+        const inputContent = this.processForRendering(this._node.textContent);
         if (inputContent === "") {
             // If it is empty we add the empty class
             this.dom.classList.add(this._emptyClassName);
@@ -129,7 +123,7 @@ export abstract class SwitchableView implements NodeView {
         this.dom.classList.remove(this._editorClassName);
         this.dom.classList.add(this._renderedClassName);
         // Create the new rendered view and set it as the current view
-        this.view = new RenderedView(this._place, inputContent, this._outerView, this, this._usingCoqdocSyntax, this._getPos);
+        this.view = new RenderedView(this._place, inputContent, this._outerView, this, this._getPos);
     }
 
     /**
@@ -143,12 +137,8 @@ export abstract class SwitchableView implements NodeView {
         this.dom.classList.remove(this._renderedClassName);
         this.dom.classList.add(this._editorClassName);
         // Create a new editable view and it as the current view.
-        this.view = new EditableView(this._node, this._outerView, this._outerSchema, this._getPos, this._place, this, this._pluginKey);
+        this.view = new EditableView(this._node, this._outerView, WaterproofSchema, this._getPos, this._place, this, this._pluginKey);
     }
-
-    // Abstract functions that can be overridden to preprocess the content before switching views.
-    abstract preprocessContentForEditing(input: string): string;
-    abstract preprocessContentForRendering(input: string): string;
 
     update(node: PNode, decorations: readonly Decoration[]) {
         if (!node.sameMarkup(this._node)) return false;

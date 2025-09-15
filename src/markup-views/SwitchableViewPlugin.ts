@@ -3,40 +3,42 @@
  *--------------------------------------------------------*/
 
 // prosemirror imports
-import { Schema, Node as ProseNode } from "prosemirror-model";
+import { Node as ProseNode } from "prosemirror-model";
 import { Plugin as ProsePlugin, PluginKey, PluginSpec, TextSelection } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
-import { MarkdownView } from "./MarkdownView";
+import { SwitchableView } from "./switchable-view";
+import { WaterproofEditorConfig } from "../api";
+import { toMathInline } from "../translation";
 
 ////////////////////////////////////////////////////////////
 
-export interface IRealMarkdownPluginState {
+export interface ISwitchableViewPluginState {
 	macros: { [cmd:string] : string };
 	/** A list of currently active `NodeView`s, in insertion order. */
-	activeNodeViews: MarkdownView[];
+	activeNodeViews: SwitchableView[];
 	/** The selection of the current cursor position */
 	cursor: TextSelection | undefined;
 	/** Last cursor position in view, so that it can be displayed */
 }
 
-export const REAL_MARKDOWN_PLUGIN_KEY = new PluginKey<IRealMarkdownPluginState>("prosemirror-realtime-markdown");
+export const SWITCHABLE_VIEW_PLUGIN_KEY = new PluginKey<ISwitchableViewPluginState>("prosemirror-realtime-markdown");
 
 /** 
  * Returns a function suitable for passing as a field in `EditorProps.nodeViews`.
  * @see https://prosemirror.net/docs/ref/#view.EditorProps.nodeViews
  */
-export function createRealMarkdownView(schema: Schema){
-	return (node: ProseNode, view: EditorView, getPos: (() => number | undefined)): MarkdownView => {
+export function createRealMarkdownView(editorConfig: WaterproofEditorConfig){
+	return (node: ProseNode, view: EditorView, getPos: (() => number | undefined)): SwitchableView => {
 		/** @todo is this necessary?
 		* Docs says that for any function proprs, the current plugin instance
 		* will be bound to `this`.  However, the typings don't reflect this.
 		*/
-		const pluginState = REAL_MARKDOWN_PLUGIN_KEY.getState(view.state);
+		const pluginState = SWITCHABLE_VIEW_PLUGIN_KEY.getState(view.state);
 		if(!pluginState){ throw new Error("no realtime markdown plugin!"); }
 		const nodeViews = pluginState.activeNodeViews;
 
 		// set up NodeView
-		const nodeView = new MarkdownView(getPos, view, node.textContent, node, schema, REAL_MARKDOWN_PLUGIN_KEY, "markdown");
+		const nodeView = new SwitchableView(getPos, view, node.textContent, node, SWITCHABLE_VIEW_PLUGIN_KEY, editorConfig.markdownName ?? "markdown", editorConfig.toMarkdown ?? ((input) => toMathInline(input)));
 
 		nodeViews.push(nodeView);
 		return nodeView;
@@ -44,9 +46,9 @@ export function createRealMarkdownView(schema: Schema){
 }
 
 
-const RealMarkdownPluginSpec = (schema: Schema): PluginSpec<IRealMarkdownPluginState> => { 
+const RealMarkdownPluginSpec = (editorConfig: WaterproofEditorConfig): PluginSpec<ISwitchableViewPluginState> => { 
 	return {
-		key: REAL_MARKDOWN_PLUGIN_KEY,
+		key: SWITCHABLE_VIEW_PLUGIN_KEY,
 		state: {
 			init(_config, _instance){
 				return {
@@ -58,7 +60,7 @@ const RealMarkdownPluginSpec = (schema: Schema): PluginSpec<IRealMarkdownPluginS
 			apply(tr, value, _oldState, _newState){
 				// produce updated state field for this plugin
 				let newCur = value.cursor;
-				if(tr.getMeta(REAL_MARKDOWN_PLUGIN_KEY)) newCur = tr.getMeta(REAL_MARKDOWN_PLUGIN_KEY);
+				if(tr.getMeta(SWITCHABLE_VIEW_PLUGIN_KEY)) newCur = tr.getMeta(SWITCHABLE_VIEW_PLUGIN_KEY);
 				// If the transaction has a new TextSelection, ensure this cursor is not set so it does not override
 				if(tr.selectionSet && tr.selection instanceof TextSelection) newCur = undefined;
 				return {
@@ -71,9 +73,9 @@ const RealMarkdownPluginSpec = (schema: Schema): PluginSpec<IRealMarkdownPluginS
 		},
 		props: {
 			nodeViews: {
-				"markdown" : createRealMarkdownView(schema)
+				"markdown" : createRealMarkdownView(editorConfig)
 			}
 		}
 	};
 }
-export const realMarkdownPlugin = (schema: Schema) => new ProsePlugin(RealMarkdownPluginSpec(schema));
+export const switchableViewPlugin = (editorConfig: WaterproofEditorConfig) => new ProsePlugin(RealMarkdownPluginSpec(editorConfig));

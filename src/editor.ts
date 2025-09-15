@@ -13,12 +13,11 @@ import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
 import { WaterproofSchema } from "./schema";
-import { REAL_MARKDOWN_PLUGIN_KEY, coqdocPlugin, realMarkdownPlugin } from "./markup-views";
+import { SWITCHABLE_VIEW_PLUGIN_KEY, switchableViewPlugin } from "./markup-views";
 import { menuPlugin } from "./menubar";
 import { MENU_PLUGIN_KEY } from "./menubar/menubar";
 import { PROGRESS_PLUGIN_KEY, progressBarPlugin } from "./progressBar";
 import { DOCUMENT_PROGRESS_DECORATOR_KEY, documentProgressDecoratorPlugin } from "./documentProgressDecorator";
-import { FileTranslator } from "./translation";
 import { createContextMenuHTML } from "./context-menu";
 
 // CSS imports
@@ -52,9 +51,6 @@ export class WaterproofEditor {
 
 	// The prosemirror view
 	private _view: EditorView | undefined;
-
-	// The file translator in use.
-	private _translator: FileTranslator | undefined;
 
 	// The file document mapping
 	private _mapping: WaterproofMapping | undefined;
@@ -120,8 +116,6 @@ export class WaterproofEditor {
 			document.querySelector(".spinner-container")?.remove();
 			this._view.dom.remove();
 		}
-
-		this._translator = new FileTranslator();
 
 		let resultingDocument = content;
 		let documentChange: DocChange | WrappingDocChange | undefined = undefined;
@@ -198,9 +192,9 @@ export class WaterproofEditor {
 				}
 				if (tr.selectionSet && tr.selection instanceof TextSelection) {
 					this.updateCursor(tr.selection);
-				} else if (tr.getMeta(REAL_MARKDOWN_PLUGIN_KEY)) {
+				} else if (tr.getMeta(SWITCHABLE_VIEW_PLUGIN_KEY)) {
 					// Set the cursor position from a markdown cell
-					this.updateCursor(tr.getMeta(REAL_MARKDOWN_PLUGIN_KEY));
+					this.updateCursor(tr.getMeta(SWITCHABLE_VIEW_PLUGIN_KEY));
 				}
 
 				if (step !== undefined) this.sendLineNumbers();
@@ -253,8 +247,7 @@ export class WaterproofEditor {
 			inputAreaPlugin,
 			updateStatusPlugin(this),
 			mathPlugin,
-			realMarkdownPlugin(this._schema),
-			coqdocPlugin(this._schema),
+			switchableViewPlugin(this._editorConfig),
 			codePlugin(this._editorConfig.completions, this._editorConfig.symbols),
 			progressBarPlugin,
 			documentProgressDecoratorPlugin,
@@ -513,7 +506,7 @@ export class WaterproofEditor {
 		let state = this._view.state;
 		let from = state.selection.from;
 		let to = state.selection.to;
-		if (REAL_MARKDOWN_PLUGIN_KEY.getState(state)?.cursor) {
+		if (SWITCHABLE_VIEW_PLUGIN_KEY.getState(state)?.cursor) {
 			// @ts-expect-error TODO: Fix me
 			from = REAL_MARKDOWN_PLUGIN_KEY.getState(state)?.cursor?.from;
 			// @ts-expect-error TODO: Fix me

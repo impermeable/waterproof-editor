@@ -63,6 +63,11 @@ export type WaterproofEditorConfig = {
     documentConstructor: (document: string) => WaterproofDocument,
     /** How to construct a mapping for this editor. The mapping is responsible for mapping changes from the underlying ProseMirror instance into changes that can be applied to the underlying document. */
     mapping: new (inputDocument: WaterproofDocument, versionNum: number) => WaterproofMapping,
+    /** The name of the markdown node view, defaults to "markdown" */
+    markdownName?: string,
+
+    toMarkdown?: (inputString: string) => string,
+
     /** THIS IS A TEMPORARY FEATURE THAT WILL GET REMOVED */
     documentPreprocessor?: (inputString: string) => {resultingDocument: string, documentChange: DocChange | WrappingDocChange | undefined},
 }
