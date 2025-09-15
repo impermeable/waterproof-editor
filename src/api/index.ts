@@ -6,8 +6,6 @@ export { InputAreaStatus } from "./InputAreaStatus";
 export { LineNumber} from "./LineNumber";
 export { Severity, SeverityLabel, SeverityLabelMap } from "./Severity";
 
-export { FileFormat } from "./FileFormat";
-
 export * from "./types";
 
 export { WaterproofCompletion, WaterproofSymbol } from "./Completions";

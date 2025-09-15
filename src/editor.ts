@@ -31,7 +31,6 @@ import { InsertionPlace, cmdInsertCode, cmdInsertLatex, cmdInsertMarkdown } from
 import { OS } from "./osType";
 import { Positioned, WaterproofMapping, WaterproofEditorConfig, DiagnosticMessage, ThemeStyle } from "./api";
 import { Completion } from "@codemirror/autocomplete";
-import { FileFormat } from "./api/FileFormat";
 import { setCurrentTheme } from "./themeStore";
 import { ServerStatus } from "./api";
 
@@ -259,7 +258,7 @@ export class WaterproofEditor {
 			codePlugin(this._editorConfig.completions, this._editorConfig.symbols),
 			progressBarPlugin,
 			documentProgressDecoratorPlugin,
-			menuPlugin(FileFormat.MarkdownV, this._userOS),
+			menuPlugin(this._userOS),
 			keymap({
 				"Mod-h": () => {
 					this.executeCommand("Help.");
@@ -267,12 +266,12 @@ export class WaterproofEditor {
 				},
 				"Backspace": deleteSelection,
 				"Delete": deleteSelection,
-				"Mod-m": cmdInsertMarkdown(FileFormat.MarkdownV, InsertionPlace.Underneath),
-				"Mod-M": cmdInsertMarkdown(FileFormat.MarkdownV, InsertionPlace.Above),
-				"Mod-q": cmdInsertCode(FileFormat.MarkdownV, InsertionPlace.Underneath),
-				"Mod-Q": cmdInsertCode(FileFormat.MarkdownV, InsertionPlace.Above),
-				"Mod-l": cmdInsertLatex(FileFormat.MarkdownV, InsertionPlace.Underneath),
-				"Mod-L": cmdInsertLatex(FileFormat.MarkdownV, InsertionPlace.Above),
+				"Mod-m": cmdInsertMarkdown(InsertionPlace.Underneath),
+				"Mod-M": cmdInsertMarkdown(InsertionPlace.Above),
+				"Mod-q": cmdInsertCode(InsertionPlace.Underneath),
+				"Mod-Q": cmdInsertCode(InsertionPlace.Above),
+				"Mod-l": cmdInsertLatex(InsertionPlace.Underneath),
+				"Mod-L": cmdInsertLatex(InsertionPlace.Above),
 				// We bind Ctrl/Cmd+. to selecting the parent node of the currently selected node.
 				"Mod-.": selectParentNode
 			})
