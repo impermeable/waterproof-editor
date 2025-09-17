@@ -1,6 +1,8 @@
 // Export Doc Change and Wrapping Doc Change types from "./DocChange"
 export { DocChange, WrappingDocChange } from "./DocChange";
 
+export { EditorState, Transaction } from "prosemirror-state";
+
 // Export QedStatus type
 export { InputAreaStatus } from "./InputAreaStatus";
 export { LineNumber} from "./LineNumber";
