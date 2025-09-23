@@ -3,7 +3,7 @@ import { Node as ProseNode } from "prosemirror-model";
 // The different types of blocks that can be constructed.
 export enum BLOCK_NAME {
     MATH_DISPLAY = "math_display", 
-    INPUT_AREA = "input_area",
+    INPUT_AREA = "input",
     HINT = "hint", 
     MARKDOWN = "markdown",
     CODE = "code", 

@@ -1,5 +1,5 @@
 import { Step } from "prosemirror-transform";
-import { DocChange, WrappingDocChange, Severity, WaterproofCompletion, WaterproofSymbol } from ".";
+import { DocChange, WrappingDocChange, Severity, WaterproofCompletion, WaterproofSymbol, Node } from ".";
 import { Block } from "../document";
 
 /**
@@ -42,7 +42,20 @@ export abstract class WaterproofMapping {
     abstract get version(): number;
     abstract findPosition: (index: number) => number;
     abstract findInvPosition: (index: number) => number;
-    abstract update: (step: Step) => DocChange | WrappingDocChange;
+    abstract update: (step: Step, doc: Node) => DocChange | WrappingDocChange;
+}
+
+export type TagMap = {
+    markdownOpen: string,
+    markdownClose: string,
+    codeOpen: string,
+    codeClose: string,
+    hintOpen: (title: string) => string,
+    hintClose: string,
+    inputOpen: string,
+    inputClose: string,
+    mathOpen: string
+    mathClose: string
 }
 
 /**
@@ -62,7 +75,10 @@ export type WaterproofEditorConfig = {
     /** Determines how the editor document gets constructed from a string input */
     documentConstructor: (document: string) => WaterproofDocument,
     /** How to construct a mapping for this editor. The mapping is responsible for mapping changes from the underlying ProseMirror instance into changes that can be applied to the underlying document. */
-    mapping: new (inputDocument: WaterproofDocument, versionNum: number) => WaterproofMapping,
+    mapping: new (inputDocument: WaterproofDocument, versionNum: number, tagMap: TagMap) => WaterproofMapping,
+
+    tagConfiguration: TagMap,
+
     /** The name of the markdown node view, defaults to "markdown" */
     markdownName?: string,
 

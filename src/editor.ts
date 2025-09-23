@@ -135,7 +135,7 @@ export class WaterproofEditor {
 		const blocks = this._editorConfig.documentConstructor(resultingDocument);
 		const proseDoc = constructDocument(blocks);
 
-		this._mapping = new this._editorConfig.mapping(blocks, version);
+		this._mapping = new this._editorConfig.mapping(blocks, version, this._editorConfig.tagConfiguration);
 		this.createProseMirrorEditor(proseDoc);
 
 		/** Ask for line numbers */
@@ -168,7 +168,7 @@ export class WaterproofEditor {
 					if (step instanceof ReplaceStep || step instanceof ReplaceAroundStep) {
 						if (this._mapping === undefined) throw new Error(" Mapping is undefined, cannot synchronize with vscode");
 						try {
-							const change: DocChange | WrappingDocChange = this._mapping.update(step); // Get text document update
+							const change: DocChange | WrappingDocChange = this._mapping.update(step, view.state.doc); // Get text document update
 							this._editorConfig.api.documentChange(change);
 						} catch (error) {
 							console.log("Step error: ", step);

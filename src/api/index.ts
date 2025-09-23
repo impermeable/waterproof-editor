@@ -14,6 +14,6 @@ export { WaterproofCompletion, WaterproofSymbol } from "./Completions";
 
 export { Completion } from "@codemirror/autocomplete";
 export { Step, ReplaceStep, ReplaceAroundStep } from "prosemirror-transform";
-export { Fragment } from "prosemirror-model";
+export { Fragment, Node } from "prosemirror-model";
 
 export { ServerStatus, Idle, Busy } from "./ServerStatus";
