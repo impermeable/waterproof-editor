@@ -58,6 +58,18 @@ export type TagMap = {
     mathClose: string
 }
 
+export class NodeUpdateError extends Error {
+    constructor(message: string) { super("[NodeUpdateError]" + message); }
+}
+
+export class TextUpdateError extends Error {
+    constructor(message: string) { super("[TextUpdateError]" + message); }
+}
+
+export class MappingError extends Error {
+    constructor(message: string) { super("[MappingError] " + message); }
+}
+
 /**
  * Configuration object for the WaterproofEditor.
  * 

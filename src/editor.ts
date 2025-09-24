@@ -8,7 +8,7 @@ import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { constructDocument } from "./document/construct-document";
 
-import { DocChange, LineNumber, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity } from "./api";
+import { DocChange, LineNumber, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity, MappingError, NodeUpdateError, TextUpdateError } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
@@ -160,9 +160,6 @@ export class WaterproofEditor {
 			dispatchTransaction: ((tr) => {
 				// Called on every transaction.
 
-				// Why does this happen here?
-				// Don't we wont to only do this when we know this is a valid transaction?
-				view.updateState(view.state.apply(tr));
 				let step : Step | undefined = undefined;
 				for (step of tr.steps) {
 					if (step instanceof ReplaceStep || step instanceof ReplaceAroundStep) {
@@ -170,19 +167,22 @@ export class WaterproofEditor {
 						try {
 							const change: DocChange | WrappingDocChange = this._mapping.update(step, view.state.doc); // Get text document update
 							this._editorConfig.api.documentChange(change);
-						} catch (error) {
-							console.log("Step error: ", step);
-							console.error((error as Error).message);
+						} catch (error: unknown) {
+							const err = error as MappingError | TextUpdateError | NodeUpdateError;
+							console.error("Error while applying step to mapping, the edit will **not** be applied!");
+							console.error("The step: ", step);
+							console.error("The error message:", err.message);
+							console.error("Error originated in:", err.constructor.name);
 
 
 							// Send message to VSCode that an error has occured
-							this._editorConfig.api.applyStepError((error as Error).message);
+							this._editorConfig.api.applyStepError(err.message);
 
 							// Set global locking mode
-							const tr = view.state.tr;
-							tr.setMeta(INPUT_AREA_PLUGIN_KEY,"ErrorMode");
-							tr.setSelection(new AllSelection(view.state.doc));
-							view.updateState(view.state.apply(tr));
+							// const tr = view.state.tr;
+							// tr.setMeta(INPUT_AREA_PLUGIN_KEY,"ErrorMode");
+							// tr.setSelection(new AllSelection(view.state.doc));
+							// view.updateState(view.state.apply(tr));
 
 							// We ensure this transaction is not applied
 							return;
@@ -190,6 +190,10 @@ export class WaterproofEditor {
 
 					}
 				}
+
+				// Only update the state when we know that the transaction did not cause an error
+				view.updateState(view.state.apply(tr));
+
 				if (tr.selectionSet && tr.selection instanceof TextSelection) {
 					this.updateCursor(tr.selection);
 				} else if (tr.getMeta(SWITCHABLE_VIEW_PLUGIN_KEY)) {
