@@ -6,7 +6,7 @@ import { EditorState, Transaction } from "prosemirror-state";
  */
 export enum InsertionPlace {
     Above, 
-    Underneath,
+    Below,
 }
 
 /**

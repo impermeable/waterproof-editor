@@ -2,7 +2,7 @@ import { mathPlugin, mathSerializer } from "@benrbray/prosemirror-math";
 import { deleteSelection, selectParentNode } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
 import { ResolvedPos, Schema, Node as ProseNode } from "prosemirror-model";
-import { AllSelection, EditorState, NodeSelection, Plugin, Selection, TextSelection, Transaction } from "prosemirror-state";
+import { EditorState, NodeSelection, Plugin, Selection, TextSelection, Transaction } from "prosemirror-state";
 import { ReplaceAroundStep, ReplaceStep, Step } from "prosemirror-transform";
 import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
@@ -26,12 +26,13 @@ import "prosemirror-view/style/prosemirror.css";
 import "./styles";
 import { UPDATE_STATUS_PLUGIN_KEY, updateStatusPlugin } from "./qedStatus";
 import { CodeBlockView } from "./codeview/nodeview";
-import { InsertionPlace, cmdInsertCode, cmdInsertLatex, cmdInsertMarkdown } from "./commands";
 import { OS } from "./osType";
 import { Positioned, WaterproofMapping, WaterproofEditorConfig, DiagnosticMessage, ThemeStyle } from "./api";
 import { Completion } from "@codemirror/autocomplete";
 import { setCurrentTheme } from "./themeStore";
 import { ServerStatus } from "./api";
+import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "./commands/insert-command";
+import { InsertionPlace } from "./commands";
 
 /** Type that contains a coq diagnostics object fit for use in the ProseMirror editor context. */
 type DiagnosticObjectProse = {message: string, start: number, end: number, $start: ResolvedPos, $end: ResolvedPos, severity: Severity};
@@ -263,12 +264,12 @@ export class WaterproofEditor {
 				},
 				"Backspace": deleteSelection,
 				"Delete": deleteSelection,
-				"Mod-m": cmdInsertMarkdown(InsertionPlace.Underneath),
-				"Mod-M": cmdInsertMarkdown(InsertionPlace.Above),
-				"Mod-q": cmdInsertCode(InsertionPlace.Underneath),
-				"Mod-Q": cmdInsertCode(InsertionPlace.Above),
-				"Mod-l": cmdInsertLatex(InsertionPlace.Underneath),
-				"Mod-L": cmdInsertLatex(InsertionPlace.Above),
+				"Mod-m": getCmdInsertMarkdown(InsertionPlace.Below),
+				"Mod-M": getCmdInsertMarkdown(InsertionPlace.Above),
+				"Mod-q": getCmdInsertCode(InsertionPlace.Below),
+				"Mod-Q": getCmdInsertCode(InsertionPlace.Above),
+				"Mod-l": getCmdInsertLatex(InsertionPlace.Below),
+				"Mod-L": getCmdInsertLatex(InsertionPlace.Above),
 				// We bind Ctrl/Cmd+. to selecting the parent node of the currently selected node.
 				"Mod-.": selectParentNode
 			})
@@ -543,7 +544,7 @@ export class WaterproofEditor {
 
 		let isEditable = false;
 		state.doc.nodesBetween($from.pos, $from.pos, (node) => {
-			if (node.type.name === "input") {
+			if (node.type === WaterproofSchema.nodes.input) {
 				isEditable = true;
 			}
 		});

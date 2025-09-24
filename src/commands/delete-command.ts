@@ -1,13 +1,13 @@
 import { EditorState, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
+import { WaterproofSchema } from "../schema";
 
 export function deleteNodeIfEmpty(state: EditorState, dispatch?: ((tr: Transaction) => void), _view?: EditorView): boolean {
     if (state.selection.from !== state.selection.to) return false;
     const parent = state.selection.$from.parent;
-    const content = parent.textContent;
-    const nodeName = parent.type.name;
-    if (content === "" && 
-        (nodeName === "coqcode" || nodeName === "markdown" || nodeName === "coqdown")) {
+    const {textContent, type} = parent;
+    if (textContent === "" && 
+        (type === WaterproofSchema.nodes.code || type === WaterproofSchema.nodes.markdown)) {
         // empty cell
 
         // Get the start and end position of the containing cell.

@@ -2,9 +2,10 @@ import { selectParentNode, wrapIn } from "prosemirror-commands";
 import { Command, PluginView, Plugin, PluginKey } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
-import { cmdInsertCode, cmdInsertLatex, cmdInsertMarkdown, InsertionPlace, liftWrapper } from "../commands";
+import { InsertionPlace, liftWrapper } from "../commands";
 import { OS } from "../osType";
 import { WaterproofSchema } from "../schema";
+import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "../commands/insert-command";
 
 /** MenuEntry type contains the DOM, whether to only show it in teacher mode and the command to execute on click */
 type MenuEntry = {
@@ -163,14 +164,14 @@ function createDefaultMenu(outerView: EditorView, os: OS): MenuView {
     // Create the list of menu entries.
     const items: MenuEntry[] = [
         // Insert Coq command
-        createMenuItem("Math↓", `Insert new verified math block underneath (${keyBinding("q")})`, cmdInsertCode(InsertionPlace.Underneath)),
-        createMenuItem("Math↑", `Insert new verified math block above (${keyBinding("Q")})`, cmdInsertCode(InsertionPlace.Above)),
+        createMenuItem("Math↓", `Insert new verified math block underneath (${keyBinding("q")})`, getCmdInsertCode(InsertionPlace.Below)),
+        createMenuItem("Math↑", `Insert new verified math block above (${keyBinding("Q")})`, getCmdInsertCode(InsertionPlace.Above)),
         // Insert Markdown
-        createMenuItem("Text↓", `Insert new text block underneath (${keyBinding("m")})`, cmdInsertMarkdown(InsertionPlace.Underneath)),
-        createMenuItem("Text↑", `Insert new text block above (${keyBinding("M")})`, cmdInsertMarkdown(InsertionPlace.Above)),
+        createMenuItem("Text↓", `Insert new text block underneath (${keyBinding("m")})`, getCmdInsertMarkdown(InsertionPlace.Below)),
+        createMenuItem("Text↑", `Insert new text block above (${keyBinding("M")})`, getCmdInsertMarkdown(InsertionPlace.Above)),
         // Insert LaTeX
-        createMenuItem(`${LaTeX_SVG} <div>↓</div>`, `Insert new LaTeX block underneath (${keyBinding("l")})`, cmdInsertLatex(InsertionPlace.Underneath)),
-        createMenuItem(`${LaTeX_SVG} <div>↑</div>`, `Insert new LaTeX block above (${keyBinding("L")})`, cmdInsertLatex(InsertionPlace.Above)),
+        createMenuItem(`${LaTeX_SVG} <div>↓</div>`, `Insert new LaTeX block underneath (${keyBinding("l")})`, getCmdInsertLatex(InsertionPlace.Below)),
+        createMenuItem(`${LaTeX_SVG} <div>↑</div>`, `Insert new LaTeX block above (${keyBinding("L")})`, getCmdInsertLatex(InsertionPlace.Above)),
         // Select the parent node.
         createMenuItem("Parent", `Select the parent node (${keyBinding(".")})`, selectParentNode),
         // in teacher mode, display input area, hint and lift buttons.

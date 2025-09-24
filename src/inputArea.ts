@@ -1,5 +1,6 @@
 import { EditorState, Plugin, PluginKey, PluginSpec, Transaction } from 
 "prosemirror-state";
+import { WaterproofSchema } from "./schema";
 
 /**
  * Interface describing the state of the input are plugin.
@@ -80,7 +81,7 @@ const InputAreaPluginSpec : PluginSpec<IInputAreaPluginState> = {
 
             // Check if the current selection is inside an input area.
             state.doc.nodesBetween($from.pos, $from.pos, (node) => {
-                if (node.type.name === "input") {
+                if (node.type === WaterproofSchema.nodes.input) {
                     // If so, this cell is editable.
                     isEditable = true;
                 }
