@@ -23,18 +23,33 @@ export type Positioned<A> = {
 };
 
 /**
- * WaterproofDocument is a collection of blocks
+ * A `WaterproofDocument` is a collection of `Block`s. Every Block in this WaterproofDocument will get translated into some ProseMirror node. 
+ * 
+ * Supported blocks are `HintBlock`, `InputAreaBlock`, `MarkdownBlock`, `CoqBlock` and `MathDisplayBlock`.
+ *
+ * Also see [documentation/UsingWaterproofEditor.md](../../documentation/UsingWaterproofEditor.md)
  */
 export type WaterproofDocument = Block[];
 
 export type WaterproofCallbacks = {
+    /** Used by the editor to execute a command in the document. */
     executeCommand: (command: string, time: number) => void,
+    /** Executed by the editor when the user asks for help via the keybinding or the context menu entry. */
     executeHelp: () => void,
+    /** Used by the editor to communicate that it is ready. */
     editorReady: () => void,
+    /** The editor will call this function on every change that is made to the underlying document. 
+     * 
+     * The change can either be a regular document change or a wrapping document change.
+     */
     documentChange: (change: DocChange | WrappingDocChange) => void,
+    /** Only ever used by the editor once an unrecoverable error has occured when mapping changes */
     applyStepError: (errorMessage: string) => void,
+    /** Used by the editor to communicate the current cursor position, `cursorPosition` is an offset based position into the document.  */
     cursorChange: (cursorPosition: number) => void
+    /** Used to communicate that the linenumbers need to be recomputed for the current document */
     lineNumbers: (linenumbers: Array<number>, version: number) => void,
+    /** Fired by the editor when the viewport (the user visible part of the editor changes) */
     viewportHint: (start: number, end: number) => void,
 }
 
@@ -84,7 +99,7 @@ export type WaterproofEditorConfig = {
     symbols: Array<WaterproofSymbol>,
     /** How the editor communicates to the parent process */
     api: WaterproofCallbacks,
-    /** Determines how the editor document gets constructed from a string input */
+    /** Determines how the editor document gets constructed from a string input. */
     documentConstructor: (document: string) => WaterproofDocument,
     /** How to construct a mapping for this editor. The mapping is responsible for mapping changes from the underlying ProseMirror instance into changes that can be applied to the underlying document. */
     mapping: new (inputDocument: WaterproofDocument, versionNum: number, tagMap: TagMap) => WaterproofMapping,

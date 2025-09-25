@@ -28,4 +28,4 @@ there.
 
 For an example of how to use a WaterproofEditor instance in your own project we refer to [waterproof-vscode](https://www.github.com/impermeable/waterproof-vscode).
 
-More detailed instructions are a work in progress.
+More information can be found [here](./UsingWaterproofEditor.md).
