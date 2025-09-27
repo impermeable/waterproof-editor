@@ -6,6 +6,7 @@ import { InsertionPlace, liftWrapper } from "../commands";
 import { OS } from "../osType";
 import { WaterproofSchema } from "../schema";
 import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "../commands/insert-command";
+import { TagConfiguration } from "../api";
 
 /** MenuEntry type contains the DOM, whether to only show it in teacher mode and the command to execute on click */
 type MenuEntry = {
@@ -153,7 +154,7 @@ function teacherOnlyWrapper(cmd: Command): Command {
  * @param filef The file format of the current file. Some commands will behave differently in `.mv` vs `.v` context.
  * @returns A new `MenuView` filled with default menu items.
  */
-function createDefaultMenu(outerView: EditorView, os: OS): MenuView {
+function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfiguration): MenuView {
 
     // Platform specific keybinding string:
     const cmdOrCtrl = os == OS.MacOS ? "Cmd" : "Ctrl";
@@ -164,14 +165,14 @@ function createDefaultMenu(outerView: EditorView, os: OS): MenuView {
     // Create the list of menu entries.
     const items: MenuEntry[] = [
         // Insert Coq command
-        createMenuItem("Math↓", `Insert new verified math block underneath (${keyBinding("q")})`, getCmdInsertCode(InsertionPlace.Below)),
-        createMenuItem("Math↑", `Insert new verified math block above (${keyBinding("Q")})`, getCmdInsertCode(InsertionPlace.Above)),
+        createMenuItem("Math↓", `Insert new verified math block underneath (${keyBinding("q")})`, getCmdInsertCode(InsertionPlace.Below, tagConf)),
+        createMenuItem("Math↑", `Insert new verified math block above (${keyBinding("Q")})`, getCmdInsertCode(InsertionPlace.Above, tagConf)),
         // Insert Markdown
-        createMenuItem("Text↓", `Insert new text block underneath (${keyBinding("m")})`, getCmdInsertMarkdown(InsertionPlace.Below)),
-        createMenuItem("Text↑", `Insert new text block above (${keyBinding("M")})`, getCmdInsertMarkdown(InsertionPlace.Above)),
+        createMenuItem("Text↓", `Insert new text block underneath (${keyBinding("m")})`, getCmdInsertMarkdown(InsertionPlace.Below, tagConf)),
+        createMenuItem("Text↑", `Insert new text block above (${keyBinding("M")})`, getCmdInsertMarkdown(InsertionPlace.Above, tagConf)),
         // Insert LaTeX
-        createMenuItem(`${LaTeX_SVG} <div>↓</div>`, `Insert new LaTeX block underneath (${keyBinding("l")})`, getCmdInsertLatex(InsertionPlace.Below)),
-        createMenuItem(`${LaTeX_SVG} <div>↑</div>`, `Insert new LaTeX block above (${keyBinding("L")})`, getCmdInsertLatex(InsertionPlace.Above)),
+        createMenuItem(`${LaTeX_SVG} <div>↓</div>`, `Insert new LaTeX block underneath (${keyBinding("l")})`, getCmdInsertLatex(InsertionPlace.Below, tagConf)),
+        createMenuItem(`${LaTeX_SVG} <div>↑</div>`, `Insert new LaTeX block above (${keyBinding("L")})`, getCmdInsertLatex(InsertionPlace.Above, tagConf)),
         // Select the parent node.
         createMenuItem("Parent", `Select the parent node (${keyBinding(".")})`, selectParentNode),
         // in teacher mode, display input area, hint and lift buttons.
@@ -214,12 +215,12 @@ export const MENU_PLUGIN_KEY = new PluginKey<IMenuPluginState>("prosemirror-menu
  * @param filef The file format of the currently opened file.
  * @returns A prosemirror `Plugin` type containing the menubar.
  */
-export function menuPlugin(os: OS) {
+export function menuPlugin(os: OS, tagConf: TagConfiguration) {
     return new Plugin({
         // This plugin has an associated `view`. This allows it to add DOM elements.
         view(outerView: EditorView) {
             // Create the default menu.
-            const menuView = createDefaultMenu(outerView, os);
+            const menuView = createDefaultMenu(outerView, os, tagConf);
             // Get the parent node (the parent node of the outer prosemirror dom)
             const parentNode = outerView.dom.parentNode;
             if (parentNode == null) {

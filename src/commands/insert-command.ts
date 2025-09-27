@@ -3,8 +3,9 @@ import { EditorView } from "prosemirror-view";
 import { allowedToInsert, insertAbove, insertUnder } from "./command-helpers";
 import { WaterproofSchema } from "../schema";
 import { InsertionPlace } from "./types";
+import { TagConfiguration } from "../api";
 
-export function getCmdInsertMarkdown(place: InsertionPlace) {
+export function getCmdInsertMarkdown(place: InsertionPlace, tagConf: TagConfiguration) {
     return (state: EditorState, dispatch?: ((tr: Transaction) => void), _view?: EditorView): boolean => {
         // Early return when inserting is not allowed
         if (!allowedToInsert(state)) return false;
@@ -12,8 +13,10 @@ export function getCmdInsertMarkdown(place: InsertionPlace) {
         // TODO: Can there be cases where this doesn't work?
         // Can we attempt this command in a case where our state and selection is such that 
         // we can't actually add the node there?
+
         const f = place === InsertionPlace.Above ? insertAbove : insertUnder;
-        const trans = f(state, state.tr, WaterproofSchema.nodes.markdown);
+
+        const trans = f(state, state.tr, WaterproofSchema.nodes.markdown, tagConf.markdown.openRequiresNewline, tagConf.markdown.closeRequiresNewline);
 
         if (trans === undefined) { return false; }
         
@@ -25,13 +28,13 @@ export function getCmdInsertMarkdown(place: InsertionPlace) {
     }
 }
 
-export function getCmdInsertLatex(place: InsertionPlace) {
+export function getCmdInsertLatex(place: InsertionPlace, tagConf: TagConfiguration) {
     return (state: EditorState, dispatch?: ((tr: Transaction) => void), _view?: EditorView): boolean => {
         // Early return when inserting is not allowed.
         if (!allowedToInsert(state)) return false;
         
         const f = place  === InsertionPlace.Above ? insertAbove : insertUnder; 
-        const trans = f(state, state.tr, WaterproofSchema.nodes.math_display);
+        const trans = f(state, state.tr, WaterproofSchema.nodes.math_display, tagConf.math.openRequiresNewline, tagConf.math.closeRequiresNewline);
 
         if (trans === undefined) { return false; }
         
@@ -43,13 +46,13 @@ export function getCmdInsertLatex(place: InsertionPlace) {
     }
 }
 
-export function getCmdInsertCode(place: InsertionPlace) {
+export function getCmdInsertCode(place: InsertionPlace, tagConf: TagConfiguration) {
     return (state: EditorState, dispatch?: ((tr: Transaction) => void), _view?: EditorView): boolean => {
         // Again, early return when inserting is not allowed. 
         if (!allowedToInsert(state)) return false;
         
         const f = place === InsertionPlace.Above ? insertAbove : insertUnder;
-        const trans = f(state, state.tr, WaterproofSchema.nodes.code);
+        const trans = f(state, state.tr, WaterproofSchema.nodes.code, tagConf.code.openRequiresNewline, tagConf.code.closeRequiresNewline);
 
         if (trans === undefined) { return false; }
         

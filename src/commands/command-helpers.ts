@@ -1,9 +1,10 @@
 /////// Helper functions /////////
 
-import { NodeType, Node as PNode } from "prosemirror-model";
+import { NodeType, Node as PNode, ResolvedPos } from "prosemirror-model";
 import { EditorState, TextSelection, Transaction, Selection, NodeSelection } from "prosemirror-state";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { WaterproofSchema } from "../schema";
+import { newline } from "../document/blocks/schema";
 
 /////// Helper functions /////////
 
@@ -12,28 +13,74 @@ import { WaterproofSchema } from "../schema";
  * @param state The current editor state.
  * @param tr The current transaction for the state of the editor. 
  * @param escapeContainingNode Whether to escape the containing node. 
- * @param nodeType Array of nodes to insert. Depending on the node type this will be either one or more 
- * (coqcode outside of a coqblock needs to be enclosed within a new coqblock)
+ * @param nodeType ?
  * @returns An insertion transaction.
  */
-export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeType): Transaction | undefined {
+export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean): Transaction | undefined {
+    // console.log("INSERTING ABOVE");
+    
     const sel = state.selection;
     let trans: Transaction = tr;
 
+    const {before} = getSurroundingNodes(sel.$from);
+    const beforeIsNewline = before !== null ? (before.type === WaterproofSchema.nodes.newline) : false;
+    // console.log("Before", before?.type.name);
+
+    let pos;
+
     if (sel instanceof NodeSelection) {
         // To and from point directly to beginning and end of node.
-        const pos = sel.from;
-        trans = trans.insert(pos, nodeType.create());
-        return trans;
+        pos = sel.from;
     } else if (sel instanceof TextSelection) {
         // TODO: This -1 is here to make sure that we do not insert 3 random code cells. 
         // I can't fully wrap my head around why it is needed at the moment though.
-        const from = sel.from - sel.$from.parentOffset - 1;
-        trans = trans.insert(from, nodeType.create());
-        return trans;
+        pos = sel.from - sel.$from.parentOffset - 1;
+    } else {
+        return;
     }
 
-    return;
+
+    if (beforeIsNewline) {
+        // Assumption: If a newline appears before a node the current node wants that.
+        pos -= 1; // We are going to insert befofre
+    }
+
+    // console.log("Node at", state.doc.nodeAt(pos));
+
+    const newBefore = getSurroundingNodes(state.doc.resolve(pos)).before;
+    // console.log("newbefore", newBefore);
+
+    const toInsert: PNode[] = [];
+
+    if (insertNewlineBeforeIfNotExists && newBefore?.type !== WaterproofSchema.nodes.newline) {
+        toInsert.push(newline());
+    }
+    toInsert.push(nodeType.create());
+    if (insertNewlineAfterIfNotExists && !beforeIsNewline) {
+        toInsert.push(newline());
+    }
+
+    trans = trans.insert(pos, toInsert);
+
+    // if (insertNewlineBeforeIfNotExists && newBefore?.type !== WaterproofSchema.nodes.newline) {
+    //     const node = newline();
+    //     trans = trans.insert(pos, node);
+    //     console.log("inserting newline before");
+    //     // pos += 1;
+    // }
+    // const mainNode = nodeType.create();
+    // trans = trans.insert(pos, mainNode);
+    // // pos += 1;
+    // if (insertNewlineAfterIfNotExists && !beforeIsNewline) {
+    //     const node = newline();
+    //     trans = trans.insert(pos, node);
+    //     console.log("inserting newline after");
+    //     // pos += 1;
+    // }
+
+    // console.log(trans);
+
+    return trans;
 }
 
 /**
@@ -41,11 +88,10 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
  * @param state The current editor state.
  * @param tr The current transaction for the state of the editor. 
  * @param escapeContainingNode Whether to escape the containing node. 
- * @param nodeType Array of nodes to insert. Depending on the node type this will be either one or more 
- * (coqcode outside of a coqblock needs to be enclosed within a new coqblock)
+ * @param nodeType ?
  * @returns An insertion transaction.
  */
-export function insertUnder(state: EditorState, tr: Transaction, nodeType: NodeType): Transaction | undefined {
+export function insertUnder(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean): Transaction | undefined {
     const sel = state.selection;
 
     let trans: Transaction = tr;
@@ -70,14 +116,76 @@ export function insertUnder(state: EditorState, tr: Transaction, nodeType: NodeT
     return;
 }
 
+export function nodeFromSel(sel: Selection): PNode | undefined {
+    if (sel instanceof TextSelection) {
+        return sel.$from.node(sel.$from.depth);
+    } else if (sel instanceof NodeSelection) {
+        return sel.node;
+    } else {
+        return;
+    }
+}
+
+function getSurroundingNodes($from: ResolvedPos): {before: PNode | null; after: PNode | null} {
+    const depth = $from.depth;
+    let parent;
+    let index; 
+    if (depth === 0) {
+        parent = $from.parent;
+        index = $from.index(0);
+    } else {
+        parent = $from.node(1);
+        index = $from.index(1);
+    }    
+    const before = index > 0 ? parent.child(index - 1) : null;
+    const after = index < parent.childCount - 1 ? parent.child(index + 1) : null;
+    return {before, after};
+}
+
+// function getSurroundingNodes(sel: Selection): {before: PNode | null; after: PNode | null} {
+//     // console.log(sel);
+//     const depth = sel.$from.depth;
+//     // console.log(depth);
+
+//     let parent;
+//     let index; 
+//     if (depth === 0) {
+//         parent = sel.$from.parent;
+//         index = sel.$from.index(0);
+//     } else {
+//         parent = sel.$from.node(1);
+//         index = sel.$from.index(1);
+//     }
+//     // console.log(parent);
+    
+//     // const parent = (thingie !== undefined ? thingie : sel.$from.parent);
+//     // const index = sel.$from.index(1);
+
+//     // console.log(index);
+    
+//     const before = index > 0 ? parent.child(index - 1) : null;
+//     const after = index < parent.childCount - 1 ? parent.child(index + 1) : null;
+//     return {before, after};
+//     // if (sel instanceof TextSelection) {
+//     //     const parent = sel.$from.node(1);
+//     //     const index = sel.$from.index(1);
+//     //     const before = index > 0 ? parent.child(index - 1) : null;
+//     //     const after = index < parent.childCount - 1 ? parent.child(index + 1) : null;
+//     //     return {before, after};
+//     // } else if (sel instanceof NodeSelection) {
+//     //     const parent = sel.$from.parent;
+//     //     const index = sel.$from.index(1);
+//     //     const before = 
+//     // } 
+//     // return {before: null, after: null};
+// }
+
 /**
  * Returns the containing node for the current selection.
  * @param sel The user's selection.
  * @returns The node containing this selection. Will *not* return text nodes.
  */
 export function getContainingNode(sel: Selection): PNode | undefined {
-    // const {isTextSelection, isNodeSelection} = selectionType(sel);
-
     if (sel instanceof TextSelection) {
         return sel.$from.node(sel.$from.depth - 1);
     } else if (sel instanceof NodeSelection) {
@@ -106,7 +214,7 @@ export function checkInputArea(sel: Selection): boolean {
     const from = sel.$from;
     const depth = from.depth;
     // An input area can only ever have depth = 1, since it is a 
-    // top level node (see TheSchema in `kroqed-schema.ts`)
+    // top level node (see WaterproofSchema in `schema.ts`)
     if (depth < 1) return false;
     return from.node(1).type === WaterproofSchema.nodes.input;
 }

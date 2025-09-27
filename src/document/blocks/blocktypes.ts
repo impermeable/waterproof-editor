@@ -1,6 +1,7 @@
+import { Node } from "prosemirror-model";
 import { WaterproofSchema } from "../../schema";
 import { BLOCK_NAME, Block, BlockRange } from "./block";
-import { code, hint, inputArea, markdown, mathDisplay } from "./schema";
+import { code, hint, inputArea, markdown, mathDisplay, newline } from "./schema";
 
 const indentation = (level: number): string => "  ".repeat(level);
 const debugInfo = (block: Block): string => `{range=${block.range.from}-${block.range.to}}`;
@@ -124,7 +125,7 @@ export class MarkdownBlock implements Block {
 export class CodeBlock implements Block {
     public type = BLOCK_NAME.CODE;
 
-    constructor( public stringContent: string, public prePreWhite: string, public prePostWhite: string, public postPreWhite: string, public postPostWhite : string, public range: BlockRange, public innerRange: BlockRange) {}
+    constructor( public stringContent: string, public range: BlockRange, public innerRange: BlockRange) {}
 
     toProseMirror() {
         if (this.stringContent === "") {
@@ -137,5 +138,26 @@ export class CodeBlock implements Block {
     // Debug print function.
     debugPrint(level: number): void {
         console.log(`${indentation(level)}CoqCodeBlock {${debugInfo(this)}}: {${this.stringContent.replaceAll("\n", "\\n")}}`);
+    }
+}
+
+/**
+ * NewlineBlock are blocks that take the place of a newline that is significant in the document.
+ * That is, the newline should be preserved
+ */
+export class NewlineBlock implements Block {
+    public type = BLOCK_NAME.NEWLINE;
+    
+    constructor ( public range: BlockRange, public innerRange: BlockRange ) {}
+
+    stringContent: string = "";
+
+    toProseMirror (): Node {
+        return newline();
+    }
+
+    // Debug print function.
+    debugPrint(level: number): void {
+        console.log(`${indentation(level)}Newline`);
     }
 }

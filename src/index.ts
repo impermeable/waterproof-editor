@@ -4,3 +4,4 @@ export { WaterproofSchema } from "./schema";
 export * from "./document";
 export * from "./api";
 export { defaultToMarkdown } from "./translation";
+export { markdownConfiguration, markdownSerializers } from "./markdownDefaults";

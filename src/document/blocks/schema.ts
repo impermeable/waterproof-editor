@@ -36,6 +36,11 @@ export const hint = (title: string, childNodes: ProseNode[]): ProseNode => {
     return WaterproofSchema.nodes.hint.create({title}, childNodes);
 }
 
+// ##### Special newline block ######
+export const newline = () => {
+    return WaterproofSchema.nodes.newline.create();
+}
+
 // ##### Root Node #####
 export const root = (childNodes: ProseNode[]): ProseNode => {
     return WaterproofSchema.nodes.doc.create({}, childNodes);

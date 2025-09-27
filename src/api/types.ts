@@ -60,17 +60,26 @@ export abstract class WaterproofMapping {
     abstract update: (step: Step, doc: Node) => DocChange | WrappingDocChange;
 }
 
-export type TagMap = {
-    markdownOpen: string,
-    markdownClose: string,
-    codeOpen: string,
-    codeClose: string,
-    hintOpen: (title: string) => string,
-    hintClose: string,
-    inputOpen: string,
-    inputClose: string,
-    mathOpen: string
-    mathClose: string
+export type OpenCloseTag = { openTag: string, closeTag: string }
+
+export type RequiresNewline = { openRequiresNewline: boolean, closeRequiresNewline: boolean };
+
+export type TagConfiguration = {
+    markdown: OpenCloseTag & RequiresNewline,
+    code: OpenCloseTag & RequiresNewline,
+    hint:  { openTag: ((title: string) => string), closeTag: string } & RequiresNewline,
+    input: OpenCloseTag & RequiresNewline,
+    math: OpenCloseTag & RequiresNewline,
+}
+
+export type CommonSerializer = (content: string) => string;
+
+export type Serializers = {
+    markdown: CommonSerializer,
+    code: CommonSerializer,
+    input: CommonSerializer,
+    math: CommonSerializer,
+    hint: (content: string, title: string) => string
 }
 
 export class NodeUpdateError extends Error {
@@ -102,9 +111,10 @@ export type WaterproofEditorConfig = {
     /** Determines how the editor document gets constructed from a string input. */
     documentConstructor: (document: string) => WaterproofDocument,
     /** How to construct a mapping for this editor. The mapping is responsible for mapping changes from the underlying ProseMirror instance into changes that can be applied to the underlying document. */
-    mapping: new (inputDocument: WaterproofDocument, versionNum: number, tagMap: TagMap) => WaterproofMapping,
+    mapping: new (inputDocument: WaterproofDocument, versionNum: number, tagMap: TagConfiguration, serializers: Serializers) => WaterproofMapping,
 
-    tagConfiguration: TagMap,
+    tagConfiguration: TagConfiguration,
+    serializers: Serializers,
 
     /** The name of the markdown node view, defaults to "markdown" */
     markdownName?: string,

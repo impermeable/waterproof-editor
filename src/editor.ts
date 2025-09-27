@@ -136,7 +136,7 @@ export class WaterproofEditor {
 		const blocks = this._editorConfig.documentConstructor(resultingDocument);
 		const proseDoc = constructDocument(blocks);
 
-		this._mapping = new this._editorConfig.mapping(blocks, version, this._editorConfig.tagConfiguration);
+		this._mapping = new this._editorConfig.mapping(blocks, version, this._editorConfig.tagConfiguration, this._editorConfig.serializers);
 		this.createProseMirrorEditor(proseDoc);
 
 		/** Ask for line numbers */
@@ -256,7 +256,7 @@ export class WaterproofEditor {
 			codePlugin(this._editorConfig.completions, this._editorConfig.symbols),
 			progressBarPlugin,
 			documentProgressDecoratorPlugin,
-			menuPlugin(this._userOS),
+			menuPlugin(this._userOS, this._editorConfig.tagConfiguration),
 			keymap({
 				"Mod-h": () => {
 					this.executeCommand("Help.");
@@ -264,12 +264,12 @@ export class WaterproofEditor {
 				},
 				"Backspace": deleteSelection,
 				"Delete": deleteSelection,
-				"Mod-m": getCmdInsertMarkdown(InsertionPlace.Below),
-				"Mod-M": getCmdInsertMarkdown(InsertionPlace.Above),
-				"Mod-q": getCmdInsertCode(InsertionPlace.Below),
-				"Mod-Q": getCmdInsertCode(InsertionPlace.Above),
-				"Mod-l": getCmdInsertLatex(InsertionPlace.Below),
-				"Mod-L": getCmdInsertLatex(InsertionPlace.Above),
+				"Mod-m": getCmdInsertMarkdown(InsertionPlace.Below, this._editorConfig.tagConfiguration),
+				"Mod-M": getCmdInsertMarkdown(InsertionPlace.Above, this._editorConfig.tagConfiguration),
+				"Mod-q": getCmdInsertCode(InsertionPlace.Below, this._editorConfig.tagConfiguration),
+				"Mod-Q": getCmdInsertCode(InsertionPlace.Above, this._editorConfig.tagConfiguration),
+				"Mod-l": getCmdInsertLatex(InsertionPlace.Below, this._editorConfig.tagConfiguration),
+				"Mod-L": getCmdInsertLatex(InsertionPlace.Above, this._editorConfig.tagConfiguration),
 				// We bind Ctrl/Cmd+. to selecting the parent node of the currently selected node.
 				"Mod-.": selectParentNode
 			})

@@ -5,14 +5,15 @@ export const SchemaCell = {
 	Hint: "hint",
 	Markdown: "markdown",
 	MathDisplay: "math_display",
-	Code: "code"
+	Code: "code",
+	Newline: "newline"
 } as const;
 
 export type SchemaKeys = keyof typeof SchemaCell;
 export type SchemaNames = typeof SchemaCell[SchemaKeys];
 
-const cell = `(markdown | hint | code | input | math_display)`;
-const containercontent = "(markdown | code | math_display)";
+const cell = `(markdown | hint | code | input | math_display | newline)`;
+const containercontent = "(markdown | code | math_display | newline)";
 // const groupMarkdown = "markdowncontent";
 
 /**
@@ -81,12 +82,6 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		//#region Code
 		code: {
 			content: "text*",// content is of type text
-			attrs: {
-				prePreWhite:{default:"newLine"},
-				prePostWhite:{default:"newLine"},
-				postPreWhite:{default:"newLine"},
-				postPostWhite:{default:"newLine"}
-			},
 			code: true,
 			atom: true, // doesn't have directly editable content (content is edited through codemirror)
 			toDOM(node) { return ["WaterproofCode", node.attrs, 0] } // <WaterproofCode></WaterproofCode> cells
@@ -104,27 +99,11 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 			toDOM(node) { return ["math-display", {...{ class: "math-node" }, ...node.attrs}, 0]; },
 		},
 		//#endregion
-	},
-	// marks: {
-	// 	em: {
-	// 	  toDOM() { return ["em"] }
-	// 	},
 
-	// 	strong: {
-	// 	  toDOM() { return ["strong"] }
-	// 	},
-
-	// 	link: {
-	// 	  attrs: {
-	// 		href: {},
-	// 		title: {default: null}
-	// 	  },
-	// 	  inclusive: false,
-	// 	  toDOM(node) { return ["a", node.attrs] }
-	// 	},
-
-	// 	code: {
-	// 	  toDOM() { return ["code"] }
-	// 	}
-	// }
+		newline: {
+			toDOM(node) { return ["WaterproofNewline", node.attrs]},
+			selectable: false,
+			atom: true,
+		}
+	}
 });

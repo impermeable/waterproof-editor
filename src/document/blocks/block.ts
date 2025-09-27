@@ -6,7 +6,8 @@ export enum BLOCK_NAME {
     INPUT_AREA = "input",
     HINT = "hint", 
     MARKDOWN = "markdown",
-    CODE = "code", 
+    CODE = "code",
+    NEWLINE = "newline",
 }
 
 export interface BlockRange {
@@ -15,7 +16,7 @@ export interface BlockRange {
 }
 
 export interface Block {
-    type: string;
+    type: BLOCK_NAME;
     stringContent: string;
     /** Range in the original document, including possible tags (like <input-area>) */
     range: BlockRange;
