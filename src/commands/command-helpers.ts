@@ -85,36 +85,54 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
 }
 
 /**
- * Helper function for inserting a new node underneath the currently selected one.
+ * Helper function for inserting a new node below the currently selected one.
  * @param state The current editor state.
  * @param tr The current transaction for the state of the editor. 
  * @param escapeContainingNode Whether to escape the containing node. 
  * @param nodeType ?
  * @returns An insertion transaction.
  */
-export function insertUnder(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean): Transaction | undefined {
+export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean): Transaction | undefined {
+    console.log("INSERTING BELOW");
+
     const sel = state.selection;
-
     let trans: Transaction = tr;
-
+    
+    const {after} = getSurroundingNodes(sel.$from);
+    const afterIsNewline = after !== null ? (after.type === WaterproofSchema.nodes.newline) : false;
+    // console.log("After", after?.type.name);
+    let pos;
+    
     if (sel instanceof NodeSelection) {
         // To and from point directly to beginning and end of node.
-        const pos = sel.to;
-        trans = trans.insert(pos, nodeType.create());
-        return trans;
+        pos = sel.to;
     } else if (sel instanceof TextSelection) {
-        const to = sel.to + (sel.$from.parent.nodeSize - sel.$from.parentOffset) - 1;
-
-        if (to > state.doc.nodeSize) {
-            console.log("The computed `to` value lies outside of the document");
-            return;
-        }
-
-        trans = trans.insert(to, nodeType.create());
-        return trans;
+        pos = sel.to + (sel.$from.parent.nodeSize - sel.$from.parentOffset) - 1;
+    } else {
+        return;
     }
 
-    return;
+    if (afterIsNewline) {
+        // Assumption: If a newline appears after a node the current node wants that.
+        pos += 1; // We are going to insert after
+    }
+    
+    // console.log("Node at", state.doc.nodeAt(pos));
+    const newAfter = getSurroundingNodes(state.doc.resolve(pos)).after;
+    // console.log("newafter", newAfter);
+    
+    const toInsert: PNode[] = [];
+    if (insertNewlineBeforeIfNotExists && !afterIsNewline) {
+        toInsert.push(newline());
+    }
+    toInsert.push(nodeType.create());
+    if (insertNewlineAfterIfNotExists && newAfter?.type !== WaterproofSchema.nodes.newline) {
+        toInsert.push(newline());
+    }
+
+    trans = trans.insert(pos, toInsert);
+
+    return trans;
 }
 
 export function nodeFromSel(sel: Selection): PNode | undefined {

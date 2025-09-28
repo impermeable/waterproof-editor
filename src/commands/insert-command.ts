@@ -1,6 +1,6 @@
 import { EditorState, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
-import { allowedToInsert, insertAbove, insertUnder } from "./command-helpers";
+import { allowedToInsert, insertAbove, insertBelow } from "./command-helpers";
 import { WaterproofSchema } from "../schema";
 import { InsertionPlace } from "./types";
 import { TagConfiguration } from "../api";
@@ -14,7 +14,7 @@ export function getCmdInsertMarkdown(place: InsertionPlace, tagConf: TagConfigur
         // Can we attempt this command in a case where our state and selection is such that 
         // we can't actually add the node there?
 
-        const f = place === InsertionPlace.Above ? insertAbove : insertUnder;
+        const f = place === InsertionPlace.Above ? insertAbove : insertBelow;
 
         const trans = f(state, state.tr, WaterproofSchema.nodes.markdown, tagConf.markdown.openRequiresNewline, tagConf.markdown.closeRequiresNewline);
 
@@ -33,7 +33,7 @@ export function getCmdInsertLatex(place: InsertionPlace, tagConf: TagConfigurati
         // Early return when inserting is not allowed.
         if (!allowedToInsert(state)) return false;
         
-        const f = place  === InsertionPlace.Above ? insertAbove : insertUnder; 
+        const f = place  === InsertionPlace.Above ? insertAbove : insertBelow; 
         const trans = f(state, state.tr, WaterproofSchema.nodes.math_display, tagConf.math.openRequiresNewline, tagConf.math.closeRequiresNewline);
 
         if (trans === undefined) { return false; }
@@ -51,7 +51,7 @@ export function getCmdInsertCode(place: InsertionPlace, tagConf: TagConfiguratio
         // Again, early return when inserting is not allowed. 
         if (!allowedToInsert(state)) return false;
         
-        const f = place === InsertionPlace.Above ? insertAbove : insertUnder;
+        const f = place === InsertionPlace.Above ? insertAbove : insertBelow;
         const trans = f(state, state.tr, WaterproofSchema.nodes.code, tagConf.code.openRequiresNewline, tagConf.code.closeRequiresNewline);
 
         if (trans === undefined) { return false; }
