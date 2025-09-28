@@ -1,6 +1,8 @@
-import { Serializers, TagConfiguration } from "./api"
+import { Serializers, TagConfiguration } from "../api";
 
-export function markdownConfiguration(languageId: string): TagConfiguration {
+export { parser } from "./statemachine";
+
+export function configuration(languageId: string): TagConfiguration {
     return {
         markdown: {
             openTag: "", closeTag: "",
@@ -33,8 +35,8 @@ export function markdownConfiguration(languageId: string): TagConfiguration {
  * @param languageId 
  * @returns 
  */
-export function markdownSerializers(languageId: string): Serializers {
-    const tagConf = markdownConfiguration(languageId);
+export function serializers(languageId: string): Serializers {
+    const tagConf = configuration(languageId);
     return {
         code: (content) => tagConf.code.openTag + content + tagConf.code.closeTag,
         input: (content) => tagConf.input.openTag + content + tagConf.input.closeTag,

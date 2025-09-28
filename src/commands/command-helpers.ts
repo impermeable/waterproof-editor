@@ -93,7 +93,7 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
  * @returns An insertion transaction.
  */
 export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean): Transaction | undefined {
-    console.log("INSERTING BELOW");
+    // console.log("INSERTING BELOW");
 
     const sel = state.selection;
     let trans: Transaction = tr;

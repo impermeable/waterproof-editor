@@ -50,6 +50,7 @@ export function deleteSelection(tagConf: TagConfiguration): Command {
             const afteer = parent.maybeChild(index + 2);
             // console.log("Before and after:", before, after);
             // console.log("Befoore and afteer:", befoore, afteer);
+            // console.log("Before using nodeBefore and nodeAfter:", state.selection.$from.nodeBefore, state.selection.$to.nodeAfter);
 
             const beforeIsNewline = before !== null ? before.type === WaterproofSchema.nodes.newline : false;
             const afterIsNewline = after !== null ? after.type === WaterproofSchema.nodes.newline : false;
@@ -97,6 +98,31 @@ export function deleteSelection(tagConf: TagConfiguration): Command {
             //     const befooreNeedsNewline = befoore !== null ? needsNewlineAfter(befoore.type, tagConf) : false;
             // }
         }
+        return false;
+    }
+}
+
+export function wrapInInput(tagConf: TagConfiguration): Command {
+    return (state, dispatch) => {
+        const sel = state.selection;
+        // We need to possible extend this blockRange
+        // sel.$from.blockRange(sel.$to);
+
+
+
+        const before = sel.$from.nodeBefore;
+        const after = sel.$to.nodeAfter;
+
+        const beforeIsNewline = before !== null ? before.type === WaterproofSchema.nodes.newline : false;
+        const afterIsNewline = after !== null ? after.type === WaterproofSchema.nodes.newline : false;
+
+
+        const nodeBeingWrapped = state.doc.nodeAt(sel.from);
+        
+        // const nodeAtEnd = state.doc.nodeAt(sel.to - 1);
+
+
+        // sel.$from.block
         return false;
     }
 }
