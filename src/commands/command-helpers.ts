@@ -1,10 +1,11 @@
 /////// Helper functions /////////
 
-import { NodeType, Node as PNode, ResolvedPos } from "prosemirror-model";
+import { NodeType, Node as PNode } from "prosemirror-model";
 import { EditorState, TextSelection, Transaction, Selection, NodeSelection } from "prosemirror-state";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { WaterproofSchema } from "../schema";
 import { newline } from "../document/blocks/schema";
+import { getSurroundingNodes } from "./utils";
 
 /////// Helper functions /////////
 
@@ -126,21 +127,6 @@ export function nodeFromSel(sel: Selection): PNode | undefined {
     }
 }
 
-function getSurroundingNodes($from: ResolvedPos): {before: PNode | null; after: PNode | null} {
-    const depth = $from.depth;
-    let parent;
-    let index; 
-    if (depth === 0) {
-        parent = $from.parent;
-        index = $from.index(0);
-    } else {
-        parent = $from.node(1);
-        index = $from.index(1);
-    }    
-    const before = index > 0 ? parent.child(index - 1) : null;
-    const after = index < parent.childCount - 1 ? parent.child(index + 1) : null;
-    return {before, after};
-}
 
 // function getSurroundingNodes(sel: Selection): {before: PNode | null; after: PNode | null} {
 //     // console.log(sel);

@@ -1,5 +1,5 @@
 import { mathPlugin, mathSerializer } from "@benrbray/prosemirror-math";
-import { deleteSelection, selectParentNode } from "prosemirror-commands";
+import { selectParentNode } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
 import { ResolvedPos, Schema, Node as ProseNode } from "prosemirror-model";
 import { EditorState, NodeSelection, Plugin, Selection, TextSelection, Transaction } from "prosemirror-state";
@@ -33,6 +33,7 @@ import { setCurrentTheme } from "./themeStore";
 import { ServerStatus } from "./api";
 import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "./commands/insert-command";
 import { InsertionPlace } from "./commands";
+import { deleteSelection } from "./commands/commands";
 
 /** Type that contains a coq diagnostics object fit for use in the ProseMirror editor context. */
 type DiagnosticObjectProse = {message: string, start: number, end: number, $start: ResolvedPos, $end: ResolvedPos, severity: Severity};
@@ -262,8 +263,8 @@ export class WaterproofEditor {
 					this.executeCommand("Help.");
 					return true;
 				},
-				"Backspace": deleteSelection,
-				"Delete": deleteSelection,
+				"Backspace": deleteSelection(this._editorConfig.tagConfiguration),
+				"Delete": deleteSelection(this._editorConfig.tagConfiguration),
 				"Mod-m": getCmdInsertMarkdown(InsertionPlace.Below, this._editorConfig.tagConfiguration),
 				"Mod-M": getCmdInsertMarkdown(InsertionPlace.Above, this._editorConfig.tagConfiguration),
 				"Mod-q": getCmdInsertCode(InsertionPlace.Below, this._editorConfig.tagConfiguration),
