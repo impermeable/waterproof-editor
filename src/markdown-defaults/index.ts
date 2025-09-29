@@ -1,4 +1,4 @@
-import { Serializers, TagConfiguration } from "../api";
+import { TagConfiguration } from "../api";
 
 export { parser } from "./statemachine";
 
@@ -9,9 +9,11 @@ export function configuration(languageId: string): TagConfiguration {
             openRequiresNewline: false, closeRequiresNewline: false,
         }, 
         code: {
+            // There should be a newline before the opening tag of the code cell.
+            openRequiresNewline: true,
             openTag: "```" + languageId + "\n",
             closeTag: "\n```",
-            openRequiresNewline: true,
+            // There should be a newline after the closing tag of the code cell.
             closeRequiresNewline: true,
         },
         hint: {
@@ -29,19 +31,3 @@ export function configuration(languageId: string): TagConfiguration {
         }
     }
 };
-
-/**
- * Assumes using the `markdownTagMap` with the same language id.
- * @param languageId 
- * @returns 
- */
-export function serializers(languageId: string): Serializers {
-    const tagConf = configuration(languageId);
-    return {
-        code: (content) => tagConf.code.openTag + content + tagConf.code.closeTag,
-        input: (content) => tagConf.input.openTag + content + tagConf.input.closeTag,
-        hint: (content, title) => tagConf.hint.openTag(title) + content + tagConf.hint.closeTag,
-        markdown: (content) => tagConf.markdown.openTag + content + tagConf.markdown.closeTag,
-        math: (content) => tagConf.math.openTag + content + tagConf.math.closeTag,
-    };
-}

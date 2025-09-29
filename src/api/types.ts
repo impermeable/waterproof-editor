@@ -1,21 +1,6 @@
 import { Step } from "prosemirror-transform";
-import { DocChange, WrappingDocChange, Severity, WaterproofCompletion, WaterproofSymbol, Node } from ".";
+import { DocChange, WrappingDocChange, Severity, WaterproofCompletion, WaterproofSymbol, Node, DocumentSerializer } from ".";
 import { Block } from "../document";
-
-/**
- * Represents an area of text, that is editable in the prosemirror view and its
- * mapping to the vscode document
- */
-export type StringCell = {
-    /** The prosemirror starting index of this cell */
-    startProse: number,
-    /** The prosemirror ending index of this cell */
-    endProse: number,
-    /** The starting index of this cell in the text document string vscode side */
-    startText: number,
-    /** The ending index of this cell in the text document string vscode side */
-    endText: number,
-};
 
 export type Positioned<A> = {
     obj: A;
@@ -60,26 +45,43 @@ export abstract class WaterproofMapping {
     abstract update: (step: Step, doc: Node) => DocChange | WrappingDocChange;
 }
 
-export type OpenCloseTag = { openTag: string, closeTag: string }
+/**
+ * Type describing the open and close tag for a cell.
+ */
+export type OpenCloseTag = { 
+    openTag: string, 
+    closeTag: string 
+}
 
+/**
+ * Type describing whether the open tag requires a newline before and whether the closing tag requires a newline after.
+ * 
+ * Together with the string representation this will ensure that the tags marked with `true` will appear on their own line. 
+ * 
+ * Example: The ` ```language ` and ` ``` ` tags in a Markdown file should be placed on their own line (i.e. the first backtick should be placed as the first character on a line. )
+ * We ensure this by setting the open and close tag (see {@linkcode OpenCloseTag}) to ` ```language\n ` and ` \n``` ` respectively and setting both `openRequiresNewline` and `closeRequiersNewline` to true.
+ * 
+ * When inserting new nodes into the document WaterproofEditor will ensure that the nodes marked with `openRequiresNewline = true` always have a newline before
+ * and nodes marked with `closeRequiresNewline = true` always have a newline after.
+ */
 export type RequiresNewline = { openRequiresNewline: boolean, closeRequiresNewline: boolean };
 
+/**
+ * The `TagConfiguration` describes how the different parts of a document on disk are described/delimited. WaterproofEditor will use
+ * these tags when generating edits and serializing the document.
+ * 
+ * _Note_: The tags described here should be the same as generating when 
+ * 
+ * For example in a Markdown file, code should be placed in between ` ```language ` and ` ``` `, where `language` denotes the language of the code.
+ * 
+ * Every type of cell representable in `WaterproofEditor` should receive some form of tag. If the content of some cell has no open or close tag use `""`.
+ */
 export type TagConfiguration = {
     markdown: OpenCloseTag & RequiresNewline,
     code: OpenCloseTag & RequiresNewline,
     hint:  { openTag: ((title: string) => string), closeTag: string } & RequiresNewline,
     input: OpenCloseTag & RequiresNewline,
     math: OpenCloseTag & RequiresNewline,
-}
-
-export type CommonSerializer = (content: string) => string;
-
-export type Serializers = {
-    markdown: CommonSerializer,
-    code: CommonSerializer,
-    input: CommonSerializer,
-    math: CommonSerializer,
-    hint: (content: string, title: string) => string
 }
 
 export class NodeUpdateError extends Error {
@@ -111,18 +113,29 @@ export type WaterproofEditorConfig = {
     /** Determines how the editor document gets constructed from a string input. */
     documentConstructor: (document: string) => WaterproofDocument,
     /** How to construct a mapping for this editor. The mapping is responsible for mapping changes from the underlying ProseMirror instance into changes that can be applied to the underlying document. */
-    mapping: new (inputDocument: WaterproofDocument, versionNum: number, tagMap: TagConfiguration, serializers: Serializers) => WaterproofMapping,
+    mapping: new (inputDocument: WaterproofDocument, versionNum: number, tagMap: TagConfiguration, serializer: DocumentSerializer) => WaterproofMapping,
 
+    /**
+     * The tag configuration to use for this editor.
+     * 
+     * See {@linkcode TagConfiguration} for more information.
+     */
     tagConfiguration: TagConfiguration,
-    serializers: Serializers,
 
-    /** The name of the markdown node view, defaults to "markdown" */
+    /** The name of the markdown node view, defaults to `"Markdown"`. 
+     * This name will show up in the editor when editing text in 'Markdown' cells.
+    */
     markdownName?: string,
 
+    /**
+     * A function that can be used to convert a different markup variant into Markdown. 
+     * 
+     * This function is also responsible for converting math-inline content (e.g. in Markdown this is the content between `$` and `$`) to math-inline
+     * nodes. That is, the content should be placed inside `<math-inline>` and `</math-inline>`.
+     * @param inputString The input string that should be converted to Markdown
+     * @returns The output string should be valid Markdown, with possible inline LaTeX wrapped in the tags as described above.
+     */
     toMarkdown?: (inputString: string) => string,
-
-    /** THIS IS A TEMPORARY FEATURE THAT WILL GET REMOVED */
-    documentPreprocessor?: (inputString: string) => {resultingDocument: string, documentChange: DocChange | WrappingDocChange | undefined},
 }
 
 export enum HistoryChange {

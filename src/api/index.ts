@@ -17,3 +17,5 @@ export { Step, ReplaceStep, ReplaceAroundStep } from "prosemirror-transform";
 export { Fragment, Node } from "prosemirror-model";
 
 export { ServerStatus, Idle, Busy } from "./ServerStatus";
+
+export { DocumentSerializer } from "../serialization/DocumentSerializer";

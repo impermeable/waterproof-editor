@@ -8,7 +8,7 @@ import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { constructDocument } from "./document/construct-document";
 
-import { DocChange, LineNumber, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity, MappingError, NodeUpdateError, TextUpdateError } from "./api";
+import { DocChange, LineNumber, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
@@ -64,6 +64,8 @@ export class WaterproofEditor {
 
 	private _lineNumbersShown: boolean = false;
 
+	private _serializer: DocumentSerializer;
+
 	/**
 	 * Create a new WaterproofEditor instance.
 	 * @param editorElement The HTML element where the editor will be inserted in the document
@@ -74,6 +76,7 @@ export class WaterproofEditor {
 		this._editorElem = editorElement;
 		this.currentProseDiagnostics = [];
 		this._editorConfig = config;
+		this._serializer = new DocumentSerializer(this._editorConfig.tagConfiguration);
 
 		const userAgent = window.navigator.userAgent;
 		this._userOS = OS.Unknown;
@@ -119,25 +122,10 @@ export class WaterproofEditor {
 			this._view.dom.remove();
 		}
 
-		let resultingDocument = content;
-		let documentChange: DocChange | WrappingDocChange | undefined = undefined;
-
-		if (this._editorConfig.documentPreprocessor !== undefined) {
-			console.log("Using document preprocessor!!");
-			const result = this._editorConfig.documentPreprocessor(content);
-			resultingDocument = result.resultingDocument;
-			documentChange = result.documentChange;
-			if (documentChange !== undefined) {
-				console.log("Document change due to preprocessor: ", documentChange);
-				this._editorConfig.api.documentChange(documentChange);
-			}
-			if (resultingDocument !== content) version = version + 1;
-		}
-
-		const blocks = this._editorConfig.documentConstructor(resultingDocument);
+		const blocks = this._editorConfig.documentConstructor(content);
 		const proseDoc = constructDocument(blocks);
 
-		this._mapping = new this._editorConfig.mapping(blocks, version, this._editorConfig.tagConfiguration, this._editorConfig.serializers);
+		this._mapping = new this._editorConfig.mapping(blocks, version, this._editorConfig.tagConfiguration, this._serializer);
 		this.createProseMirrorEditor(proseDoc);
 
 		/** Ask for line numbers */
@@ -275,6 +263,15 @@ export class WaterproofEditor {
 				"Mod-.": selectParentNode
 			})
 		];
+	}
+
+	/**
+	 * Serialize the current document to a string.
+	 * @returns Either the serialized document or `undefined` when the editor is not initialized.
+	 */
+	public serializeDocument(): string | undefined {
+		if (!this._view) return;
+		return this._serializer.serializeDocument(this._view.state.doc);
 	}
 
 	public updateNodeViewThemes(theme: ThemeStyle) {
