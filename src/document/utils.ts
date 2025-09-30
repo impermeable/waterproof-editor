@@ -44,7 +44,7 @@ export function extractInterBlockRanges(blocks: Array<Block>, inputDocument: str
     // Add first range if it exists
     if (blocks.length > 0 && blocks[0].range.from > 0) ranges = [{from: 0, to: blocks[0].range.from}, ...ranges];
     // Add last range if it exists
-    if (blocks.length > 0 && blocks[blocks.length - 1].range.to < inputDocument.length) ranges = [...ranges, {from: blocks[blocks.length - 1].range.to, to: inputDocument.length}];
+    if (blocks.length > 0 && blocks.at(blocks.length - 1)!.range.to < inputDocument.length) ranges = [...ranges, {from: blocks.at(blocks.length - 1)!.range.to, to: inputDocument.length}];
 
     // If there are no blocks found then we add the rest as a range.
     if (blocks.length === 0 && inputDocument.length > 0) ranges = [{from: 0, to: inputDocument.length}];
