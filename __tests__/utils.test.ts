@@ -1,39 +1,41 @@
 import { Block } from "../src/document/blocks";
+import { BLOCK_NAME } from "../src/document/blocks/block";
 import { text } from "../src/document/blocks/schema";
 import { extractInterBlockRanges, iteratePairs, maskInputAndHints, sortBlocks } from "../src/document/utils";
 
 const toProseMirror = () => text("null");
 const debugPrint = () => null;
 const innerRange = {from: 0, to: 0};
+const type = BLOCK_NAME.CODE;
 
 test("Sort blocks #1", () => {
     const stringContent = "";
 
-    const testBlocks = [
-        {type: "second", range: {from: 1, to: 2}, innerRange, stringContent, toProseMirror, debugPrint}, 
-        {type: "first", range: {from: 0, to: 1}, innerRange, stringContent, toProseMirror, debugPrint}
+    const testBlocks: Array<Block> = [
+        {type: BLOCK_NAME.CODE, range: {from: 1, to: 2}, innerRange, stringContent, toProseMirror, debugPrint}, 
+        {type: BLOCK_NAME.INPUT_AREA, range: {from: 0, to: 1}, innerRange, stringContent, toProseMirror, debugPrint}
     ];
 
     const sorted = sortBlocks(testBlocks);
     expect(sorted.length).toBe(2);
-    expect(sorted[0].type).toBe("first");
-    expect(sorted[1].type).toBe("second");
+    expect(sorted[0].type).toBe(BLOCK_NAME.INPUT_AREA);
+    expect(sorted[1].type).toBe(BLOCK_NAME.CODE);
 });
 
 test("Sort blocks #2", () => {
     const stringContent = "";
 
-    const testBlocks = [
-        {type: "second", range: {from: 1, to: 2}, innerRange, stringContent, toProseMirror, debugPrint}, 
-        {type: "first", range: {from: 0, to: 1}, innerRange, stringContent, toProseMirror, debugPrint},
-        {type: "third", range: {from: 2, to: 3}, innerRange, stringContent, toProseMirror, debugPrint}
+    const testBlocks: Array<Block> = [
+        {type: BLOCK_NAME.CODE, range: {from: 1, to: 2}, innerRange, stringContent, toProseMirror, debugPrint}, 
+        {type: BLOCK_NAME.INPUT_AREA, range: {from: 0, to: 1}, innerRange, stringContent, toProseMirror, debugPrint},
+        {type: BLOCK_NAME.HINT, range: {from: 2, to: 3}, innerRange, stringContent, toProseMirror, debugPrint}
     ];
 
     const sorted = sortBlocks(testBlocks);
     expect(sorted.length).toBe(3);
-    expect(sorted[0].type).toBe("first");
-    expect(sorted[1].type).toBe("second");
-    expect(sorted[2].type).toBe("third");
+    expect(sorted[0].type).toBe(BLOCK_NAME.INPUT_AREA);
+    expect(sorted[1].type).toBe(BLOCK_NAME.CODE);
+    expect(sorted[2].type).toBe(BLOCK_NAME.HINT);
 });
 
 // TODO: What is the expected behaviour in this case?
@@ -74,8 +76,8 @@ test("Iterate pairs (single element array)", () => {
 
 test("Mask input and hints #1", () => {
     const inputDocument = "# Example\n<input-area>\n# Test input area\n</input-area>\n";
-    const blocks = [
-        {type: "input_area", range: {from: 10, to: 54}, innerRange, stringContent: "# Test input area", toProseMirror, debugPrint}
+    const blocks: Array<Block> = [
+        {type, range: {from: 10, to: 54}, innerRange, stringContent: "# Test input area", toProseMirror, debugPrint}
     ];
 
     const maskedString = "# Example\n                                            \n";
@@ -84,9 +86,9 @@ test("Mask input and hints #1", () => {
 
 test("Mask input and hints #2", () => {
     const inputDocument = `<hint title="test">\nThis is a test hint\n<\\hint>\n# Example\n<input-area>\n# Test input area\n</input-area>\n`;
-    const blocks = [
-        {type: "hint", range: {from: 0, to: 47}, innerRange, stringContent: "This is a test hint", toProseMirror, debugPrint},
-        {type: "input_area", range: {from: 58, to: 102}, innerRange, stringContent: "# Test input area", toProseMirror, debugPrint}
+    const blocks: Array<Block> = [
+        {type, range: {from: 0, to: 47}, innerRange, stringContent: "This is a test hint", toProseMirror, debugPrint},
+        {type, range: {from: 58, to: 102}, innerRange, stringContent: "# Test input area", toProseMirror, debugPrint}
     ];
 
     const maskedString = "                                               \n# Example\n                                            \n";
@@ -94,12 +96,11 @@ test("Mask input and hints #2", () => {
 });
 
 test("Extract inter-block ranges", () => {
-    const type = "test";
     const stringContent = "test";
 
     const document = "Hello, this is a test document, I am testing this document. Test test test test."
 
-    const blocks: Block[] = [
+    const blocks: Array<Block> = [
         { range: { from: 0, to: 10 }, innerRange, type, stringContent, toProseMirror, debugPrint },
         { range: { from: 15, to: 20 }, innerRange, type, stringContent, toProseMirror, debugPrint },
         { range: { from: 25, to: 30 }, innerRange, type, stringContent, toProseMirror, debugPrint },
@@ -114,7 +115,6 @@ test("Extract inter-block ranges", () => {
 });
 
 test("Extract inter-block ranges with touching blocks", () => {
-    const type = "test";
     const stringContent = "test";
     
     const document = "012345678901234567890123456789"
