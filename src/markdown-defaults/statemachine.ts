@@ -256,24 +256,27 @@ export function parser(document: string, language: string = ""): WaterproofDocum
             case ParserState.Code: {
                 if (closesCodeBlock()) {
                     // End of this code block
-                    const range = { from: getRangeStart(), to: i + codeBlockCloseLength + codeBlockOffset };
+
+                    // Check if we have a newline before this block
+                    const newlineBefore = document[getRangeStart()] === '\n';
+                    const range = { from: getRangeStart() + (newlineBefore ? 1 : 0), to: i + codeBlockCloseLength };
                     const innerRange = { from: getInnerRangeStart(), to: i };
                     const codeBlock = new CodeBlock(
                         document.slice(innerRange.from, innerRange.to),
                         range,
                         innerRange);
-                    const newlineBefore = document[rangeStart - 1] === '\n';
-                    const newlineAfter = codeBlockOffset === 1 ? "\n" : "";
 
+                    // Add a newline block before the block if needed 
                     if (newlineBefore) {
-                        pushBlock(new NewlineBlock({ from: rangeStart - 1, to: rangeStart }, { from: rangeStart - 1, to: rangeStart }));
+                        pushBlock(new NewlineBlock({ from: getRangeStart(), to: getRangeStart() + 1 }, { from: getRangeStart(), to: getRangeStart() + 1 }));
                     }
                     pushBlock(codeBlock);
-                    if (newlineAfter) {
-                        pushBlock(new NewlineBlock({ from: range.to - 1, to: range.to }, { from: range.to - 1, to: range.to }));
+                    // Add a newline block after the block if needed
+                    if (codeBlockOffset) {
+                        pushBlock(new NewlineBlock({ from: range.to, to: range.to + 1 }, { from: range.to, to: range.to + 1 }));
                     }
 
-                    i += codeBlockCloseLength + codeBlockOffset; // Skip the closing ```
+                    i += codeBlockCloseLength + codeBlockOffset; // Skip the closing ``` and possible \n
                     backToMarkdown();
                     continue;
                 } else {
