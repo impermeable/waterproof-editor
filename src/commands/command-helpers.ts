@@ -13,7 +13,6 @@ import { getSurroundingNodes } from "./utils";
  * Helper function for inserting a new node above the currently selected one.
  * @param state The current editor state.
  * @param tr The current transaction for the state of the editor. 
- * @param escapeContainingNode Whether to escape the containing node. 
  * @param nodeType ?
  * @returns An insertion transaction.
  */
@@ -88,7 +87,6 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
  * Helper function for inserting a new node below the currently selected one.
  * @param state The current editor state.
  * @param tr The current transaction for the state of the editor. 
- * @param escapeContainingNode Whether to escape the containing node. 
  * @param nodeType ?
  * @returns An insertion transaction.
  */

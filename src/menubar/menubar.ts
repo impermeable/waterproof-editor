@@ -1,4 +1,4 @@
-import { selectParentNode, wrapIn } from "prosemirror-commands";
+import { autoJoin, joinDown, joinForward, selectParentNode, wrapIn } from "prosemirror-commands";
 import { Command, PluginView, Plugin, PluginKey } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
@@ -7,6 +7,7 @@ import { OS } from "../osType";
 import { WaterproofSchema } from "../schema";
 import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "../commands/insert-command";
 import { TagConfiguration } from "../api";
+import { deleteSelection, wrapInHint, wrapInInput } from "../commands/commands";
 
 /** MenuEntry type contains the DOM, whether to only show it in teacher mode and the command to execute on click */
 type MenuEntry = {
@@ -176,9 +177,12 @@ function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfigurat
         // Select the parent node.
         createMenuItem("Parent", `Select the parent node (${keyBinding(".")})`, selectParentNode),
         // in teacher mode, display input area, hint and lift buttons.
-        createMenuItem("ⵊ...", "Make selection an input area", teacherOnlyWrapper(wrapIn(WaterproofSchema.nodes.input)), teacherOnly),
-        createMenuItem("<strong>?</strong>", "Make selection a hint element", teacherOnlyWrapper(wrapIn(WaterproofSchema.nodes.hint)), teacherOnly),
-        createMenuItem("↑", "Lift selected node (Reverts the effect of making a 'hint' or 'input area')", teacherOnlyWrapper(liftWrapper), teacherOnly)
+        createMenuItem("ⵊ...", "Make selection an input area", teacherOnlyWrapper(wrapInInput(tagConf)), teacherOnly),
+        createMenuItem("<strong>?</strong>", "Make selection a hint element", teacherOnlyWrapper(wrapInHint(tagConf)), teacherOnly),
+        createMenuItem("↑", "Lift selected node (Reverts the effect of making a 'hint' or 'input area')", teacherOnlyWrapper(liftWrapper), teacherOnly),
+        createMenuItem("🗑️", "Delete selection", teacherOnlyWrapper(deleteSelection(tagConf)), teacherOnly),
+        // createMenuItem("", "Join forward", joinForward),
+        // createMenuItem("", "Join down", joinDown)
     ]
 
     // If the DEBUG variable is set to `true` then we display a `dump` menu item, which outputs the current

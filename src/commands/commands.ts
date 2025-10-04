@@ -1,4 +1,4 @@
-import { NodeRange } from "prosemirror-model";
+import { NodeRange, NodeType } from "prosemirror-model";
 import { Command, EditorState, NodeSelection, TextSelection, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { liftTarget } from "prosemirror-transform";
@@ -56,32 +56,32 @@ export function deleteSelection(tagConf: TagConfiguration): Command {
             const afterIsNewline = after !== null ? after.type === WaterproofSchema.nodes.newline : false;
 
             if (beforeIsNewline && afterIsNewline && befoore !== null && afteer !== null && needsNewlineAfter(befoore.type, tagConf) && needsNewlineBefore(afteer.type, tagConf)) {
-                console.log("Before and after are newlines, and befoore needs newline after and afteer needs newline before");
+                // console.log("Before and after are newlines, and befoore needs newline after and afteer needs newline before");
                 // Before and after are newlines, and befoore needs newline after and afteer needs newline before
                 // We need to keep one of the newlines, so we delete the node and the after newline
                 if (dispatch) dispatch(state.tr.delete(state.selection.from, state.selection.to + afterSize).scrollIntoView());
 
                 return true;
             } else if (afterIsNewline && afteer !== null && needsNewlineBefore(state.selection.node.type, tagConf)) {
-                console.log("After is newline and afteer needs newline before");
+                // console.log("After is newline and afteer needs newline before");
                 // After is newline and afteer needs newline before
                 // We need to keep the after newline, so we delete the node and the before newline
                 if (dispatch) dispatch(state.tr.delete(state.selection.from - beforeSize, state.selection.to).scrollIntoView());
                 return true;
             } else if (beforeIsNewline && befoore !== null && needsNewlineAfter(befoore.type, tagConf)) {
-                console.log("Before is newline and befoore needs newline after");
+                // console.log("Before is newline and befoore needs newline after");
                 // Before is newline and befoore needs newline after
                 // We need to keep the before newline, so we delete the node and the after newline
                 if (dispatch) dispatch(state.tr.delete(state.selection.from, state.selection.to + afterSize).scrollIntoView());
                 return true;
             } else if (beforeIsNewline && afterIsNewline && (befoore === null || (befoore !== null && !needsNewlineAfter(befoore.type, tagConf))) && (afteer === null || (afteer !== null && !needsNewlineBefore(afteer.type, tagConf)))) {
-                console.log("Before and after are newlines, but befoore does not need newline after and afteer does not need newline before");
+                // console.log("Before and after are newlines, but befoore does not need newline after and afteer does not need newline before");
                 // Before and after are newlines, but befoore does not need newline after and afteer does not need newline before
                 // We can delete both newlines
                 if (dispatch) dispatch(state.tr.delete(state.selection.from - beforeSize, state.selection.to + afterSize).scrollIntoView());
                 return true;
             } else {
-                console.log("Deleting node selection");
+                // console.log("Deleting node selection");
                 if (dispatch) dispatch(state.tr.deleteSelection().scrollIntoView());
                 return true;
             }
@@ -102,27 +102,76 @@ export function deleteSelection(tagConf: TagConfiguration): Command {
     }
 }
 
+export function wrapInHint(tagConf: TagConfiguration): Command {
+    return wpWrapIn(WaterproofSchema.nodes.hint, tagConf);
+}
+
 export function wrapInInput(tagConf: TagConfiguration): Command {
+    return wpWrapIn(WaterproofSchema.nodes.input, tagConf);
+}
+
+function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration): Command {
     return (state, dispatch) => {
         const sel = state.selection;
-        // We need to possible extend this blockRange
-        // sel.$from.blockRange(sel.$to);
-
-
-
-        const before = sel.$from.nodeBefore;
-        const after = sel.$to.nodeAfter;
-
-        const beforeIsNewline = before !== null ? before.type === WaterproofSchema.nodes.newline : false;
-        const afterIsNewline = after !== null ? after.type === WaterproofSchema.nodes.newline : false;
-
-
-        const nodeBeingWrapped = state.doc.nodeAt(sel.from);
+        if (!(sel instanceof NodeSelection)) return false;
         
-        // const nodeAtEnd = state.doc.nodeAt(sel.to - 1);
+        const before = sel.$from.nodeBefore;
+        
+        const after = sel.$to.nodeAfter;
+        
+        if (dispatch) {
+            const beforeIsNewline = before !== null ? before.type === WaterproofSchema.nodes.newline : false;
+            const afterIsNewline = after !== null ? after.type === WaterproofSchema.nodes.newline : false;
+            const nodeBeingWrapped = sel.node;
+            const needsBefore = needsNewlineBefore(nodeBeingWrapped.type, tagConf);
+            const needsAfter = needsNewlineAfter(nodeBeingWrapped.type, tagConf);
+            
+            if ((needsBefore && !beforeIsNewline) || (needsAfter && !afterIsNewline)) {
+                return false;
+            }
+            
+            let $start = sel.$from;
+            let $end = sel.$to;
+            const consumeBefore = needsBefore && beforeIsNewline;
+            const consumeAfter = needsAfter && afterIsNewline;
+            // console.log("Consume before and after:", consumeBefore, consumeAfter);
+            if (before !== null && consumeBefore) {
+                // extend the selection to incldue the before newline node
+                $start = state.doc.resolve(sel.from - before.nodeSize);
+            }
+            if (after !== null && consumeAfter) {
+                // extend the selection to include the after newline node
+                $end = state.doc.resolve(sel.to + after.nodeSize);
+            }
+            
+            // We extend the blockRange to include the newlines if they are being consumed.
+            const blockRange = $start.blockRange($end);
+            if (blockRange === null) return false;
+            const tr = state.tr;
+            tr.wrap(blockRange, [{type: nodeType}]);
+            console.log(blockRange.startIndex, blockRange.endIndex);
 
+            // We potentially have to insert newlines before or after the newly created input area.
+            if (consumeBefore) {
+                const nodeBeforeNewline = $start.nodeBefore;
+                if (nodeBeforeNewline !== null && needsNewlineAfter(nodeBeforeNewline.type, tagConf)) {
+                    // Inserting newline before the input area
+                    tr.insert(tr.mapping.map($start.pos) - 1, WaterproofSchema.nodes.newline.create());
+                }
+            }
+            if (consumeAfter) {
+                const nodeAfterNewline = $end.nodeAfter;
+                if (nodeAfterNewline !== null && needsNewlineBefore(nodeAfterNewline.type, tagConf)) {
+                    // Inserting newline after the input area
+                    tr.insert(tr.mapping.map($end.pos), WaterproofSchema.nodes.newline.create());
+                }
+            }
 
-        // sel.$from.block
-        return false;
+            // Finally, dispatch the transaction and set the selection to be the node selection of the newly created input area.
+            tr.setSelection(NodeSelection.create(tr.doc, tr.mapping.map(sel.from)));
+            dispatch(tr.scrollIntoView());
+            return true;
+        }
+        return true;
     }
 }
