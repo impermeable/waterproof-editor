@@ -73,7 +73,7 @@ export function extractBlocksUsingRanges<BlockType extends Block>(
         const content = inputDocument.slice(range.from, range.to);
         const eRange = { from: range.from + parentOffset, to: range.to + parentOffset };
         // Fixme: inner range is currently just the same as the outer range (fine for markdown)
-        const iRange = eRange;
+        const iRange = { from: eRange.from, to: eRange.to };
         return new BlockConstructor(content, eRange, iRange);
     }).filter(block => {
         return block.range.from !== block.range.to;
