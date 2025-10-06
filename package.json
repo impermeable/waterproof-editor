@@ -1,6 +1,6 @@
 {
   "name": "@impermeable/waterproof-editor",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Waterproof Editor ",
   "homepage": "https://github.com/impermeable/waterproof-editor#readme",
   "bugs": {
@@ -30,6 +30,7 @@
     "watch:tsc": "npx tsc -b --watch",
     "test": "npm run unit-tests",
     "unit-tests": "npx jest",
+    "unit-tests-cov": "npx jest --coverage",
     "lezer-generator": "npx lezer-generator ./src/codeview/lang-pack/syntax.grammar -o ./src/codeview/lang-pack/syntax.ts",
     "typecheck": "npx tsc -b",
     "build": "npm run typecheck && node esbuild.mjs --minify",
