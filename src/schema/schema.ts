@@ -21,8 +21,6 @@ export type SchemaNames = typeof SchemaCell[SchemaKeys];
  *
  * math blocks obtained from `prosemirror-math`:
  * https://github.com/benrbray/prosemirror-math/blob/master/src/math-schema.ts
- *
- * see [notes](./notes.md)
  */
 export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 	nodes: {

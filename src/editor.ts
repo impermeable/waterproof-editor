@@ -168,13 +168,6 @@ export class WaterproofEditor {
 							// Send message to VSCode that an error has occured
 							this._editorConfig.api.applyStepError(err.message);
 
-							// Set global locking mode
-							// const tr = view.state.tr;
-							// tr.setMeta(INPUT_AREA_PLUGIN_KEY,"ErrorMode");
-							// tr.setSelection(new AllSelection(view.state.doc));
-							// view.updateState(view.state.apply(tr));
-
-							// We ensure this transaction is not applied
 							return;
 						}
 
@@ -525,10 +518,7 @@ export class WaterproofEditor {
 
 		// Early return if the plugin state is undefined.
 		if (inputAreaPluginState === undefined) return false;
-		const { teacher, globalLock } = inputAreaPluginState;
-		// Early return if we are in the global locked mode
-		// 	(nothing should be editable anymore)
-		if (globalLock) return false;
+		const { teacher } = inputAreaPluginState;
 
 		// If we are in teacher mode (ie. not locked) than
 		// 	 we are always able to insert.

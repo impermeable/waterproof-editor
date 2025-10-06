@@ -1,15 +1,13 @@
-import { EditorState, Plugin, PluginKey, PluginSpec, Transaction } from 
-"prosemirror-state";
+import { EditorState, Plugin, PluginKey, PluginSpec, Transaction } from "prosemirror-state";
 import { WaterproofSchema } from "./schema";
 
 /**
  * Interface describing the state of the input are plugin.
- * Contains fields `locked: boolean` indicating wether non-input areas should be locked (ie. non-teacher mode) and
- * `globalLock: boolean` indicating that we are in a global lockdown state (caused by an unrecoverable error).
+ * Contains field `teacher: boolean` indicating wether we are in teacher mode 
+ * (in teacher mode content outside of input areas should be editable)
  */
 export interface IInputAreaPluginState {
 	teacher: boolean;
-    globalLock: boolean;
 }
 
 /** The plugin key for the input area plugin */
@@ -21,42 +19,21 @@ const InputAreaPluginSpec : PluginSpec<IInputAreaPluginState> = {
 	key: INPUT_AREA_PLUGIN_KEY,
 	state: {
 		init(_config, _instance){
-            // Initially set the locked state to true and globalLock to false.
+            // Initially set the mode to be student (content outside of input areas is locked)
 			return {
-                teacher: false,
-                globalLock: false,
+                teacher: false
 			};
 		},
 		apply(tr : Transaction, value: IInputAreaPluginState, _oldState: 
             EditorState, _newState: EditorState
         ){
 			// produce updated state field for this plugin
-            
             const meta = tr.getMeta(INPUT_AREA_PLUGIN_KEY);
-            if (meta === undefined) {
+            if (meta === undefined || meta.teacher === undefined) {
                 return value;
             } else {
-                let newGlobalLock = value.globalLock;
-                let newTeacher = value.teacher;
-                if (meta == "ErrorMode") {
-                    // We are in a global locked state if we receive this meta.
-                    newTeacher = value.teacher;
-                    newGlobalLock = true;
-
-                    // If we are in lockdown then we remove the editor and show an error message.
-                    const node = document.querySelector("#editor");
-                    if (!node) throw new Error("Node cannot be undefined here");
-                    node.innerHTML = "";
-                    const container = document.createElement("div");
-                    container.classList.add("frozen-thingie");
-                    container.innerHTML = `<div class="frozen-emoji">💀</div><div class="frozen-message">DOCUMENT FROZEN!<br>Reopen file...</div>`;
-                    node.appendChild(container);
-                } else {
-                    newTeacher = meta.teacher ?? false;
-                }
                 return {
-                    teacher: newTeacher,
-                    globalLock: newGlobalLock,
+                    teacher: meta.teacher
                 };
             }
 		}
@@ -65,10 +42,6 @@ const InputAreaPluginSpec : PluginSpec<IInputAreaPluginState> = {
         editable: (state) => {
             // Get locked and globalLock states from the plugin.
             const teacher = INPUT_AREA_PLUGIN_KEY.getState(state)?.teacher ?? false;
-            const globalLock = INPUT_AREA_PLUGIN_KEY.getState(state)?.globalLock ?? false;
-            
-            // In the `globalLock` state nothing is editable anymore.
-            if (globalLock) return false;
             
             // In teacher mode, everything is editable by default.
             if (teacher) return true;

@@ -136,8 +136,6 @@ export function allowedToInsert(state: EditorState): boolean {
     const pluginState = INPUT_AREA_PLUGIN_KEY.getState(state);
     if (!pluginState) return false;
     const isTeacher = pluginState.teacher;
-    // If in global locking mode, disallow everything
-    if (pluginState.globalLock) return false;
     // If the user is in teacher mode always return `true`, if not
     // we check wether they are in a input area. 
     return isTeacher ? true : checkInputArea(state.selection);
