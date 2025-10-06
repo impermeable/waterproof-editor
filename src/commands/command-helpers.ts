@@ -16,15 +16,12 @@ import { getSurroundingNodes } from "./utils";
  * @param nodeType ?
  * @returns An insertion transaction.
  */
-export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean): Transaction | undefined {
-    // console.log("INSERTING ABOVE");
-    
+export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean): Transaction | undefined {    
     const sel = state.selection;
     let trans: Transaction = tr;
 
     const {before} = getSurroundingNodes(sel.$from);
     const beforeIsNewline = before !== null ? (before.type === WaterproofSchema.nodes.newline) : false;
-    // console.log("Before", before?.type.name);
 
     let pos;
 
@@ -45,14 +42,11 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
         pos -= 1; // We are going to insert befofre
     }
 
-    // console.log("Node at", state.doc.nodeAt(pos));
-
     const newBefore = getSurroundingNodes(state.doc.resolve(pos)).before;
-    // console.log("newbefore", newBefore);
 
     const toInsert: PNode[] = [];
 
-    if (insertNewlineBeforeIfNotExists && newBefore?.type !== WaterproofSchema.nodes.newline) {
+    if (insertNewlineBeforeIfNotExists && newBefore !== null && newBefore.type !== WaterproofSchema.nodes.newline) {
         toInsert.push(newline());
     }
     toInsert.push(nodeType.create());
@@ -61,24 +55,6 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
     }
 
     trans = trans.insert(pos, toInsert);
-
-    // if (insertNewlineBeforeIfNotExists && newBefore?.type !== WaterproofSchema.nodes.newline) {
-    //     const node = newline();
-    //     trans = trans.insert(pos, node);
-    //     console.log("inserting newline before");
-    //     // pos += 1;
-    // }
-    // const mainNode = nodeType.create();
-    // trans = trans.insert(pos, mainNode);
-    // // pos += 1;
-    // if (insertNewlineAfterIfNotExists && !beforeIsNewline) {
-    //     const node = newline();
-    //     trans = trans.insert(pos, node);
-    //     console.log("inserting newline after");
-    //     // pos += 1;
-    // }
-
-    // console.log(trans);
 
     return trans;
 }
@@ -91,8 +67,6 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
  * @returns An insertion transaction.
  */
 export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean): Transaction | undefined {
-    // console.log("INSERTING BELOW");
-
     const sel = state.selection;
     let trans: Transaction = tr;
     
@@ -124,7 +98,7 @@ export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeT
         toInsert.push(newline());
     }
     toInsert.push(nodeType.create());
-    if (insertNewlineAfterIfNotExists && newAfter?.type !== WaterproofSchema.nodes.newline) {
+    if (insertNewlineAfterIfNotExists && newAfter !== null && newAfter.type !== WaterproofSchema.nodes.newline) {
         toInsert.push(newline());
     }
 
@@ -142,45 +116,6 @@ export function nodeFromSel(sel: Selection): PNode | undefined {
         return;
     }
 }
-
-
-// function getSurroundingNodes(sel: Selection): {before: PNode | null; after: PNode | null} {
-//     // console.log(sel);
-//     const depth = sel.$from.depth;
-//     // console.log(depth);
-
-//     let parent;
-//     let index; 
-//     if (depth === 0) {
-//         parent = sel.$from.parent;
-//         index = sel.$from.index(0);
-//     } else {
-//         parent = sel.$from.node(1);
-//         index = sel.$from.index(1);
-//     }
-//     // console.log(parent);
-    
-//     // const parent = (thingie !== undefined ? thingie : sel.$from.parent);
-//     // const index = sel.$from.index(1);
-
-//     // console.log(index);
-    
-//     const before = index > 0 ? parent.child(index - 1) : null;
-//     const after = index < parent.childCount - 1 ? parent.child(index + 1) : null;
-//     return {before, after};
-//     // if (sel instanceof TextSelection) {
-//     //     const parent = sel.$from.node(1);
-//     //     const index = sel.$from.index(1);
-//     //     const before = index > 0 ? parent.child(index - 1) : null;
-//     //     const after = index < parent.childCount - 1 ? parent.child(index + 1) : null;
-//     //     return {before, after};
-//     // } else if (sel instanceof NodeSelection) {
-//     //     const parent = sel.$from.parent;
-//     //     const index = sel.$from.index(1);
-//     //     const before = 
-//     // } 
-//     // return {before: null, after: null};
-// }
 
 /**
  * Returns the containing node for the current selection.

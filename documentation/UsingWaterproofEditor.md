@@ -17,9 +17,9 @@ It may be helpful to think of a WaterproofDocument in terms of the following "gr
 ```
 WaterproofDocument  ::= Block+
 
-Block               ::= HintBlock | InputAreaBlock | MarkdownBlock | CoqBlock | MathDisplayBlock
+Block               ::= HintBlock | InputAreaBlock | MarkdownBlock | CoqBlock | MathDisplayBlock | NewlineBlock
 
-InnerBlock          ::= MarkdownBlock | CoqBlock | MathDisplayBlock
+InnerBlock          ::= MarkdownBlock | CoqBlock | MathDisplayBlock | NewlineBlock
 
 HintBlock           ::= Container of InnerBlock+ with a title.
 InputAreaBlock      ::= Container of InnerBlock+
@@ -27,7 +27,10 @@ InputAreaBlock      ::= Container of InnerBlock+
 MarkdownBlock       ::= A container with markdown content (supports inline LaTeX).
 CoqBlock            ::= A container with code content.
 MathDisplayBlock    ::= A container with LaTeX content that should be rendered in math display mode.
+NewlineBlock        ::= A block that keeps track of signifcant newlines
 ```
+
+The schema `WaterproofSchema` defined in [`src/schema/schema.ts`](../src/schema/schema.ts) follows from the above grammar.
 
 ### WaterproofMapping
 
