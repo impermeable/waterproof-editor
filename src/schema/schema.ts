@@ -12,10 +12,6 @@ export const SchemaCell = {
 export type SchemaKeys = keyof typeof SchemaCell;
 export type SchemaNames = typeof SchemaCell[SchemaKeys];
 
-const cell = `(markdown | hint | code | input | math_display | newline)`;
-const containercontent = "(markdown | code | math_display | newline)";
-// const groupMarkdown = "markdowncontent";
-
 /**
  * General schema obtained from `prosemirror-markdown`:
  * https://github.com/ProseMirror/prosemirror-markdown/blob/master/src/schema.ts
@@ -31,7 +27,7 @@ const containercontent = "(markdown | code | math_display | newline)";
 export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 	nodes: {
 		doc: {
-			content: `${cell}*`
+			content: "cell+"
 		},
 
 		text: {
@@ -43,6 +39,7 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		markdown: {
 			block: true,
 			content: "text*",
+			group: "cell containercontent",
 			parseDOM: [{tag: "markdown", preserveWhitespace: "full"}],
 			atom: true,
 			toDOM: () => {
@@ -54,7 +51,8 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		/////// HINT //////
 		//#region Hint
 		hint: {
-			content: `${containercontent}*`,
+			content: "containercontent+",
+			group: "cell",
 			attrs: {
 				title: {default: "💡 Hint"},
 				shown: {default: false}
@@ -68,7 +66,8 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		/////// Input Area //////
 		//#region input
 		input: {
-			content: `${containercontent}*`,
+			content: "containercontent+",
+			group: "cell",
 			attrs: {
 				status: {default: null}
 			},
@@ -82,6 +81,7 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		//#region Code
 		code: {
 			content: "text*",// content is of type text
+			group: "cell containercontent",
 			code: true,
 			atom: true, // doesn't have directly editable content (content is edited through codemirror)
 			toDOM(node) { return ["WaterproofCode", node.attrs, 0] } // <WaterproofCode></WaterproofCode> cells
@@ -92,7 +92,7 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		/////// MATH DISPLAY //////
 		//#region math-display
 		math_display: {
-			group: "math",
+			group: "math cell containercontent",
 			content: "text*",
 			atom: true,
 			code: true,
@@ -101,9 +101,9 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		//#endregion
 
 		newline: {
+			group: "cell containercontent",
 			toDOM(node) { return ["WaterproofNewline", node.attrs]},
 			selectable: false,
-			atom: true,
 		}
 	}
 });
