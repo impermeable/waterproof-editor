@@ -10,11 +10,25 @@
                 "npm: watch:esbuild"
             ],
             "presentation": {
-                "reveal": "never"
+                "reveal": "silent"
             },
             "group": {
                 "kind": "build",
                 "isDefault": true
+            }
+        },
+        {
+            "label": "watch:debug",
+            "dependsOn": [
+                "npm: watch:esbuild-debug",
+                "npm: watch:tsc"
+            ],
+            "presentation": {
+                "reveal": "silent"
+            },
+            "group": {
+                "kind":"build",
+                "isDefault": false
             }
         },
         {
@@ -23,6 +37,17 @@
             "group": "build",
             "isBackground": true,
             "label": "npm: watch:esbuild",
+            "presentation": {
+                "group": "watch",
+                "reveal": "always"
+            }
+        },
+        {
+            "type": "npm",
+            "script": "watch:esbuild-debug",
+            "group": "build",
+            "isBackground": true,
+            "label": "npm: watch:esbuild-debug",
             "presentation": {
                 "group": "watch",
                 "reveal": "always"

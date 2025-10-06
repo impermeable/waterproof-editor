@@ -26,6 +26,7 @@
   },
   "scripts": {
     "watch:esbuild": "node esbuild.mjs --watch",
+    "watch:esbuild-debug": "node esbuild.mjs --watch --debug",
     "watch:tsc": "npx tsc -b --watch",
     "test": "npm run unit-tests",
     "unit-tests": "npx jest",

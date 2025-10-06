@@ -6,6 +6,7 @@ const watch = process.argv.includes("--watch");
 const minify = process.argv.includes("--minify");
 const disableSourcemap = process.argv.includes("--sourcemap=no");
 const genSourcemap = disableSourcemap ? null : { sourcemap: "inline" };
+const debugBuild = process.argv.includes("--debug");
 
 // Setting to `copy` means we bundle the fonts in dist. Setting this to `dataurl` includes the fonts as base64 encoded data in the generated css file.
 const fontLoader = "base64";
@@ -21,6 +22,9 @@ const sharedConfig = {
     ".woff2": fontLoader,
     ".ttf": fontLoader,
     ".grammar": "file"
+  },
+  define: {
+    "DEBUG": debugBuild ? "true" : "false"
   },
   minify,
   plugins: [
