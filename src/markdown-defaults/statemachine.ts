@@ -32,7 +32,7 @@ enum NestedState {
  * code block). Defaults to `""`.
  * @returns A array of `Block` that form a `WaterproofDocument`.
  */
-export function parser(document: string, language: string = ""): WaterproofDocument {
+export function parse(document: string, language: string = ""): WaterproofDocument {
     // Stack to store the produced blocks
     const blocks: Block[] = [];
 
@@ -165,10 +165,12 @@ export function parser(document: string, language: string = ""): WaterproofDocum
     function closeMarkdown() {
         // If there is content in the buffer range then we create a markdown block
         if (i > getRangeStart()) {
-            const range = { from: getRangeStart(), to: i };
+            // const range = { from: getRangeStart(), to: i };
+            const from = getRangeStart();
+            const to = i;
             const markdownBlock = new MarkdownBlock(
                 document.slice(getRangeStart(), i),
-                range, range);
+                {from, to}, {from, to});
             pushBlock(markdownBlock);
         }
     }

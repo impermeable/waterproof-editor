@@ -1,6 +1,6 @@
 import { TagConfiguration } from "../api";
 
-export { parser } from "./statemachine";
+export { parse } from "./statemachine";
 
 export function configuration(languageId: string): TagConfiguration {
     return {

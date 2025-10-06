@@ -1,6 +1,7 @@
-import { Step } from "prosemirror-transform";
-import { DocChange, WrappingDocChange, Severity, WaterproofCompletion, WaterproofSymbol, Node, DocumentSerializer } from ".";
 import { Block } from "../document";
+import { WaterproofCompletion, WaterproofSymbol } from "./Completions";
+import { DocChange, WrappingDocChange } from "./DocChange";
+import { Severity } from "./Severity";
 
 export type Positioned<A> = {
     obj: A;
@@ -36,13 +37,6 @@ export type WaterproofCallbacks = {
     lineNumbers: (linenumbers: Array<number>, version: number) => void,
     /** Fired by the editor when the viewport (the user visible part of the editor changes) */
     viewportHint: (start: number, end: number) => void,
-}
-
-export abstract class WaterproofMapping {
-    abstract get version(): number;
-    abstract findPosition: (index: number) => number;
-    abstract findInvPosition: (index: number) => number;
-    abstract update: (step: Step, doc: Node) => DocChange | WrappingDocChange;
 }
 
 /**
@@ -112,9 +106,7 @@ export type WaterproofEditorConfig = {
     api: WaterproofCallbacks,
     /** Determines how the editor document gets constructed from a string input. */
     documentConstructor: (document: string) => WaterproofDocument,
-    /** How to construct a mapping for this editor. The mapping is responsible for mapping changes from the underlying ProseMirror instance into changes that can be applied to the underlying document. */
-    mapping: new (inputDocument: WaterproofDocument, versionNum: number, tagMap: TagConfiguration, serializer: DocumentSerializer) => WaterproofMapping,
-
+    
     /**
      * The tag configuration to use for this editor.
      * 

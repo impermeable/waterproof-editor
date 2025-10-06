@@ -1,0 +1,616 @@
+import { DocumentSerializer } from "../src/api";
+import { Block } from "../src/document";
+import { Mapping } from "../src/mapping";
+import { configuration, parse } from "../src/markdown-defaults";
+import { WaterproofSchema } from "../src/schema";
+import { Node as ProseNode } from "prosemirror-model";
+
+
+
+function root (childNodes: ProseNode[]) {
+    return WaterproofSchema.nodes.doc.create({}, childNodes);
+}
+
+function constructDocument(blocks: Block[]): ProseNode {
+    const documentContent: ProseNode[] = blocks.map(block => block.toProseMirror());
+    return root(documentContent);
+}
+
+test("BlockAt with simple .mv file", () => {
+    const doc = "# Test\n```coq\nTest.\n```\n<input-area>\n```coq\nTestingtest.\n```\n</input-area>";
+
+    // const doc = "# Test<input-area>\n</input-area>";
+    const blocks = parse(doc, "coq");
+
+    const mapping = new Mapping(blocks, 0, configuration("coq"), new DocumentSerializer(configuration("coq")));
+    const proseDoc = constructDocument(blocks);
+    const tree = mapping.getMapping();
+
+    tree.traverseDepthFirst(treeNode => {
+        if (treeNode === tree.root) return;
+        
+        expect(proseDoc.nodeAt(treeNode.pmRange.from)?.type.name).toBe(treeNode.type);
+    });
+});
+
+test("BlockAt for full tutorial", () => {
+    const tutorial = `# Waterproof Tutorial
+
+Try to solve the exercises below by inspecting the examples. Not sure how to start? You can type **Ctrl + space** or **Command + space** to get a list of possible options.<hint title="📦 Import libraries (click to open/close)">
+\`\`\`coq
+Require Import Rbase.
+Require Import Rfunctions.
+
+Require Import Waterproof.Waterproof.
+Require Import Waterproof.Notations.Common.
+Require Import Waterproof.Notations.Reals.
+Require Import Waterproof.Notations.Sets.
+Require Import Waterproof.Chains.
+Require Import Waterproof.Tactics.
+Require Import Waterproof.Libs.Analysis.SupAndInf.
+Require Import Waterproof.Automation.
+
+Waterproof Enable Automation RealsAndIntegers.
+
+
+Open Scope R_scope.
+Open Scope subset_scope.
+Set Default Goal Selector "!".
+
+Set Bullet Behavior "Waterproof Relaxed Subproofs".
+
+
+Notation "'max(' x , y )" := (Rmax x y)
+  (format "'max(' x ,  y ')'").
+Notation "'min(' x , y )" := (Rmin x y)
+  (format "'min(' x ,  y ')'").
+\`\`\`
+</hint>## 1. We conclude that
+
+### Example:
+\`\`\`coq
+Lemma example_reflexivity :
+  0 = 0.
+Proof.
+Help. (* optional, ask for help, remove from final proof *)
+We conclude that 0 = 0.
+Qed.
+\`\`\`
+### Try it yourself:
+
+**Note**: Note sure how to continue? You can always write the sentence \`Help.\` in your proof to ask for help. Please remove the sentence from your final proof.
+\`\`\`coq
+Lemma exercise_reflexivity :
+  3 = 3.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 2. We need to show that
+Sometimes it is useful to remind the reader or yourself of what you need to show.
+### Example
+\`\`\`coq
+Lemma example_we_need_to_show_that :
+  2 = 2.
+Proof.
+We need to show that 2 = 2.
+We conclude that 2 = 2.
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_we_need_to_show_that :
+  7 = 7.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 3. Show for-all statements: take arbitrary values
+
+### Example:
+\`\`\`coq
+Lemma example_take :
+  ∀ x ∈ ℝ,
+    x = x.
+Proof.
+Take x ∈ ℝ.
+We conclude that x = x.
+Qed.
+\`\`\`
+### Try it yourself:
+\`\`\`coq
+Lemma exercise_take :
+  ∀ x ∈ ℝ,
+    x + 3 = 3 + x.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 4. Show there-exists statements: choose values
+### Example
+\`\`\`coq
+Lemma example_choose :
+  ∃ y ∈ ℝ,
+    y < 3.
+Proof.
+Choose y := 2.
+* Indeed, y ∈ ℝ.
+* We conclude that y < 3.
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_choose :
+  ∃ z > 10,
+    z < 14.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 5. Combine for-all and there-exists statements
+### Example
+\`\`\`coq
+Lemma example_combine_quantifiers :
+  ∀ a ∈ ℝ,
+    ∀ b > 5,
+      ∃ c ∈ ℝ,
+        c > b - a.
+Proof.
+Take a ∈ ℝ.
+Take b > 5.
+Choose c := b - a + 1.
+* Indeed, c ∈ ℝ.
+* We conclude that c > b - a.
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_combine_quantifiers :
+  ∀ x > 3,
+    ∀ y ≥ 4,
+      ∃ z ∈ ℝ,
+        x < z - y.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 6.  Make an assumption
+### Example
+\`\`\`coq
+Lemma example_assumptions :
+  ∀ a ∈ ℝ,
+    a < 0 ⇒ - a > 0.
+Proof.
+Take a ∈ ℝ.
+Assume that a < 0.
+We conclude that - a > 0.
+Qed.
+\`\`\`
+### Another example with explicit labels
+\`\`\`coq
+Lemma example_assumptions_2 :
+  ∀ a ∈ ℝ,
+    a < 0 ⇒ - a > 0.
+Proof.
+Take a ∈ ℝ.
+Assume that a < 0 as (i). (* The label here is optional *)
+By (i) we conclude that - a > 0.
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_assumptions :
+  ∀ a ≥ 2,
+    ∀ b ∈ ℝ,
+      a > 0 ⇒ b > 0 ⇒ a + b > - 1.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 7. Chains of (in)equalities
+### Example
+\`\`\`coq
+Section monotone_function.
+Variable f : ℝ → ℝ.
+Parameter f_increasing : ∀ x ∈ ℝ, ∀ y ∈ ℝ, x ≤ y ⇒ f(x) ≤ f(y).
+
+Lemma example_inequalities:
+  2 < f(0) ⇒ 2 < f(1).
+Proof.
+Assume that 2 < f(0).
+By f_increasing we conclude that & 2 < f(0) ≤ f(1).
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_inequalities:
+  f(3) < 5 ⇒ f(-1) < 5.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 8. Backwards reasoning in smaller steps
+
+### Example
+\`\`\`coq
+Lemma example_backwards :
+  3 < f(0) ⇒ 2 < f(5).
+Proof.
+Assume that 3 < f(0).
+It suffices to show that f(0) ≤ f(5).
+By f_increasing we conclude that f(0) ≤ f(5).
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_backwards :
+  f(5) < 4 ⇒ f(-2) < 5.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 9. Forwards reasoning in smaller steps
+### Example
+\`\`\`coq
+Lemma example_forwards :
+  7 < f(-1) ⇒ 2 < f(6).
+Proof.
+Assume that 7 < f(-1).
+By f_increasing it holds that f(-1) ≤ f(6).
+We conclude that 2 < f(6).
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_forwards :
+  f(7) < 8 ⇒ f(3) ≤ 10.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+
+\`\`\`coq
+End monotone_function.
+\`\`\`
+## 10. Use a *for-all* statement
+### Example
+\`\`\`coq
+Lemma example_use_for_all :
+  ∀ x ∈ ℝ,
+    (∀ ε > 0, x < ε) ⇒
+       x + 1/2 < 1.
+Proof.
+Take x ∈ ℝ.
+Assume that ∀ ε > 0, x < ε as (i).
+Use ε := 1/2 in (i).
+* Indeed, 1 / 2 > 0.
+* It holds that  x < 1 / 2.
+  We conclude that x + 1/2 < 1.
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_use_for_all:
+  ∀ x ∈ ℝ,
+    (∀ ε > 0, x < ε) ⇒
+       10 * x < 1.
+
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 11. Use a *there-exists* statement
+### Example
+\`\`\`coq
+Lemma example_use_there_exists :
+  ∀ x ∈ ℝ,
+    (∃ y > 10, y < x) ⇒
+      10 < x.
+Proof.
+Take x ∈ ℝ.
+Assume that ∃ y > 10, y < x as (i).
+Obtain such a y.
+We conclude that & 10 < y < x.
+Qed.
+\`\`\`
+### Another example
+\`\`\`coq
+Lemma example_use_there_exists_2 :
+  ∀ x ∈ ℝ,
+    (∃ y > 14, y < x) ⇒
+      12 < x.
+Proof.
+Take x ∈ ℝ.
+Assume that ∃ y > 14, y < x as (i).
+Obtain y according to (i).
+We conclude that & 12 < y < x.
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_use_there_exists :
+  ∀ z ∈ ℝ,
+    (∃ x ≥ 5, x^2 < z) ⇒
+      25 < z.
+
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 12. Argue by contradiction
+### Example
+\`\`\`coq
+Lemma example_contradicition :
+  ∀ x ∈ ℝ,
+    (∀ ε > 0, x > 1 - ε) ⇒
+      x ≥ 1.
+Proof.
+Take x ∈ ℝ.
+Assume that ∀ ε > 0, x > 1 - ε as (i).
+We need to show that x ≥ 1.
+We argue by contradiction.
+Assume that ¬ (x ≥ 1).
+It holds that (1 - x) > 0.
+By (i) it holds that x > 1 - (1 - x).
+Contradiction.
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_contradiction :
+  ∀ x ∈ ℝ,
+    (∀ ε > 0, x < ε)
+      ⇒ x ≤ 0.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 13. Split into cases
+### Example
+\`\`\`coq
+Lemma example_cases :
+  ∀ x ∈ ℝ, ∀ y ∈ ℝ,
+    max(x, y) = x ∨ max(x, y) = y.
+Proof.
+\`\`\`
+
+\`\`\`coq
+Take x ∈ (ℝ).
+Take y ∈ (ℝ).
+Either x < y or x ≥ y.
+- Case x < y.
+  It suffices to show that max(x, y) = y.
+  We conclude that max(x, y) = y.
+- Case x ≥ y.
+  It suffices to show that max(x, y) = x.
+  We conclude that max(x, y) = x.
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercises_cases :
+  ∀ x ∈ ℝ, ∀ y ∈ ℝ,
+    min(x, y) = x ∨ min(x, y) = y.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 14. Prove two statements: A ∧ B
+### Example
+\`\`\`coq
+Lemma example_both_statements :
+  ∀ x ∈ ℝ, x^2 ≥ 0 ∧ | x | ≥ 0.
+Proof.
+Take x ∈ ℝ.
+We show both statements.
+* We need to show that x^2 ≥ 0.
+  We conclude that x^2 ≥ 0.
+* We need to show that | x | ≥ 0.
+  We conclude that | x | ≥  0.
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_both_statements :
+  ∀ x ∈ ℝ, 0 * x = 0 ∧ x + 1 > x.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 15. Show both directions
+### Example
+\`\`\`coq
+Lemma example_both_directions :
+  ∀ x ∈ ℝ, ∀ y ∈ ℝ,
+    x < y ⇔ y > x.
+Proof.
+Take x ∈ ℝ.
+Take y ∈ ℝ.
+We show both directions.
+++ We need to show that x < y ⇒ y > x.
+   Assume that x < y.
+   We conclude that y > x.
+++ We need to show that y > x ⇒ x < y.
+   Assume that y > x.
+   We conclude that x < y.
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_both_directions :
+  ∀ x ∈ ℝ, x > 1 ⇔ x - 1 > 0.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 16. Proof by induction
+### Example
+\`\`\`coq
+Lemma example_induction :
+  ∀ n : ℕ → ℕ, (∀ k ∈ ℕ, (n(k) < n(k+1))%nat) ⇒
+    ∀ k ∈ ℕ, (k ≤ n(k))%nat.
+Proof.
+Take n : ℕ → ℕ.
+Assume that (∀ k ∈ ℕ, n(k) < n(k+1))%nat.
+We use induction on k.
++ We first show the base case (0 ≤ n(0))%nat.
+  We conclude that (0 ≤ n(0))%nat.
++ We now show the induction step.
+  Take k ∈ ℕ.
+  Assume that (k ≤ n(k))%nat.
+  It holds that (n(k) < n(k+1))%nat.
+  It holds that (n(k) + 1 ≤ n(k+1))%nat.
+  We conclude that (& k + 1 ≤ n(k) + 1 ≤ n(k + 1))%nat.
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_induction :
+  ∀ F : ℕ → ℕ, (∀ k ∈ ℕ, (F(k+1) = F(k))%nat) ⇒
+    ∀ k ∈ ℕ, (F(k) = F(0))%nat.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+## 17. Expand definitions
+By writing \`Expand the definition of square.\` you get suggestions on how to use the definition of _square_ in your proof.
+
+### Example
+\`\`\`coq
+Definition square (x : ℝ) := x^2.
+\`\`\`
+
+\`\`\`coq
+Lemma example_expand :
+  ∀ x ∈ ℝ, square x ≥ 0.
+Proof.
+Take x ∈ (ℝ).
+Expand the definition of square.
+  (* Remove the above line in your own code! *)
+We need to show that x^2 ≥ 0.
+We conclude that x^2 ≥ 0.
+Qed.
+\`\`\`
+### Try it yourself
+\`\`\`coq
+Lemma exercise_expand :
+  ∀ x ∈ ℝ, - (square x) ≤ 0.
+Proof.
+\`\`\`
+<input-area>
+\`\`\`coq
+
+\`\`\`
+</input-area>
+\`\`\`coq
+Qed.
+\`\`\`
+`
+    const blocks = parse(tutorial, "coq");
+
+    const mapping = new Mapping(blocks, 0, configuration("coq"), new DocumentSerializer(configuration("coq")));
+    const proseDoc = constructDocument(blocks);
+    const tree = mapping.getMapping();
+
+    tree.traverseDepthFirst(treeNode => {
+        if (treeNode === tree.root) return;
+
+        expect(proseDoc.nodeAt(treeNode.pmRange.from)?.type.name).toBe(treeNode.type);
+    });
+});

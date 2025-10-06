@@ -32,10 +32,6 @@ NewlineBlock        ::= A block that keeps track of signifcant newlines
 
 The schema `WaterproofSchema` defined in [`src/schema/schema.ts`](../src/schema/schema.ts) follows from the above grammar.
 
-### WaterproofMapping
-
-The `WaterproofMapping` that is constructed is responsible for translating [ProseMirror positions](https://prosemirror.net/docs/guide/#doc.indexing) into an offset position into the document string.
-
 ### WaterproofEditorConfig
 
 The `WaterproofEditorConfig` object is used to configure an `WaterproofEditor` instance. The user is required to supply:

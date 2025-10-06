@@ -27,13 +27,14 @@ import "./styles";
 import { UPDATE_STATUS_PLUGIN_KEY, updateStatusPlugin } from "./qedStatus";
 import { CodeBlockView } from "./codeview/nodeview";
 import { OS } from "./osType";
-import { Positioned, WaterproofMapping, WaterproofEditorConfig, DiagnosticMessage, ThemeStyle } from "./api";
+import { Positioned, WaterproofEditorConfig, DiagnosticMessage, ThemeStyle } from "./api";
 import { Completion } from "@codemirror/autocomplete";
 import { setCurrentTheme } from "./themeStore";
 import { ServerStatus } from "./api";
 import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "./commands/insert-command";
 import { InsertionPlace } from "./commands";
 import { deleteSelection } from "./commands/commands";
+import { Mapping } from "./mapping";
 
 //@ts-expect-error Defined by esbuild.
 const debugMode = DEBUG;
@@ -60,7 +61,7 @@ export class WaterproofEditor {
 	private _view: EditorView | undefined;
 
 	// The file document mapping
-	private _mapping: WaterproofMapping | undefined;
+	private _mapping: Mapping | undefined;
 
 	// User operating system.
 	private readonly _userOS;
@@ -130,7 +131,7 @@ export class WaterproofEditor {
 		const blocks = this._editorConfig.documentConstructor(content);
 		const proseDoc = constructDocument(blocks);
 
-		this._mapping = new this._editorConfig.mapping(blocks, version, this._editorConfig.tagConfiguration, this._serializer);
+		this._mapping = new Mapping(blocks, version, this._editorConfig.tagConfiguration, this._serializer);
 		this.createProseMirrorEditor(proseDoc);
 
 		/** Ask for line numbers */
