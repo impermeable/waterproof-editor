@@ -59,11 +59,7 @@ export class TextUpdate {
             }
         });
 
-        console.log(tree)
-
-        let newTree = new Tree;
-        newTree = tree;
-        return {result, newTree};
+        return {result, newTree: tree};
     }
 }
 

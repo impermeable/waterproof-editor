@@ -30,7 +30,14 @@ export class Mapping {
         this.textUpdate = new TextUpdate();
         this.nodeUpdate = new NodeUpdate(tMap, serializer);
         this._version = versionNum;
-        this.tree = new Tree();
+        this.tree = new Tree(
+            "", // type
+            { from: 0, to: inputBlocks.at(-1)!.range.to }, // innerRange
+            { from: 0, to: inputBlocks.at(-1)!.range.to }, // range
+            "", // title
+            0, // prosemirrorStart
+            0, // prosemirrorEnd
+            { from: 0, to: 0 });
         this.initTree(inputBlocks);
         // console.log(inputBlocks);
         console.log("MAPPED TREE", JSON.stringify(this.tree));
@@ -127,18 +134,6 @@ export class Mapping {
      * @param blocks 
      */
     private initTree(blocks: Block[]): void {
-        // Create a root node with dummy values
-
-        const root = new TreeNode(
-            "", // type
-            { from: 0, to: blocks.at(-1)!.range.to }, // innerRange
-            { from: 0, to: blocks.at(-1)!.range.to }, // range
-            "", // title
-            0, // prosemirrorStart
-            0, // prosemirrorEnd
-            { from: 0, to: 0 }
-        );
-
         function buildSubtree(blocks: Block[]): TreeNode[] {
             return blocks.map(block => {
 
@@ -164,11 +159,8 @@ export class Mapping {
         }
 
         const topLevelNodes = buildSubtree(blocks);
-        topLevelNodes.forEach(child => root.addChild(child));
+        topLevelNodes.forEach(child => this.tree.root.addChild(child));
 
-        // Set the tree root after mapping
-        this.tree.root = root;
-        // console.log(this.tree);
         // Now compute the ProseMirror offsets after creating the tree structure
         this.computeProsemirrorOffsets(this.tree.root);
     }

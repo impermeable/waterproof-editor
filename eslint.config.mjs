@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 
 const config = tseslint.config(
   {
-    ignores: ["dist/", "*.config.js", "esbuild*.mjs", "scripts/"],
+    ignores: ["dist/", "*.config.js", "esbuild*.mjs", "scripts/", "__tests__/"],
   },
   {
    extends: [

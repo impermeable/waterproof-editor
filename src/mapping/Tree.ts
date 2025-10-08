@@ -48,17 +48,17 @@ export class TreeNode {
     }
 
     shiftCloseOffsets(offset: number, offsetProsemirror?: number): void {
-        this.prosemirrorEnd += offsetProsemirror !== undefined ? offsetProsemirror : offset;
-        this.pmRange.to += offsetProsemirror !== undefined ? offsetProsemirror : offset;
+        this.prosemirrorEnd += offsetProsemirror ?? offset;
+        this.pmRange.to += offsetProsemirror ?? offset;
         this.innerRange.to += offset;
         this.range.to += offset;
     }
 
     shiftOffsets(offset: number, offsetProsemirror?: number): void {
-        this.prosemirrorStart += offsetProsemirror !== undefined ? offsetProsemirror : offset;
-        this.prosemirrorEnd += offsetProsemirror !== undefined ? offsetProsemirror : offset;
-        this.pmRange.from += offsetProsemirror !== undefined ? offsetProsemirror : offset;
-        this.pmRange.to += offsetProsemirror !== undefined ? offsetProsemirror : offset;
+        this.prosemirrorStart += offsetProsemirror ?? offset;
+        this.prosemirrorEnd += offsetProsemirror ?? offset;
+        this.pmRange.from += offsetProsemirror ?? offset;
+        this.pmRange.to += offsetProsemirror ?? offset;
         this.innerRange.from += offset;
         this.innerRange.to += offset;
         this.range.from += offset;
@@ -75,15 +75,16 @@ export class Tree {
     root: TreeNode;
     
     constructor(
-        type: string = "",
-        innerRange: {from: number, to: number} = {from: 0, to: 0},
-        range: {from: number, to: number} = {from: 0, to: 0},
-        title: string = "",
-        prosemirrorStart: number = 0,
-        prosemirrorEnd: number = 0,
-        pmRange: {from: number, to: number} = {from: 0, to: 0}
+        type: string,
+        innerRange: {from: number, to: number},
+        range: {from: number, to: number},
+        title: string,
+        prosemirrorStart: number,
+        prosemirrorEnd: number,
+        pmRange: {from: number, to: number}
     ) {
-        this.root = new TreeNode(type, innerRange, range, title, prosemirrorStart, prosemirrorEnd, pmRange);
+        // Explicitly create new ranges for the TreeNode to avoid shared references
+        this.root = new TreeNode(type, {from: innerRange.from, to: innerRange.to}, {from: range.from, to: range.to}, title, prosemirrorStart, prosemirrorEnd, {from: pmRange.from, to: pmRange.to});
     }
 
     traverseDepthFirst(callback: (node: TreeNode) => void, node: TreeNode = this.root): void {

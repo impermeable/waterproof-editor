@@ -31,8 +31,8 @@ export function wpLift(_tagConf: TagConfiguration): Command {
 
 
 
-        const beforeIsNewline = before !== null ? before.type === WaterproofSchema.nodes.newline : false;
-        const afterIsNewline = after !== null ? after.type === WaterproofSchema.nodes.newline : false;
+        const beforeIsNewline = before === null ? false : before.type === WaterproofSchema.nodes.newline;
+        const afterIsNewline = after === null ? false : after.type === WaterproofSchema.nodes.newline;
         // Can we assume that the newlines in the dcuments are always there for some node?
         // const needsBefore = needsNewlineBefore(node.type, tagConf);
         // const needsAfter = needsNewlineAfter(node.type, tagConf);
