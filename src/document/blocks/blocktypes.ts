@@ -89,6 +89,10 @@ export class MathDisplayBlock implements Block {
     constructor( public stringContent: string, public range: BlockRange, public innerRange: BlockRange ) {};
 
     toProseMirror() {
+        if (this.stringContent === "") {
+            // If the string content is empty, we create an empty math display node.
+            return WaterproofSchema.nodes.math_display.create();
+        }
         return mathDisplay(this.stringContent);
     }
 
@@ -110,6 +114,10 @@ export class MarkdownBlock implements Block {
     };
 
     toProseMirror() {
+        if (this.stringContent === "") {
+            // If the string content is empty, we create an empty markdown node.
+            return WaterproofSchema.nodes.markdown.create();
+        }
         return markdown(this.stringContent);
     }
 
@@ -129,7 +137,7 @@ export class CodeBlock implements Block {
 
     toProseMirror() {
         if (this.stringContent === "") {
-            // If the string content is empty, we create an empty coqcode node.
+            // If the string content is empty, we create an empty code node.
             return WaterproofSchema.nodes.code.create();
         }
         return code(this.stringContent);
@@ -137,7 +145,7 @@ export class CodeBlock implements Block {
 
     // Debug print function.
     debugPrint(level: number): void {
-        console.log(`${indentation(level)}CoqCodeBlock {${debugInfo(this)}}: {${this.stringContent.replaceAll("\n", "\\n")}}`);
+        console.log(`${indentation(level)}CodeBlock {${debugInfo(this)}}: {${this.stringContent.replaceAll("\n", "\\n")}}`);
     }
 }
 
