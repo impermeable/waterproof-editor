@@ -5,8 +5,6 @@ import { configuration, parse } from "../src/markdown-defaults";
 import { WaterproofSchema } from "../src/schema";
 import { Node as ProseNode } from "prosemirror-model";
 
-
-
 function root (childNodes: ProseNode[]) {
     return WaterproofSchema.nodes.doc.create({}, childNodes);
 }
@@ -19,7 +17,6 @@ function constructDocument(blocks: Block[]): ProseNode {
 test("BlockAt with simple .mv file", () => {
     const doc = "# Test\n```coq\nTest.\n```\n<input-area>\n```coq\nTestingtest.\n```\n</input-area>";
 
-    // const doc = "# Test<input-area>\n</input-area>";
     const blocks = parse(doc, "coq");
 
     const mapping = new Mapping(blocks, 0, configuration("coq"), new DocumentSerializer(configuration("coq")));

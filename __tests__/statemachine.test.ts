@@ -1,5 +1,3 @@
-/* eslint-disable no-useless-escape */
-
 import { parse } from "../src/markdown-defaults";
 import { isMarkdownBlock, isCodeBlock, isHintBlock, isInputAreaBlock, isMathDisplayBlock, isNewlineBlock } from "../src/document/blocks";
 import { HintBlock } from "../src/document";

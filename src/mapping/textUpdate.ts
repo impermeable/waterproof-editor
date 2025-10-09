@@ -1,6 +1,6 @@
 import { Mapping } from "./newmapping";
 import { ParsedStep, OperationType } from "./types";
-import { Tree, TreeNode } from "./Tree";
+import { TreeNode } from "./Tree";
 import { typeFromStep } from "./helper-functions";
 import { ReplaceStep } from "prosemirror-transform";
 import { TextUpdateError, DocChange } from "../api";
@@ -20,7 +20,7 @@ export class TextUpdate {
 
         const tree = mapping.getMapping()
 
-        const targetCell: TreeNode | null = tree.findNodeByProsemirrorPosition(step.from)
+        const targetCell: TreeNode | null = tree.findNodeByProsePos(step.from)
         if (targetCell === null) throw new TextUpdateError(" Target cell is not in mapping!!! ");
 
         if (targetCell === tree.root) throw new TextUpdateError(" Text can not be inserted into the root ");
@@ -34,7 +34,7 @@ export class TextUpdate {
         /** The offset within the correct stringCell for the step action */ 
         const offsetEnd = step.to - targetCell.prosemirrorStart;  
 
-        const text = step.slice.content.firstChild && step.slice.content.firstChild.text ? step.slice.content.firstChild.text : "";
+        const text = step.slice.content.firstChild?.text === undefined ? "" : step.slice.content.firstChild.text;
 
         const offset = getTextOffset(type,step);
 
@@ -47,7 +47,6 @@ export class TextUpdate {
 
         const target = {prosemirrorStart: targetCell.prosemirrorStart, prosemirrorEnd: targetCell.prosemirrorEnd}
         tree.traverseDepthFirst((node: TreeNode) => {
-            console.log("To be updated?", node)
             if (node.prosemirrorStart <= target.prosemirrorStart && target.prosemirrorEnd <= node.prosemirrorEnd) {
                 // This node is either the node we are making the text update in or a parent node
                 // We only have to update the closing ranges
@@ -68,7 +67,7 @@ function getTextOffset(type: OperationType, step: ReplaceStep) : number  {
     if (type == OperationType.delete) return step.from - step.to;
 
     /** Validate step if not a delete type */
-    if (step.slice.content.firstChild === null || step.slice.content.firstChild.text === undefined) throw new TextUpdateError(" Invalid replace step " + step);
+    if (step.slice.content.firstChild?.text === undefined) throw new TextUpdateError(" Invalid replace step " + step);
 
     if (type == OperationType.insert) return step.slice.content.firstChild.text?.length;
 

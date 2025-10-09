@@ -40,7 +40,7 @@ export class Mapping {
             { from: 0, to: 0 });
         this.initTree(inputBlocks);
         // console.log(inputBlocks);
-        console.log("MAPPED TREE", JSON.stringify(this.tree));
+        console.log("MAPPED TREE", JSON.stringify(this.tree, null, 1));
     }
 
     //// The getters of this class
@@ -141,8 +141,9 @@ export class Mapping {
 
                 const node = new TreeNode(
                     block.type,
-                    block.innerRange,
-                    block.range,
+                    // Explicit dereferencing of object properties to avoid shared references to innerRange and range
+                    {from: block.innerRange.from, to: block.innerRange.to},
+                    {from: block.range.from, to: block.range.to},
                     title,
                     0, // prosemirrorStart (to be calculated later)
                     0, // prosemirrorEnd (to be calculated later)

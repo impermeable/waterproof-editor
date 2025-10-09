@@ -9,7 +9,7 @@ import { ReplaceAroundStep, ReplaceStep } from "prosemirror-transform";
 
 export class NodeUpdate {
     // Store the tag configuration and serializer
-    constructor (private tagConf: TagConfiguration, private serializer: DocumentSerializer) {} 
+    constructor (private readonly tagConf: TagConfiguration, private readonly serializer: DocumentSerializer) {} 
 
     // Utility to get the opening and closing tag for a given node type
     nodeNameToTagPair(nodeName: string, title: string = ""): [string, string] {
@@ -104,9 +104,6 @@ export class NodeUpdate {
         let serialized = "";
         step.slice.content.forEach(node => {
             const output = this.serializer.serializeNode(node);
-            console.log("OUTPUT", output);
-            console.log("node", node.type.name);
-            console.log("output", output);
             serialized += output;
             const builtNode = this.buildTreeFromNode(node, offsetOriginal, offsetProse);
             nodes.push(builtNode);
@@ -306,9 +303,7 @@ export class NodeUpdate {
         return { result: docChange, newTree: tree };
     }
     
-    replaceAroundReplace(step: ReplaceAroundStep, tree: Tree): ParsedStep {
-        console.log("IN REPLACE AROUND REPLACE", step, tree);
-        
+    replaceAroundReplace(step: ReplaceAroundStep, tree: Tree): ParsedStep {        
         // We start by checking what kind of node we are wrapping with
         const wrappingNode = step.slice.content.firstChild;
         if (!wrappingNode) {
@@ -381,7 +376,6 @@ export class NodeUpdate {
         if (!parent) throw new NodeUpdateError(" Could not find parent of nodes being wrapped ");
 
         const nodesInRange = tree.nodesInProseRange(positions.proseStart, positions.proseEnd);
-        console.log("NODES IN RANGE", nodesInRange);
 
         // Remove the nodes that are now children of the new wrapping node from their current parent
         nodesInRange.forEach(n => {
