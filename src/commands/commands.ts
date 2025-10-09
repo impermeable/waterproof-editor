@@ -79,12 +79,16 @@ export function wpLift(_tagConf: TagConfiguration): Command {
 
 export function deleteSelection(tagConf: TagConfiguration): Command {
     return (state, dispatch) => {
-        if (state.selection.empty) return false;
-        if (state.selection instanceof TextSelection) {
+        const sel = state.selection;
+        if (sel.empty) return false;
+        if (sel instanceof TextSelection) {
             if (dispatch) dispatch(state.tr.deleteSelection().scrollIntoView());
             return true;
-        } else if (state.selection instanceof NodeSelection) {
-            const {parent, index} = getParentAndIndex(state.selection.$from);
+        } else if (sel instanceof NodeSelection) {
+            // const {parent, index} = getParentAndIndex(state.selection.$from);
+            const parentAndIndex = getParentAndIndex(sel);
+            if (!parentAndIndex) return false;
+            const {parent, index} = parentAndIndex;
 
             const before = parent.maybeChild(index - 1);
             const after = parent.maybeChild(index + 1);
@@ -103,7 +107,7 @@ export function deleteSelection(tagConf: TagConfiguration): Command {
                 // We need to keep one of the newlines, so we delete the node and the after newline
                 if (dispatch) dispatch(state.tr.delete(state.selection.from, state.selection.to + afterSize).scrollIntoView());
                 return true;
-            } else if (afterIsNewline && afteer !== null && needsNewlineBefore(state.selection.node.type, tagConf)) {
+            } else if (afterIsNewline && afteer !== null && needsNewlineBefore(sel.node.type, tagConf)) {
                 // After is newline and afteer needs newline before
                 // We need to keep the after newline, so we delete the node and the before newline
                 if (dispatch) dispatch(state.tr.delete(state.selection.from - beforeSize, state.selection.to).scrollIntoView());

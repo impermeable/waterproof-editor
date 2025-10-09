@@ -39,8 +39,8 @@ export class TreeNode {
 
     addChild(child: TreeNode): void {
         this.children.push(child);
-        // Sort children by originalStart to maintain order
-        this.children.sort((a, b) => a.innerRange.from - b.innerRange.from);
+        // Sort children by pmRange to maintain order
+        this.children.sort((a, b) => a.pmRange.from - b.pmRange.from);
     }
 
     removeChild(child: TreeNode): void {
@@ -67,7 +67,9 @@ export class TreeNode {
 
     traverseDepthFirst(callback: (node: TreeNode) => void): void {
         callback(this);
-        this.children.forEach(child => child.traverseDepthFirst(callback));
+        for(const child of this.children) {
+            child.traverseDepthFirst(callback);
+        }
     }
 }
 
@@ -89,7 +91,10 @@ export class Tree {
 
     traverseDepthFirst(callback: (node: TreeNode) => void, node: TreeNode = this.root): void {
         callback(node);
-        node.children.forEach(child => this.traverseDepthFirst(callback, child));
+        for(const child of node.children) {
+            // this.traverseDepthFirst(callback, child);
+            child.traverseDepthFirst(callback);
+        }
     }
 
     traverseBreadthFirst(callback: (node: TreeNode) => void): void {
@@ -151,8 +156,15 @@ export class Tree {
         return null;
     }
 
-    findNodeByProsePos(pos: number, node: TreeNode | null = this.root): TreeNode | null {
-        if (!node) return null;
+    /**
+     * Find the most specific node that contains the given ProseMirror position, this function is biased to find the
+     * first node (in terms of position) containing the position. I.e. in a tree with a code cell that ends at 28 and a newline that
+     * starts at 28, we will return the code cell when searching for position 28.
+     * @param pos ProseMirror position to search for
+     * @param node The node to start the search from, defaults to the root node of the tree
+     * @returns The most specific node containing the position, or null if no such node exists
+     */
+    findNodeByProsePos(pos: number, node: TreeNode = this.root): TreeNode | null {
         if (pos < node.pmRange.from || pos > node.pmRange.to) return null;
 
         // Binary search among children
@@ -161,7 +173,10 @@ export class Tree {
         while (left <= right) {
             const mid = Math.floor((left + right) / 2);
             const child = node.children[mid];
-            if (pos > child.pmRange.from && pos < child.pmRange.to) {
+            if (pos === child.pmRange.from && mid > 0) {
+                return node.children[mid-1];
+            } else if (pos >= child.pmRange.from && pos <= child.pmRange.to) {
+                if (child.children.length === 0) return child;
                 return this.findNodeByProsePos(pos, child);
             } else if (pos <= child.pmRange.to) {
                 right = mid - 1;

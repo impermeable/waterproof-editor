@@ -1,36 +1,29 @@
-import { ResolvedPos, Node, NodeType } from "prosemirror-model";
+import { Node, NodeType } from "prosemirror-model";
 import { TagConfiguration } from "../api";
 import { WaterproofSchema } from "../schema";
+import { NodeSelection, Selection, TextSelection } from "prosemirror-state";
 
-export function getSurroundingNodes($pos: ResolvedPos): {before: Node | null; after: Node | null} {
-    const depth = $pos.depth;
-    let parent;
-    let index; 
-    if (depth === 0) {
-        parent = $pos.parent;
-        index = $pos.index(0);
-    } else {
-        parent = $pos.node(1);
-        index = $pos.index(1);
-    }    
-    const before = index > 0 ? parent.child(index - 1) : null;
-    const after = index < parent.childCount - 1 ? parent.child(index + 1) : null;
-    return {before, after};
+export function getSurroundingNodes(sel: Selection): {before: Node | null; after: Node | null} {
+    const parentAndIndex = getParentAndIndex(sel);
+    if (parentAndIndex === null) return {before: null, after: null};
+    const {parent, index} = parentAndIndex;
+    return {
+        before: parent.maybeChild(index - 1),
+        after: parent.maybeChild(index + 1)
+    };
 }
 
-export function getParentAndIndex($pos: ResolvedPos): {parent: Node; index: number} {
-    const depth = $pos.depth;
-    let parent;
-    let index;
-    if (depth === 0) {
-        parent = $pos.parent;
-        index = $pos.index(0);
+export function getParentAndIndex(sel: Selection): {parent: Node; index: number} | null {
+    if (sel instanceof NodeSelection) {
+        const depth = sel.$from.depth;
+        return {parent: sel.$from.parent, index: sel.$from.index(depth)};
+    } else if (sel instanceof TextSelection) {
+        const depth = sel.$from.depth;
+        return {parent: sel.$from.node(depth - 1), index: sel.$from.index(depth - 1)};
     }
-    else {
-        parent = $pos.node(1);
-        index = $pos.index(1);
-    }
-    return {parent, index};
+    // TODO: If the selection is not a node or text selection then it still can be AllSelection, which
+    // we will ignore for now.
+    return null;
 }
 
 export function needsNewlineBefore(nodeType: NodeType, tagConf: TagConfiguration): boolean {

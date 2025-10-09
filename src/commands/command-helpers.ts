@@ -5,7 +5,7 @@ import { EditorState, TextSelection, Transaction, Selection, NodeSelection } fro
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { WaterproofSchema } from "../schema";
 import { newline } from "../document/blocks/schema";
-import { getSurroundingNodes } from "./utils";
+import { getParentAndIndex } from "./utils";
 
 /////// Helper functions /////////
 
@@ -13,15 +13,19 @@ import { getSurroundingNodes } from "./utils";
  * Helper function for inserting a new node above the currently selected one.
  * @param state The current editor state.
  * @param tr The current transaction for the state of the editor. 
- * @param nodeType ?
+ * @param nodeType TODO
  * @returns An insertion transaction.
  */
 export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean): Transaction | undefined {    
     const sel = state.selection;
     let trans: Transaction = tr;
 
-    const {before} = getSurroundingNodes(sel.$from);
-    const beforeIsNewline = before !== null ? (before.type === WaterproofSchema.nodes.newline) : false;
+    const parentAndIndex = getParentAndIndex(sel);
+    if (parentAndIndex === null) return;
+    const {parent, index} = parentAndIndex;
+
+    const nodeAboveSelection = parent.maybeChild(index - 1);
+    const beforeIsNewline = nodeAboveSelection === null ? false : (nodeAboveSelection.type === WaterproofSchema.nodes.newline);
 
     let pos;
 
@@ -36,17 +40,17 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
         return;
     }
 
-
     if (beforeIsNewline) {
         // Assumption: If a newline appears before a node the current node wants that.
-        pos -= 1; // We are going to insert befofre
+        pos -= 1; // We are going to insert before the newline node
     }
 
-    const newBefore = getSurroundingNodes(state.doc.resolve(pos)).before;
+    const beforeNewline = parent.maybeChild(index - 2);
+    const hasNewlineBefore = beforeNewline === null ? false : beforeNewline.type === WaterproofSchema.nodes.newline;
 
     const toInsert: PNode[] = [];
 
-    if (insertNewlineBeforeIfNotExists && newBefore !== null && newBefore.type !== WaterproofSchema.nodes.newline) {
+    if (insertNewlineBeforeIfNotExists && !hasNewlineBefore && beforeIsNewline) {
         toInsert.push(newline());
     }
     toInsert.push(nodeType.create());
@@ -63,16 +67,20 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
  * Helper function for inserting a new node below the currently selected one.
  * @param state The current editor state.
  * @param tr The current transaction for the state of the editor. 
- * @param nodeType ?
+ * @param nodeType TODO
  * @returns An insertion transaction.
  */
 export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean): Transaction | undefined {
     const sel = state.selection;
     let trans: Transaction = tr;
     
-    const {after} = getSurroundingNodes(sel.$from);
-    const afterIsNewline = after !== null ? (after.type === WaterproofSchema.nodes.newline) : false;
-    // console.log("After", after?.type.name);
+    const parentAndIndex = getParentAndIndex(sel);
+    if (parentAndIndex === null) return;
+    const {parent, index} = parentAndIndex;
+
+    const nodeBelowSelection = parent.maybeChild(index + 1);
+    const afterIsNewline = nodeBelowSelection === null ? false : (nodeBelowSelection.type === WaterproofSchema.nodes.newline);
+
     let pos;
     
     if (sel instanceof NodeSelection) {
@@ -89,16 +97,16 @@ export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeT
         pos += 1; // We are going to insert after
     }
     
-    // console.log("Node at", state.doc.nodeAt(pos));
-    const newAfter = getSurroundingNodes(state.doc.resolve(pos)).after;
-    // console.log("newafter", newAfter);
+    const afterNewline = parent.maybeChild(index + 2);
+    const hasNewlineAfter = afterNewline === null ? false : afterNewline.type === WaterproofSchema.nodes.newline;
+
     
     const toInsert: PNode[] = [];
     if (insertNewlineBeforeIfNotExists && !afterIsNewline) {
         toInsert.push(newline());
     }
     toInsert.push(nodeType.create());
-    if (insertNewlineAfterIfNotExists && newAfter !== null && newAfter.type !== WaterproofSchema.nodes.newline) {
+    if (insertNewlineAfterIfNotExists && !hasNewlineAfter && afterIsNewline) {
         toInsert.push(newline());
     }
 

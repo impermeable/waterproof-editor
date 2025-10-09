@@ -90,19 +90,21 @@ export class NodeUpdate {
         const parent = tree.findParent(nodeInTree);
         if (!parent) throw new NodeUpdateError(" Could not find parent of insertion position in mapping ");
 
+        // When we are inserting at zero we manually set the document pos to zero        
+        const atZero = step.from === 0;
+        // Should we use the to position of the node we found?
+        const useTo = nodeInTree.pmRange.to === step.from;
 
-        console.log("nodeInTree", JSON.stringify(nodeInTree));
+        const documentPos = atZero ? 0 : (useTo ? nodeInTree.range.to : nodeInTree.range.from);
 
-        const documentPos = nodeInTree.range.to;
-
-        let offsetProse = nodeInTree.pmRange.to;
-        let offsetOriginal = nodeInTree.range.to;
+        let offsetProse = atZero ? 0 : (useTo ? nodeInTree.pmRange.to : nodeInTree.pmRange.from);
+        let offsetOriginal = documentPos;
         
         const nodes: TreeNode[] = [];
         let serialized = "";
         step.slice.content.forEach(node => {
             const output = this.serializer.serializeNode(node);
-            // console.log("OUTPUT", output);
+            console.log("OUTPUT", output);
             console.log("node", node.type.name);
             console.log("output", output);
             serialized += output;
@@ -112,11 +114,6 @@ export class NodeUpdate {
             offsetProse += node.nodeSize;
         });
 
-        console.log("SERIALIZED BY TEXT SERIALIZE\n", serialized);
-        console.log("NODES BY BUILD TREE\n", nodes);
-
-        // throw new NodeUpdateError(" Insert not supported yet ");
-        
         const docChange: DocChange = {
             startInFile: documentPos,
             endInFile: documentPos,
@@ -135,7 +132,7 @@ export class NodeUpdate {
 
             // The inserted nodes could be children of nodes already in the tree (at least of the root node,
             // but possibly also of hint or input nodes)
-            if (thisNode.pmRange.from < nodeInTree.pmRange.from && thisNode.pmRange.to > nodeInTree.pmRange.to) {
+            if (thisNode.pmRange.from <= nodeInTree.pmRange.from && thisNode.pmRange.to >= nodeInTree.pmRange.to) {
                 thisNode.shiftCloseOffsets(textOffset, proseOffset);
             }
         });
@@ -146,65 +143,6 @@ export class NodeUpdate {
         
         return { result: docChange, newTree: tree };
     }
-
-    // replaceInsert(step: ReplaceStep, tree: Tree): ParsedStep {
-    //     const firstNode = step.slice.content.firstChild;
-    //     if (!firstNode) throw new NodeUpdateError(" No nodes in slice content ");
-
-    //     // TODO: The plus 1 does not work when the insert is at the end of some block
-    //     console.log("BLABLABLA", tree.findHighestContainingNode(step.from));
-    //     const nodeInTree = tree.findNodeByProsemirrorPosition(step.from + 1);
-    //     console.log("nodeInTree", JSON.stringify(nodeInTree));
-    //     if (!nodeInTree) throw new NodeUpdateError(" Could not find position to insert node in mapping ");
-    //     const parent = tree.findParent(nodeInTree);
-    //     if (!parent) throw new NodeUpdateError(" Could not find parent of insertion position in mapping ");
-
-        
-    //     // let offsetOriginal = nodeInTree.range.to;
-    //     let offsetProse = nodeInTree.prosemirrorEnd;
-    //     let offsetOriginal = step.from;
-    //     console.log("OffsetProse", offsetProse, "OffsetOriginal", offsetOriginal, "Step.from", step.from, "Step.to", step.to);
-    //     const nodes: TreeNode[] = [];
-    //     let serialized = "";
-    //     step.slice.content.forEach(node => {
-    //         const output = this.serializer.serializeNode(node);
-    //         // console.log("OUTPUT", output);
-    //         console.log("node", node.type.name);
-    //         console.log("output", output);
-    //         serialized += output;
-    //         const builtNode = this.buildTreeFromNode(node, offsetOriginal, offsetProse);
-    //         nodes.push(builtNode);
-    //         offsetOriginal += output.length;
-    //         offsetProse += node.nodeSize + (builtNode.innerRange.to - builtNode.innerRange.from);
-    //     });
-    //     console.log("SERIALIZED BY TEXT SERIALIZE\n", serialized);
-    //     console.log("NODES BY BUILD TREE\n", nodes);
-        
-    //     const docChange: DocChange = {
-    //         startInFile: nodeInTree.range.to,
-    //         endInFile: nodeInTree.range.to,
-    //         finalText: serialized
-    //     };
-
-    //     const proseOffset = step.slice.content.size;
-    //     const textOffset = serialized.length;
-
-    //     // now we need to update the tree
-    //     tree.traverseDepthFirst((thisNode: TreeNode) => {
-    //         if (thisNode.prosemirrorStart >= nodeInTree.prosemirrorEnd) {
-    //             thisNode.shiftOffsets(textOffset, proseOffset);
-    //         }
-    //     });
-
-    //     // We add the nodes later so that updating in the step before does not affect the positions of the nodes we are adding
-    //     nodes.forEach(n => parent.addChild(n));
-        
-    //     tree.root.shiftCloseOffsets(textOffset, proseOffset);
-
-    //     return { result: docChange, newTree: tree };
-    // }
-
-    
 
     buildTreeFromNode(node: Node, startOrig: number, startProse: number): TreeNode {
 
@@ -278,8 +216,6 @@ export class NodeUpdate {
                 }
             }
         });
-
-        console.log("NODES TO DELETE", nodesToDelete);
 
         if (nodesToDelete.length == 0) {
             throw new NodeUpdateError("Could not find any nodes to delete in the given step.");
