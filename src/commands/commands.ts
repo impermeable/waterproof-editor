@@ -92,15 +92,15 @@ export function deleteSelection(tagConf: TagConfiguration): Command {
 
             const before = parent.maybeChild(index - 1);
             const after = parent.maybeChild(index + 1);
-            const beforeSize = before !== null ? before.nodeSize : 0;
-            const afterSize = after !== null ? after.nodeSize : 0;
+            const beforeSize = before === null ? 0 : before.nodeSize;
+            const afterSize = after === null ? 0 : after.nodeSize;
             // node before before
             const befoore = parent.maybeChild(index - 2);
             // node after after
             const afteer = parent.maybeChild(index + 2);
             
-            const beforeIsNewline = before !== null ? before.type === WaterproofSchema.nodes.newline : false;
-            const afterIsNewline = after !== null ? after.type === WaterproofSchema.nodes.newline : false;
+            const beforeIsNewline = before === null ? false : before.type === WaterproofSchema.nodes.newline;
+            const afterIsNewline = after === null ? false : after.type === WaterproofSchema.nodes.newline;
 
             if (beforeIsNewline && afterIsNewline && befoore !== null && afteer !== null && needsNewlineAfter(befoore.type, tagConf) && needsNewlineBefore(afteer.type, tagConf)) {
                 // Before and after are newlines, and befoore needs newline after and afteer needs newline before
@@ -148,8 +148,8 @@ function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration): Command {
         const after = sel.$to.nodeAfter;
         
         if (dispatch) {
-            const beforeIsNewline = before !== null ? before.type === WaterproofSchema.nodes.newline : false;
-            const afterIsNewline = after !== null ? after.type === WaterproofSchema.nodes.newline : false;
+            const beforeIsNewline = before === null ? false : before.type === WaterproofSchema.nodes.newline;
+            const afterIsNewline = after === null ? false : after.type === WaterproofSchema.nodes.newline;
             const nodeBeingWrapped = sel.node;
             const needsBefore = needsNewlineBefore(nodeBeingWrapped.type, tagConf);
             const needsAfter = needsNewlineAfter(nodeBeingWrapped.type, tagConf);

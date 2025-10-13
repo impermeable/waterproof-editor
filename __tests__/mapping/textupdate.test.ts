@@ -1,22 +1,20 @@
 import { Slice, Fragment } from "prosemirror-model";
 import { ReplaceStep } from "prosemirror-transform";
-import { DocChange, DocumentSerializer } from "../src/api";
-import { Mapping } from "../src/mapping";
-import { TextUpdate } from "../src/mapping/textUpdate";
-import { configuration, parse } from "../src/markdown-defaults";
-import { WaterproofSchema } from "../src/schema";
+import { DocChange, DocumentSerializer, WaterproofDocument } from "../../src/api";
+import { Mapping } from "../../src/mapping";
+import { TextUpdate } from "../../src/mapping/textUpdate";
+import { configuration } from "../../src/markdown-defaults";
+import { WaterproofSchema } from "../../src/schema";
+import { MarkdownBlock } from "../../src/document";
 
-
-
-function createDocAndMapping(doc: string) {
-  const blocks = parse(doc, "coq");
-  const mapping = new Mapping(blocks, 0, configuration("coq"), new DocumentSerializer(configuration("coq")));
+function createMapping(doc: WaterproofDocument) {
+  const mapping = new Mapping(doc, 0, configuration("coq"), new DocumentSerializer(configuration("coq")));
   return mapping;
 }
 
 test("ReplaceStep insert — inserts text into a block", () => {
-  const content = `Hello`;
-  const mapping = createDocAndMapping(content);
+  const blocks = [new MarkdownBlock("Hello", {from: 0, to: 5}, {from: 0, to: 5})];
+  const mapping = createMapping(blocks);
   const slice: Slice = new Slice(Fragment.from(WaterproofSchema.text(" world")), 0, 0);
   const step: ReplaceStep = new ReplaceStep(6, 6, slice);
   console.log("here is the step", step);
@@ -38,9 +36,10 @@ test("ReplaceStep insert — inserts text into a block", () => {
   });
 });
 
+const helloWorldMarkdownBlock = new MarkdownBlock("Hello world", {from: 0, to: 11}, {from: 0, to: 11});
+
 test("ReplaceStep insert — inserts text in the middle of a block", () => {
-  const content = "Hello world";
-  const mapping = createDocAndMapping(content);
+  const mapping = createMapping([helloWorldMarkdownBlock]);
   const slice: Slice = new Slice(Fragment.from(WaterproofSchema.text("big ")), 0, 0);
   const step: ReplaceStep = new ReplaceStep(7, 7, slice);
   const textUpdate = new TextUpdate();
@@ -63,8 +62,7 @@ test("ReplaceStep insert — inserts text in the middle of a block", () => {
 });
 
 test("ReplaceStep delete — deletes part of a block", () => {
-  const content = `Hello world`;
-  const mapping = createDocAndMapping(content);
+  const mapping = createMapping([helloWorldMarkdownBlock]);
   const step: ReplaceStep = new ReplaceStep(7, 12, Slice.empty);
   const textUpdate = new TextUpdate();
   const {newTree, result} = textUpdate.textUpdate(step, mapping);
@@ -85,9 +83,8 @@ test("ReplaceStep delete — deletes part of a block", () => {
 });
 
 
-test("ReplaceStep replace - replaces part of a block", () => {
-  const originalContent = "Hello world";
-  const mapping = createDocAndMapping(originalContent);
+test("ReplaceStep replace — replaces part of a block", () => {
+  const mapping = createMapping([helloWorldMarkdownBlock]);
   const slice: Slice = new Slice(Fragment.from(WaterproofSchema.text("there")), 0, 0);
   const step: ReplaceStep = new ReplaceStep(7, 12, slice);
   const textUpdate = new TextUpdate();

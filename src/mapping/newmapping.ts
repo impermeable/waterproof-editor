@@ -39,7 +39,6 @@ export class Mapping {
             0, // prosemirrorEnd
             { from: 0, to: 0 });
         this.initTree(inputBlocks);
-        // console.log(inputBlocks);
         console.log("MAPPED TREE", JSON.stringify(this.tree, null, 1));
     }
 
@@ -66,20 +65,18 @@ export class Mapping {
         return (index - node.prosemirrorStart) + node.innerRange.from;
     }
 
-    /** Returns the prosemirror index of vscode document model index */
-    public findInvPosition(index: number) {
-        const correctNode: TreeNode | null = this.tree.findNodeByOriginalPosition(index);
-        if (correctNode === null) throw new MappingError(` [findInvPosition] The prosemirror index for position (${index}) could not be found `);
-        return (index - correctNode.innerRange.from) + correctNode.prosemirrorStart;
-    }
-
-    private inStringCell(step: ReplaceStep | ReplaceAroundStep): boolean {
-        const correctNode: TreeNode | null = this.tree.findNodeByProsemirrorPosition(step.from);
-        return correctNode !== null && step.to <= correctNode.prosemirrorEnd;
+    /**
+     * Returns the prosemirror index corresponding to the given document offset.
+     * @param offset The offset (in characters) in the document.
+     * @returns The corresponding prosemirror index.
+     */
+    public findInvPosition(offset: number) {
+        const correctNode: TreeNode | null = this.tree.findNodeByOriginalPosition(offset);
+        if (correctNode === null) throw new MappingError(` [findInvPosition] The prosemirror index for offset (${offset}) could not be found `);
+        return (offset - correctNode.innerRange.from) + correctNode.prosemirrorStart;
     }
 
     public update(step: Step, doc: Node): DocChange | WrappingDocChange {
-        console.log("STEP IN UPDATE", step)
         if (!(step instanceof ReplaceStep || step instanceof ReplaceAroundStep))
             throw new MappingError("Step update (in textDocMapping) should not be called with a non document changing step");
 
@@ -216,9 +213,9 @@ export class Mapping {
             offset += (node.innerRange.to - node.innerRange.from);
         } else {
             // Non-leaf: handle children and end tag
-            for (let i = 0; i < node.children.length; i++) {
+            for (const child of node.children) {
                 offset = this.computeProsemirrorOffsets(
-                    node.children[i],
+                    child,
                     offset,
                     level + 1
                 );

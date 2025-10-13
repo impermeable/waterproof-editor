@@ -92,7 +92,6 @@ export class Tree {
     traverseDepthFirst(callback: (node: TreeNode) => void, node: TreeNode = this.root): void {
         callback(node);
         for(const child of node.children) {
-            // this.traverseDepthFirst(callback, child);
             child.traverseDepthFirst(callback);
         }
     }
