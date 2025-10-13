@@ -120,7 +120,7 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 		// Get the current cursor position.
 		const pos = this._getPos();
 		// If there is no position we are done.
-		if (!pos) return;
+		if (pos === undefined) return;
 		// If we are updating or we don't have focus then we should return early.
 		if (this.updating || !this._codemirror?.hasFocus) return;
 
@@ -165,7 +165,7 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 			// Get the current position.
 			const pos = this._getPos();
 			// If there is none, we can't escape this view,
-			if (!pos) return false;
+			if (pos === undefined) return false;
 
 			// Get the current state and the main selection related to this state.
 			const _state = targetView.state;
