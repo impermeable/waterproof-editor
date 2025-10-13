@@ -42,7 +42,8 @@ export class SwitchableView implements NodeView {
         getPos: (() => number | undefined), outerView: EditorView, 
         content: string, node: PNode,
         pluginKey: PluginKey, viewName: string,
-        private processForRendering: (input: string) => string
+        private readonly processForRendering: (input: string) => string,
+        private readonly disableMarkdownFeatures: Array<string>,
     ) {
         // Store parameters
         this._node = node;
@@ -72,7 +73,7 @@ export class SwitchableView implements NodeView {
         }
         // We start with a rendered markdown view.
         const processedContent = this.processForRendering(this._node.textContent);
-        this.view = new RenderedView(this._place, processedContent, this._outerView, this, this._getPos);
+        this.view = new RenderedView(this._place, processedContent, this._outerView, this, this._getPos, this.disableMarkdownFeatures);
 
         // eventHandler for the onclick event. 
         // Creates a new node selection that selects 'this' node. 
@@ -123,7 +124,7 @@ export class SwitchableView implements NodeView {
         this.dom.classList.remove(this._editorClassName);
         this.dom.classList.add(this._renderedClassName);
         // Create the new rendered view and set it as the current view
-        this.view = new RenderedView(this._place, inputContent, this._outerView, this, this._getPos);
+        this.view = new RenderedView(this._place, inputContent, this._outerView, this, this._getPos, this.disableMarkdownFeatures);
     }
 
     /**

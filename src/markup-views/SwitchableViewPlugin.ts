@@ -29,16 +29,14 @@ export const SWITCHABLE_VIEW_PLUGIN_KEY = new PluginKey<ISwitchableViewPluginSta
  */
 export function createRealMarkdownView(editorConfig: WaterproofEditorConfig){
 	return (node: ProseNode, view: EditorView, getPos: (() => number | undefined)): SwitchableView => {
-		/** @todo is this necessary?
-		* Docs says that for any function proprs, the current plugin instance
-		* will be bound to `this`.  However, the typings don't reflect this.
-		*/
 		const pluginState = SWITCHABLE_VIEW_PLUGIN_KEY.getState(view.state);
 		if(!pluginState){ throw new Error("no realtime markdown plugin!"); }
 		const nodeViews = pluginState.activeNodeViews;
 
 		// set up NodeView
-		const nodeView = new SwitchableView(getPos, view, node.textContent, node, SWITCHABLE_VIEW_PLUGIN_KEY, editorConfig.markdownName ?? "markdown", editorConfig.toMarkdown ?? ((input) => toMathInline(input)));
+		const nodeView = new SwitchableView(getPos, view, node.textContent, node, SWITCHABLE_VIEW_PLUGIN_KEY, 
+			editorConfig.markdownName ?? "markdown", editorConfig.toMarkdown ?? ((input) => toMathInline(input)),
+			editorConfig.disableMarkdownFeatures ?? []);
 
 		nodeViews.push(nodeView);
 		return nodeView;

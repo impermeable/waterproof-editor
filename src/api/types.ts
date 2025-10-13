@@ -128,6 +128,10 @@ export type WaterproofEditorConfig = {
      * @returns The output string should be valid Markdown, with possible inline LaTeX wrapped in the tags as described above.
      */
     toMarkdown?: (inputString: string) => string,
+    /**
+     * Disables MarkdownIt features. Will likely be removed in the future once there is a nice way to support non markdown markup languages.
+     */
+    disableMarkdownFeatures?: Array<string>
 }
 
 export enum HistoryChange {

@@ -17,11 +17,11 @@ export class RenderedView {
         outerView: EditorView, 
         parent: SwitchableView,
         _getPos: (() => number | undefined),
-        
+        disableMarkdownFeatures: Array<string>,
     ) {
         // Create a new MarkdownIt renderer with support for html (this allows 
         //  for the math-inline nodes to be passed through)
-        const mdit = new MarkdownIt({html: true});
+        const mdit = new MarkdownIt({html: true}).disable(disableMarkdownFeatures);
         // Render the markdown (converts it into a HTML string)
         const mditOutput = mdit.render(content);
         // Create a container element.
