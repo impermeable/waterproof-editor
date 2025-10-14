@@ -1,9 +1,3 @@
-# Important
-WaterproofEditor is currently developed as a part of the [waterproof-vscode](https://www.github.com/impermeable/waterproof-vscode) project, but will be moved into this repository eventually.
-
-At the present this repostiory is very much a work in progress.
-
-
 # WaterproofEditor
 
 This repository contains the source required to construct the editor as is used in the [waterproof-vscode](https://www.github.com/impermeable/waterproof-vscode) extension.
