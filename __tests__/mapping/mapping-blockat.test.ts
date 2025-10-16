@@ -1,4 +1,3 @@
-import { DocumentSerializer } from "../../src/api";
 import { Block } from "../../src/document";
 import { Mapping } from "../../src/mapping";
 import { configuration, parse } from "../../src/markdown-defaults";

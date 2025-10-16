@@ -9,6 +9,8 @@ export type Positioned<A> = {
     pos: number | undefined;
 };
 
+export type Range = {from: number, to: number};
+
 /**
  * A `WaterproofDocument` is a collection of `Block`s. Every Block in this WaterproofDocument will get translated into some ProseMirror node. 
  * 

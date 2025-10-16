@@ -34,7 +34,7 @@ export class TextUpdate {
         /** The offset within the correct stringCell for the step action */ 
         const offsetEnd = step.to - targetCell.prosemirrorStart;  
 
-        const text = step.slice.content.firstChild?.text === undefined ? "" : step.slice.content.firstChild.text;
+        const text = step.slice.content.firstChild?.text ?? "";
 
         const offset = getTextOffset(type,step);
 

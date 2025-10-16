@@ -71,7 +71,7 @@ export abstract class DocumentSerializer {
             case WaterproofSchema.nodes.text: return this.serializeText(node);
             case WaterproofSchema.nodes.newline: return this.serializeNewline();
             default:
-                throw Error(`[SerializeNode] Node of type "${node.type.name}" not supported.`);
+                throw new Error(`[SerializeNode] Node of type "${node.type.name}" not supported.`);
         }
     }
 

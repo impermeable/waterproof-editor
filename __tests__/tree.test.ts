@@ -13,9 +13,9 @@ function fromJSON(json: any): Tree {
             obj.pmRange
         );
         if (obj.children && Array.isArray(obj.children)) {
-            obj.children.forEach((childObj: any) => {
+            for (const childObj of obj.children) {
                 node.addChild(parseNode(childObj));
-            });
+            }
         }
         return node;
     }
@@ -29,9 +29,9 @@ function fromJSON(json: any): Tree {
         rootObj.prosemirrorEnd,
         rootObj.pmRange
     );
-    rootObj.children.forEach((childObj: any) => {
+    for (const childObj of rootObj.children) {
         tree.root.addChild(parseNode(childObj));
-    });
+    }
     return tree;
 }
 
@@ -155,7 +155,6 @@ const treeJSON = {
 
 test("treeFromJSON", () => {
     const tree = fromJSON(treeJSON);
-    // console.log(JSON.stringify(tree, null, 1));
 
     expect(tree.root.children.length).toBe(5);
     expect(tree.root.children[0].type).toBe("markdown");
@@ -311,8 +310,6 @@ test("findByProsemirrorPosition with nested nodes", () => {
     const node1 = tree.findNodeByProsePos(7);
     expect(node1).not.toBeNull();
     expect(node1?.type).toBe("newline");
-
-    // expect(tree.findNodeByProsePos(7)?.type).toBe("newline");
 
     expect(tree.findNodeByProsePos(8)?.type).toBe("newline");
 

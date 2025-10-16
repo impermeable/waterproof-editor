@@ -31,6 +31,8 @@ test("Insert code underneath markdown", () => {
     });
 
     expect(newTree.root.children.length).toBe(3);
+    
+    // TODO: Check new tree structure
 });
 
 test("Insert code underneath markdown inside input area", () => {
@@ -46,11 +48,13 @@ test("Insert code underneath markdown inside input area", () => {
     const step: ReplaceStep = new ReplaceStep(10, 10, slice);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping);
+    const {result} = nodeUpdate.nodeUpdate(step, mapping);
 
     expect(result).toStrictEqual<DocChange>({
         finalText: "\n```coq\n\n```",
         startInFile: 19,
         endInFile: 19 
     });
+
+    // TODO: Check new tree structure
 });
