@@ -4,6 +4,7 @@ import { Mapping } from "../../src/mapping";
 import { configuration, parse } from "../../src/markdown-defaults";
 import { WaterproofSchema } from "../../src/schema";
 import { Node as ProseNode } from "prosemirror-model";
+import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 
 function root (childNodes: ProseNode[]) {
     return WaterproofSchema.nodes.doc.create({}, childNodes);
@@ -19,7 +20,7 @@ test("BlockAt with simple .mv file", () => {
 
     const blocks = parse(doc, "coq");
 
-    const mapping = new Mapping(blocks, 0, configuration("coq"), new DocumentSerializer(configuration("coq")));
+    const mapping = new Mapping(blocks, 0, configuration("coq"), new DefaultTagSerializer(configuration("coq")));
     const proseDoc = constructDocument(blocks);
     const tree = mapping.getMapping();
 
@@ -601,7 +602,7 @@ Qed.
 `
     const blocks = parse(tutorial, "coq");
 
-    const mapping = new Mapping(blocks, 0, configuration("coq"), new DocumentSerializer(configuration("coq")));
+    const mapping = new Mapping(blocks, 0, configuration("coq"), new DefaultTagSerializer(configuration("coq")));
     const proseDoc = constructDocument(blocks);
     const tree = mapping.getMapping();
 

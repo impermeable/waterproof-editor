@@ -1,14 +1,15 @@
 import { Slice, Fragment } from "prosemirror-model";
 import { ReplaceStep } from "prosemirror-transform";
-import { DocChange, DocumentSerializer, WaterproofDocument } from "../../src/api";
+import { DocChange, WaterproofDocument } from "../../src/api";
 import { Mapping } from "../../src/mapping";
 import { TextUpdate } from "../../src/mapping/textUpdate";
 import { configuration } from "../../src/markdown-defaults";
 import { WaterproofSchema } from "../../src/schema";
 import { MarkdownBlock } from "../../src/document";
+import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 
 function createMapping(doc: WaterproofDocument) {
-  const mapping = new Mapping(doc, 0, configuration("coq"), new DocumentSerializer(configuration("coq")));
+  const mapping = new Mapping(doc, 0, configuration("coq"), new DefaultTagSerializer(configuration("coq")));
   return mapping;
 }
 

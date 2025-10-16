@@ -1,4 +1,5 @@
 import { Block } from "../document";
+import { DocumentSerializer } from "../serialization/DocumentSerializer";
 import { WaterproofCompletion, WaterproofSymbol } from "./Completions";
 import { DocChange, WrappingDocChange } from "./DocChange";
 import { Severity } from "./Severity";
@@ -113,6 +114,13 @@ export type WaterproofEditorConfig = {
      * See {@linkcode TagConfiguration} for more information.
      */
     tagConfiguration: TagConfiguration,
+
+    /**
+     * The serializer object is used to translate the ProseMirror nodes into 
+     * text. When none is given we will create a default one from the given {@linkcode TagConfiguration}.
+     * The serializer should extend the {@linkcode DocumentSerializer} class.
+     */
+    serializer?: DocumentSerializer,
 
     /** The name of the markdown node view, defaults to `"Markdown"`. 
      * This name will show up in the editor when editing text in 'Markdown' cells.

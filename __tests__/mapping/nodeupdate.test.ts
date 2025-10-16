@@ -1,13 +1,14 @@
 import { Fragment, Slice } from "prosemirror-model";
-import { DocChange, DocumentSerializer, Mapping, WaterproofDocument } from "../../src/api";
+import { DocChange, Mapping, WaterproofDocument } from "../../src/api";
 import { configuration } from "../../src/markdown-defaults";
 import { ReplaceStep } from "prosemirror-transform";
 import { WaterproofSchema } from "../../src/schema";
 import { NodeUpdate } from "../../src/mapping/nodeUpdate";
 import { InputAreaBlock, MarkdownBlock } from "../../src/document";
+import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 
 const config = configuration("coq");
-const serializer = new DocumentSerializer(config);
+const serializer = new DefaultTagSerializer(config);
 
 function createMapping(blocks: WaterproofDocument) {
   const mapping = new Mapping(blocks, 0, config, serializer);

@@ -102,8 +102,12 @@ export class NodeUpdate {
         
         const nodes: TreeNode[] = [];
         let serialized = "";
-        step.slice.content.forEach(node => {
-            const output = this.serializer.serializeNode(node);
+        step.slice.content.forEach((node, _, index) => {
+            const parent = step.slice.content;
+            const nodeBefore = parent.maybeChild(index - 1)?.type.name ?? null;
+            const nodeAfter = parent.maybeChild(index + 1)?.type.name ?? null;
+            // TODO: Here parent is null.
+            const output = this.serializer.serializeNode(node, null, nodeBefore, nodeAfter);
             serialized += output;
             const builtNode = this.buildTreeFromNode(node, offsetOriginal, offsetProse);
             nodes.push(builtNode);
@@ -170,12 +174,15 @@ export class NodeUpdate {
         let childOffsetOriginal = startOrig + openTagForNode.length;
         let childOffsetProse = startProse + 1; // +1 for the opening tag
 
-        node.forEach(child => {
+        node.forEach((child, _, idx) => {
             const childTreeNode = this.buildTreeFromNode(child, childOffsetOriginal, childOffsetProse);
             treeNode.children.push(childTreeNode);
+
+            const nodeBefore = node.maybeChild(idx - 1)?.type.name ?? null;
+            const nodeAfter = node.maybeChild(idx + 1)?.type.name ?? null; 
             
             // Update the offsets for the next child
-            const serializedChild = this.serializer.serializeNode(child);
+            const serializedChild = this.serializer.serializeNode(child, node.type.name, nodeBefore, nodeAfter);
             childOffsetOriginal += serializedChild.length;
             childOffsetProse += child.nodeSize;
         });

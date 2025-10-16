@@ -1,9 +1,10 @@
-import { DocumentSerializer, Mapping, WaterproofDocument } from "../../src/api";
+import { Mapping, WaterproofDocument } from "../../src/api";
 import { CodeBlock, MarkdownBlock } from "../../src/document";
 import { configuration } from "../../src/markdown-defaults";
+import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 
 const config = configuration("coq");
-const serializer = new DocumentSerializer(config);
+const serializer = new DefaultTagSerializer(config);
 
 function createTestMapping(blocks: WaterproofDocument) {
     const mapping = new Mapping(blocks, 1, config, serializer)

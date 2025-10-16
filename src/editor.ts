@@ -19,6 +19,7 @@ import { MENU_PLUGIN_KEY } from "./menubar/menubar";
 import { PROGRESS_PLUGIN_KEY, progressBarPlugin } from "./progressBar";
 import { DOCUMENT_PROGRESS_DECORATOR_KEY, documentProgressDecoratorPlugin } from "./documentProgressDecorator";
 import { createContextMenuHTML } from "./context-menu";
+import { DefaultTagSerializer } from "./serialization/DocumentSerializer";
 
 // CSS imports
 import "katex/dist/katex.min.css";
@@ -82,7 +83,7 @@ export class WaterproofEditor {
 		this._editorElem = editorElement;
 		this.currentProseDiagnostics = [];
 		this._editorConfig = config;
-		this._serializer = new DocumentSerializer(this._editorConfig.tagConfiguration);
+		this._serializer = config.serializer === undefined ? new DefaultTagSerializer(config.tagConfiguration) : config.serializer;
 
 		const userAgent = window.navigator.userAgent;
 		this._userOS = OS.Unknown;
