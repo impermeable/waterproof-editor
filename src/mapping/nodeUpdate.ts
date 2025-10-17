@@ -102,12 +102,26 @@ export class NodeUpdate {
         
         const nodes: TreeNode[] = [];
         let serialized = "";
-        step.slice.content.forEach((node, _, index) => {
-            const parent = step.slice.content;
-            const nodeBefore = parent.maybeChild(index - 1)?.type.name ?? null;
-            const nodeAfter = parent.maybeChild(index + 1)?.type.name ?? null;
-            // TODO: Here parent is null.
-            const output = this.serializer.serializeNode(node, null, nodeBefore, nodeAfter);
+        step.slice.content.forEach((node, _, idx) => {
+            const parentContent = step.slice.content;
+
+            // Above
+            const nodeDirectlyAbove = parentContent.maybeChild(idx - 1);
+            const nodeTwoAbove = parentContent.maybeChild(idx - 2);
+            // Below
+            const nodeDirectlyBelow = parentContent.maybeChild(idx + 1);
+            const nodeTwoBelow = parentContent.maybeChild(idx + 2);
+
+            const func = (skipNewlines: boolean): { nodeAbove: string | null; nodeBelow: string | null } => {
+                let above = nodeDirectlyAbove?.type.name ?? null;
+                let below = nodeDirectlyBelow?.type.name ?? null;
+
+                if (above === "newline" && skipNewlines) above = nodeTwoAbove?.type.name ?? null;
+                if (below === "newline" && skipNewlines) below = nodeTwoBelow?.type.name ?? null;
+
+                return {nodeAbove: above, nodeBelow: below};
+            };
+            const output = this.serializer.serializeNode(node, parent.type, func);
             serialized += output;
             const builtNode = this.buildTreeFromNode(node, offsetOriginal, offsetProse);
             nodes.push(builtNode);
@@ -178,11 +192,26 @@ export class NodeUpdate {
             const childTreeNode = this.buildTreeFromNode(child, childOffsetOriginal, childOffsetProse);
             treeNode.children.push(childTreeNode);
 
-            const nodeBefore = node.maybeChild(idx - 1)?.type.name ?? null;
-            const nodeAfter = node.maybeChild(idx + 1)?.type.name ?? null; 
+            // Above
+            const nodeDirectlyAbove = node.maybeChild(idx - 1);
+            const nodeTwoAbove = node.maybeChild(idx - 2);
+
+            // Below
+            const nodeDirectlyBelow = node.maybeChild(idx + 1);
+            const nodeTwoBelow = node.maybeChild(idx + 2);
+
+            const func = (skipNewlines: boolean): { nodeAbove: string | null; nodeBelow: string | null } => {
+                let above = nodeDirectlyAbove?.type.name ?? null;
+                let below = nodeDirectlyBelow?.type.name ?? null;
+
+                if (above === "newline" && skipNewlines) above = nodeTwoAbove?.type.name ?? null;
+                if (below === "newline" && skipNewlines) below = nodeTwoBelow?.type.name ?? null;
+
+                return {nodeAbove: above, nodeBelow: below};
+            };
             
             // Update the offsets for the next child
-            const serializedChild = this.serializer.serializeNode(child, node.type.name, nodeBefore, nodeAfter);
+            const serializedChild = this.serializer.serializeNode(child, node.type.name, func);
             childOffsetOriginal += serializedChild.length;
             childOffsetProse += child.nodeSize;
         });
