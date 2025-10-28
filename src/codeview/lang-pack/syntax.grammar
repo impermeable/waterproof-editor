@@ -1,11 +1,86 @@
 @top Program { Sentence* }
-// @external tokens TakeInput from "./externalTokens" { TakeInput }
 
-// @tokens {
-//    space { @whitespace }
-//    TacticEnd { "." space+ | "." @eof }
-//}
+Sentence {
+    (WaterproofTactic | Vernac | Lemmas) ArgumentEnd
+}
 
+@tokens {
+    space { @whitespace+ }
+    SentenceEnd { "." space | "." @eof }
+}
+
+@local tokens {
+    ArgumentEnd[@name="p"] { space* SentenceEnd }
+    It { space+ "it" space+ }
+    As { space+ "as" }
+    Both { "both" }
+    And { "and" }
+    Or { "or" }
+    We { space+ "we" space+ }
+    All { space+ "All" }
+    DefineSymbol { ":=" }
+    Magic { space+ "magic" }
+    SuchAn { space+ "such" ("a" "n"?)? }
+    @else Argument
+}
+
+Vernac {
+    "Proof" |
+    "Qed" |
+    "Admitted" |
+    "Defined" |
+    "Require" space+ "Import" Argument |
+    "Waterproof" Argument |
+    "Set" space+ "Default" Argument |
+    "Open" space+ "Scope" Argument |
+    "Notation" Argument |
+    "Section" Argument |
+    "Variable" Argument |
+    "Parameter" Argument
+}
+
+Lemmas {
+    ("Theorem" | "Lemma" | "Definition" | "Example" ) Argument
+}
+
+WaterproofTactic {
+    // Zero Input Tactics
+    "Help" |
+    // TacticBullet* only placed at just one tactic seems to works for bullets at the start of any tactic...
+    "We" space+ "argue" space+ "by" space+ "contradiction" |
+    "Contradiction" |
+    "We" space+ "show" space+ "both" space+ "statements" |
+    "We" space+ "show" space+ "both" space+ "directions" |
+    "We" space+ "now" space+ "show" space+ "the" space+ "induction" space+ "step" |
+    // Single Input Tactics
+    "Take" Argument |
+    "We" space+ "need" space+ "to" space+ "show" space+ "that" Argument |
+    "We" space+ "conclude" space+ "that" Argument |
+    "Case" Argument |
+    "Assume" space+ "that" Argument (As Argument)? |
+    //"Obtain" space+ "such" space+ "a" Argument |
+    "It" space+ "suffices" space+ "to" space+ "show" space+ "that" Argument |
+    "It" space+ "holds" space+ "that" Argument (As Argument)? |
+    "We" space+ "claim" space+ "that" Argument |
+    "We" space+ "use" space+ "induction" space+ "on" Argument |
+    "Indeed," Argument |
+    "Use" Argument |
+    "Choose" Argument |
+    "We" space+ "first" space+ "show" space+ "the" space+ "base" space+ "case" Argument |
+    // Multi Input Tactics
+    "Expand" (All | Argument) |
+    "Obtain" (Argument "according" space+ "to" | SuchAn ) Argument |
+    "By" (Magic | Argument) It "holds" space+ "that" Argument (As Argument)? |
+    "By" (Magic | Argument) It "suffices" space+ "to" space+ "show" space+ "that" Argument |
+    "By" (Magic | Argument) We "conclude" space+ "that" Argument |
+    "Define" Argument DefineSymbol Argument |
+    "Since" Argument "it" space+ "holds" space+ "that" Argument (As Argument)? |
+    "Because" Argument Both Argument (As Argument)? And Argument (As Argument)? |
+    "Either" Argument Or Argument |
+    "We" space+ "need" space+ "to" space+ "verify" space+ "that" Argument
+}
+
+/*
 Sentence {
     ( TacticBullet* complement* WaterproofTactic | LemmaVernac | Statement)
     SentenceEnd
@@ -23,13 +98,13 @@ Sentence {
     WeNowShowTheInductionStep { "We" Space+ "now" Space+ "show" Space+ "the" Space+ "induction" Space+ "step" }
     WeConclude {"We" Space+ "conclude" Space+ "that" }
     Obtain {"Obtain"}
+    ObtainSuchA { "Obtain" Space+ "such" Space+ "a" }
     AccordingTo {"according" Space+ "to" }
     SuchA {"such" (Space+ "a" "n"?)?}
     Take { "Take" }
     WeNeedToShowThat { "We" Space+ "need" Space+ "to" Space+ "show" Space+ "that" }
     Case { "Case" }
     AssumeThat { "Assume" Space+ "that" }
-    ObtainSuchA { "Obtain" Space+ "such" Space+ "a" }
     ParenAmp { "(& " }
     ItSufficesToShowThat { "It" Space+ "suffices" Space+ "to" Space+ "show" Space+ "that" }
     ItHoldsThat { "It" Space+ "holds" Space+ "that" }
@@ -92,6 +167,7 @@ Sentence {
         Case complement+ |
         AssumeThat complement+ (TacticLabelAs complement+)?|
         ObtainSuchA complement+ |
+        Obtain complement+ TacticMiddleObtain complement+ |
         ParenAmp complement+ |
         ItSufficesToShowThat complement+ |
         ItHoldsThat complement+ |
@@ -103,7 +179,6 @@ Sentence {
         Choose complement+ TacticMiddleDefine complement+ |
         WeFirstShowTheBaseCase complement+ |
         // Multi Input Tactics
-        Obtain complement+ TacticMiddleObtain complement+ |
         By complement+ TacticMiddleByOrSince complement+ (TacticLabelAs complement+)? |
         Define complement+ TacticMiddleDefine complement+ |
         Since complement+ TacticMiddleByOrSince complement+ |
@@ -138,5 +213,5 @@ Sentence {
 
     ProofandQed {"Proof" | "Qed"}
 }
-
+*/
 @detectDelim
