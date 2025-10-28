@@ -20,7 +20,7 @@ npm link
 ```
 in the waterproof-editor repo will allow you to locally link the package. The package can then be used in waterproof-vscode (or any other project) after running
 ```
-npm link waterproof-editor
+npm link @impermeable/waterproof-editor
 ```
 there.
 
