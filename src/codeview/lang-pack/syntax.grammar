@@ -12,57 +12,59 @@ Sentence {
 }
 
 @local tokens {
-    space { @whitespace }
+    Space { @whitespace }
     TacticBullet{ "+" | "*" | "-" }
-    SentenceEnd[@name='p'] { "." space+ | "." @eof }
+    SentenceEnd[@name='p'] { "." Space+ | "." @eof }
     // Tokens for WaterproofTactic
-    WeArgueByContradiction { "We" space+ "argue" space+ "by" space+ "contradiction" }
+    WeArgueByContradiction { "We" Space+ "argue" Space+ "by" Space+ "contradiction" }
     Contradiction { "Contradiction" }
-    WeShowBothStatements { "We" space+ "show" space+ "both" space+ "statements" }
-    WeShowBothDirections { "We" space+ "show" space+ "both" space+ "directions" }
-    WeNowShowTheInductionStep { "We" space+ "now" space+ "show" space+ "the" space+ "induction" space+ "step" }
-    WeConclude {"We" space+ "conclude" space+ "that" }
+    WeShowBothStatements { "We" Space+ "show" Space+ "both" Space+ "statements" }
+    WeShowBothDirections { "We" Space+ "show" Space+ "both" Space+ "directions" }
+    WeNowShowTheInductionStep { "We" Space+ "now" Space+ "show" Space+ "the" Space+ "induction" Space+ "step" }
+    WeConclude {"We" Space+ "conclude" Space+ "that" }
     Obtain {"Obtain"}
-    AccordingTo {"according" space+ "to" }
-    SuchA {"such" (space+ "a" "n"?)?}
+    AccordingTo {"according" Space+ "to" }
+    SuchA {"such" (Space+ "a" "n"?)?}
     Take { "Take" }
-    WeNeedToShowThat { "We" space+ "need" space+ "to" space+ "show" space+ "that" }
+    WeNeedToShowThat { "We" Space+ "need" Space+ "to" Space+ "show" Space+ "that" }
     Case { "Case" }
-    AssumeThat { "Assume" space+ "that" }
-    ObtainSuchA { "Obtain" space+ "such" space+ "a" }
+    AssumeThat { "Assume" Space+ "that" }
+    ObtainSuchA { "Obtain" Space+ "such" Space+ "a" }
     ParenAmp { "(& " }
-    ItSufficesToShowThat { "It" space+ "suffices" space+ "to" space+ "show" space+ "that" }
-    ItHoldsThat { "It" space+ "holds" space+ "that" }
-    WeClaimThat { "We" space+ "claim" space+ "that" }
-    WeUseInductionOn { "We" space+ "use" space+ "induction" space+ "on" }
+    ItSufficesToShowThat { "It" Space+ "suffices" Space+ "to" Space+ "show" Space+ "that" }
+    ItHoldsThat { "It" Space+ "holds" Space+ "that" }
+    WeClaimThat { "We" Space+ "claim" Space+ "that" }
+    WeUseInductionOn { "We" Space+ "use" Space+ "induction" Space+ "on" }
     Indeed { "Indeed," }
     Use { "Use" }
     Choose { "Choose" }
-    WeFirstShowTheBaseCase { "We" space+ "first" space+ "show" space+ "the" space+ "base" space+ "case" }
-    ExpandTheDefinitionOf { "Expand" space+ "the" space+ "definition" space+ "of" }
-    TacticMiddleByOrSince{"it" space+ "suffices" space+ "to" space+ "show" space+ "that" | "we" space+ "conclude" space+ "that" | "it" space+ "holds" space+ "that" }
+    WeFirstShowTheBaseCase { "We" Space+ "first" Space+ "show" Space+ "the" Space+ "base" Space+ "case" }
+    Expand { "Expand"}
+    TacticMiddleByOrSince{"it" Space+ "suffices" Space+ "to" Space+ "show" Space+ "that" | "we" Space+ "conclude" Space+ "that" | "it" Space+ "holds" Space+ "that" }
     By { "By" }
     Define { "Define" }
     Since { "Since" }
     Because { "Because" }
     Either { "Either" }
-    WeNeedToVerifyThat { "We" space+ "need" space+ "to" space+ "verify" space+ "that" }
-    ByMagicItHoldsThat { "By" space+ "magic" space+ "it" space+ "holds" space+ "that" }
-    ByMagicWeConcludeThat { "By" space+ "magic" space+ "we" space+ "conclude" space+ "that" }
-    ByMagicItSufficesToShowThat { "By" space+ "magic" space+ "it" space+ "suffices" space+ "to" space+ "show" space+ "that" }
+    Proof { "Proof"}
+    Qed { "Qed" }
+    WeNeedToVerifyThat { "We" Space+ "need" Space+ "to" Space+ "verify" Space+ "that" }
+    ByMagicItHoldsThat { "By" Space+ "magic" Space+ "it" Space+ "holds" Space+ "that" }
+    ByMagicWeConcludeThat { "By" Space+ "magic" Space+ "we" Space+ "conclude" Space+ "that" }
+    ByMagicItSufficesToShowThat { "By" Space+ "magic" Space+ "it" Space+ "suffices" Space+ "to" Space+ "show" Space+ "that" }
     // Tokens for LemmaVernac
     Lemma {"Lemma"}
     // Tokens for Statement
-    RequireImport { "Require" space+ "Import" }
-    SetDefault { "Set" space+ "Default" }
-    OpenScope { "Open" space+ "Scope" }
+    RequireImport { "Require" Space+ "Import" }
+    SetDefault { "Set" Space+ "Default" }
+    OpenScope { "Open" Space+ "Scope" }
     Waterproof { "Waterproof" }
     Notation { "Notation" }
     Section { "Section" }
     Variable { "Variable" }
     Parameter { "Parameter" }
     TacticMiddleDefine{":="}
-    TacticMiddleObtain{"according" space+ "to"}
+    TacticMiddleObtain{"according" Space+ "to"}
     TacticLabelAs{"as"}
     TacticMiddleBecauseFirst{"both"}
     TacticMiddleBecauseSecond{"and"}
@@ -71,6 +73,7 @@ Sentence {
     @precedence{ ByMagicItHoldsThat, ByMagicItSufficesToShowThat,
     ByMagicWeConcludeThat, By}
     @precedence{ ObtainSuchA, Obtain }
+    @precedence{ Expand, TacticMiddleBecauseSecond}
 }
 
 // Skip WaterproofTactics
@@ -96,6 +99,7 @@ Sentence {
         WeUseInductionOn complement+ |
         Indeed complement+ |
         Use complement+ |
+        Expand complement+ |
         Choose complement+ TacticMiddleDefine complement+ |
         WeFirstShowTheBaseCase complement+ |
         // Multi Input Tactics
@@ -111,7 +115,9 @@ Sentence {
         ByMagicItSufficesToShowThat complement+ (TacticLabelAs complement+)?
     }
     LemmaVernac {
-        Lemma complement+
+        Lemma complement+ |
+        Proof complement* |
+        Qed complement*
     }
     Statement {
         RequireImport complement+ |
