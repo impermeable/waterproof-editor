@@ -14,17 +14,18 @@ Sentence {
 @local tokens {
     ArgumentEnd[@name="p"] { space? SentenceEnd }
     It { space "it" space }
-    As { space "as" }
+    As { space "as" space }
     Both { space "both" space }
-    And { "and" }
-    Or { "or" }
-    In { "in" }
+    And { space "and" space }
+    Or { space "or" space }
+    In { space "in" space }
     We { space "we" space }
     All { space "All" }
-    DefineSymbol { ":=" }
+    That { space "that" space }
+    DefineSymbol { space ":=" space }
     Magic { space "magic" }
-    SuchAn { space "such" ("a" "n"?)? }
-    AccordingTo {"according" space "to"}
+    SuchAn { space "such" (space "a" "n"?)? space }
+    AccordingTo {space "according" space "to" space}
     @else Argument
 }
 
@@ -94,21 +95,21 @@ WaterproofTactic {
     Take
         { "Take" Argument (And Argument)? } |
     WeNeedToShowThat
-        { "We" space "need" space "to" space "show" space "that" Argument } |
+        { "We" space "need" space "to" space "show" That Argument } |
     WeConclude
-        { "We" space "conclude" space "that" Argument } |
+        { "We" space "conclude" That Argument } |
     Case
         { "Case" Argument } |
     AssumeThat
-        { "Assume" space "that" Argument (As Argument)* (And Argument (As Argument)?)? } |
+        { "Assume" That Argument (As Argument)* (And Argument (As Argument)?)? } |
         // The above is not entirely semantic: the reason is that it may not be wise to
         // give a special role to commas, as they may occur in Rocq terms
     ItSufficesToShowThat
-        { "It" space "suffices" space "to" space "show" space "that" Argument } |
+        { "It" space "suffices" space "to" space "show" That Argument } |
     ItHoldsThat
-        { "It" space "holds" space "that" Argument (As Argument)? } |
+        { "It" space "holds" That Argument (As Argument)? } |
     WeClaimThat
-        { "We" space "claim" space "that" Argument } |
+        { "We" space "claim" That Argument } |
     WeUseInductionOn
         { "We" space "use" space "induction" space "on" Argument } |
     Indeed
@@ -124,21 +125,21 @@ WaterproofTactic {
     Obtain
         { "Obtain" (Argument AccordingTo | SuchAn ) Argument } |
     ByItHoldsThat
-        { "By" (Magic | Argument (And Argument)?) It "holds" space "that" Argument (As Argument)? } |
+        { "By" (Magic | Argument (And Argument)?) It "holds" That Argument (As Argument)? } |
     ByItSufficesToShowThat
-        { "By" (Magic | Argument (And Argument)?) It "suffices" space "to" space "show" space "that" Argument } |
+        { "By" (Magic | Argument (And Argument)?) It "suffices" space "to" space "show" That Argument } |
     ByWeConcludeThat
-        { "By" (Magic | Argument (And Argument)?) We "conclude" space "that" Argument } |
+        { "By" (Magic | Argument (And Argument)?) We "conclude" That Argument } |
     Define
         { "Define" Argument DefineSymbol Argument } |
     Since
-        { "Since" Argument "it" space "holds" space "that" Argument (As Argument)? } |
+        { "Since" Argument "it" space "holds" That Argument (As Argument)? } |
     Because
         { "Because" Argument Both Argument (As Argument)? And Argument (As Argument)? } |
     Either
         { "Either" Argument Or Argument } |
     WeNeedToVerifyThat
-        { "We" space "need" space "to" space "verify" space "that" Argument }
+        { "We" space "need" space "to" space "verify" That Argument }
 }
 
 @detectDelim
