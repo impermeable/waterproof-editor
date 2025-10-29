@@ -15,7 +15,7 @@ Sentence {
     ArgumentEnd[@name="p"] { space? SentenceEnd }
     It { space "it" space }
     As { space "as" }
-    Both { "both" }
+    Both { space "both" space }
     And { "and" }
     Or { "or" }
     In { "in" }
@@ -83,8 +83,8 @@ WaterproofTactic {
         { "Help" } |
     WeArgueByContradiction
         { "We" space "argue" space "by" space "contradiction" } |
-    Contradiction 
-        { "Contradiction" }
+    Contradiction
+        { "Contradiction" } |
     WeShowBothStatements
         { "We" space "show" space "both" space "statements" } |
     WeShowBothDirections
