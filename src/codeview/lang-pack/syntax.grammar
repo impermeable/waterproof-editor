@@ -24,6 +24,7 @@ Sentence {
     DefineSymbol { ":=" }
     Magic { space "magic" }
     SuchAn { space "such" ("a" "n"?)? }
+    AccordingTo {"according" space "to"}
     @else Argument
 }
 
@@ -82,6 +83,8 @@ WaterproofTactic {
         { "Help" } |
     WeArgueByContradiction
         { "We" space "argue" space "by" space "contradiction" } |
+    Contradiction 
+        { "Contradiction" }
     WeShowBothStatements
         { "We" space "show" space "both" space "statements" } |
     WeShowBothDirections
@@ -119,7 +122,7 @@ WaterproofTactic {
     Expand
         { "Expand" (All | Argument) } |
     Obtain
-        { "Obtain" (Argument "according" space "to" | SuchAn ) Argument } |
+        { "Obtain" (Argument AccordingTo | SuchAn ) Argument } |
     ByItHoldsThat
         { "By" (Magic | Argument (And Argument)?) It "holds" space "that" Argument (As Argument)? } |
     ByItSufficesToShowThat

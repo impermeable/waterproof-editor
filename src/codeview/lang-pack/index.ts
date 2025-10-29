@@ -8,34 +8,38 @@ import { Tag, styleTags } from "@lezer/highlight"
 import { parser } from "./syntax"
 
 // Defining custom tags for specific elements of the Coq language
-const customTags = {
-    waterproofTactic: Tag.define(),
-    tacticInput: Tag.define(),
-    takeInput: Tag.define(),
-    lemmaStatement: Tag.define(),
+const tags = {
+    tactic: Tag.define(),
+    argument: Tag.define(),
     lemma: Tag.define(),
     comment: Tag.define(),
-    proofQed: Tag.define()
+    proof: Tag.define(),
+    qed: Tag.define(),
+    vernac: Tag.define(),
+    bullet: Tag.define(),
+    focusBrace: Tag.define(),
 }
 
 // Highlighting specific elements of the Coq language
 export const highlight_dark = HighlightStyle.define([
-    { tag: customTags.waterproofTactic, color: "#6b9affff" },
-    { tag: customTags.tacticInput, color: "#CCCCCC" },
-    { tag: customTags.lemmaStatement, color: "#7777ff" },
-    { tag: customTags.lemma, color: "#e45649" },
-    { tag: customTags.comment, color: "#9ea0b1ff" },
-    { tag: customTags.proofQed, color: "#e45649" },
+    { tag: tags.tactic, color: "#6b9affff" },
+    { tag: tags.argument, color: "#CCCCCC" },
+    { tag: tags.lemma, color: "#e45649" },
+    { tag: tags.comment, color: "#9ea0b1ff" },
+    { tag: tags.vernac, color: "#e45649" },
+    { tag: tags.bullet, color: "#ff7300ff" },
+    { tag: tags.focusBrace, color: "#ff7300ff" },
 ])
 
 // Highlighting specific elements of the Coq language
 export const highlight_light = HighlightStyle.define([
-  { tag: customTags.waterproofTactic, color: "#4078f2" },    
-  { tag: customTags.tacticInput, color: "#333333" },         
-  { tag: customTags.lemmaStatement, color: "#2b3990" },      
-  { tag: customTags.lemma, color: "#e45649" },               
-  { tag: customTags.comment, color: "#787c99" },           
-  { tag: customTags.proofQed, color: "#e45649" }
+    { tag: tags.tactic, color: "#4078f2" },    
+    { tag: tags.argument, color: "#333333" },         
+    { tag: tags.lemma, color: "#e45649" },               
+    { tag: tags.comment, color: "#787c99" },           
+    { tag: tags.vernac, color: "#e45649" },
+    { tag: tags.bullet, color: "#ff7300ff" },
+    { tag: tags.focusBrace, color: "#ff7300ff" },
 ]);
 
 // Defining the Coq language syntax, highlighting and indentation
@@ -49,21 +53,76 @@ export const coqLanguage = LRLanguage.define({
             //     Application: foldInside
             // }),
             styleTags({
-                WaterproofTactic: customTags.waterproofTactic,
-                TacticInput: customTags.tacticInput,
-                Lemma: customTags.lemma,
-                Comment: customTags.comment,
-                ProofandQed: customTags.proofQed,
-                LemmaStatement: customTags.lemmaStatement,
-                // Also update each of the middle tokens to match the tactics
-                TacticMiddleByOrSince: customTags.waterproofTactic,
-                TacticMiddleExpand: customTags.waterproofTactic,
-                TacticMiddleObtain: customTags.waterproofTactic,
-                TacticMiddleDefine: customTags.waterproofTactic,
-                TacticMiddleBecauseFirst: customTags.waterproofTactic,
-                TacticMiddleBecauseSecond: customTags.waterproofTactic,
-                TacticMiddleEither: customTags.waterproofTactic,
-                TacticLabelAs: customTags.waterproofTactic,
+                // LemmaKeyword
+                "Lemma": tags.lemma,
+                "Theorem": tags.lemma,
+                "Definition": tags.lemma,
+                "Example": tags.lemma,
+                // Other
+                "Comment": tags.comment,
+                "Argument": tags.argument,
+                "p": tags.tactic,
+                // Bullet and brace
+                "Bullet": tags.bullet,
+                "FocusBrace": tags.focusBrace,
+                "UnfocusBrace": tags.focusBrace,
+                // Vernac
+                "Proof": tags.vernac,
+                "Qed": tags.vernac,
+                "Admitted": tags.vernac,
+                "Defined": tags.vernac,
+                "RequireImport": tags.vernac,
+                "Waterproof": tags.vernac,
+                "SetDefault": tags.vernac,
+                "OpenScope": tags.vernac,
+                "Notation": tags.vernac,
+                "Section": tags.vernac,
+                "Variable": tags.vernac,
+                "Parameter": tags.vernac,
+                // WaterproofTactic
+                "Help": tags.tactic,
+                "WeArgueByContradiction": tags.tactic,
+                "Contradiction": tags.tactic,
+                "WeShowBothStatements": tags.tactic,
+                "WeShowBothDirections": tags.tactic,
+                "WeNowShowTheInductionStep": tags.tactic,
+                "Take": tags.tactic,
+                "WeNeedToShowThat": tags.tactic,
+                "WeConclude": tags.tactic,
+                "Case": tags.tactic,
+                "AssumeThat": tags.tactic,
+                "ItSufficesToShowThat": tags.tactic,
+                "ItHoldsThat": tags.tactic,
+                "WeClaimThat": tags.tactic,
+                "WeUseInductionOn": tags.tactic,
+                "Indeed": tags.tactic,
+                "Use": tags.tactic,
+                "Choose": tags.tactic,
+                "WeFirstShowTheBaseCase": tags.tactic,
+                "Expand": tags.tactic,
+                "Obtain": tags.tactic,
+                "ByItHoldsThat": tags.tactic,
+                "ByItSufficesToShowThat": tags.tactic,
+                "ByWeConcludeThat": tags.tactic,
+                "Define": tags.tactic,
+                "Since": tags.tactic,
+                "Because": tags.tactic,
+                "Either": tags.tactic,
+                "WeNeedToVerifyThat": tags.tactic,
+                // The tokens that appear in the middle of tactics
+                "ArgumentEnd": tags.tactic,
+                "It": tags.tactic,
+                "As": tags.tactic,
+                "Both": tags.tactic,
+                "And": tags.tactic,
+                "Or": tags.tactic,
+                "In": tags.tactic,
+                "We": tags.tactic,
+                "All": tags.tactic,
+                "DefineSymbol": tags.tactic,
+                "Magic": tags.tactic,
+                "SuchAn": tags.tactic,
+                "AccordingTo": tags.tactic
             })
         ]
     })
