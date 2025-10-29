@@ -89,7 +89,7 @@ WaterproofTactic {
     WeNowShowTheInductionStep
         { "We" space "now" space "show" space "the" space "induction" space "step" } |
     Take
-        { "Take" Argument } |
+        { "Take" Argument (And Argument)? } |
     WeNeedToShowThat
         { "We" space "need" space "to" space "show" space "that" Argument } |
     WeConclude
@@ -97,7 +97,9 @@ WaterproofTactic {
     Case
         { "Case" Argument } |
     AssumeThat
-        { "Assume" space "that" Argument (As Argument)? } |
+        { "Assume" space "that" Argument (As Argument)* (And Argument (As Argument)?)? } |
+        // The above is not entirely semantic: the reason is that it may not be wise to
+        // give a special role to commas, as they may occur in Rocq terms
     ItSufficesToShowThat
         { "It" space "suffices" space "to" space "show" space "that" Argument } |
     ItHoldsThat
@@ -119,11 +121,11 @@ WaterproofTactic {
     Obtain
         { "Obtain" (Argument "according" space "to" | SuchAn ) Argument } |
     ByItHoldsThat
-        { "By" (Magic | Argument) It "holds" space "that" Argument (As Argument)? } |
+        { "By" (Magic | Argument (And Argument)?) It "holds" space "that" Argument (As Argument)? } |
     ByItSufficesToShowThat
-        { "By" (Magic | Argument) It "suffices" space "to" space "show" space "that" Argument } |
+        { "By" (Magic | Argument (And Argument)?) It "suffices" space "to" space "show" space "that" Argument } |
     ByWeConcludeThat
-        { "By" (Magic | Argument) We "conclude" space "that" Argument } |
+        { "By" (Magic | Argument (And Argument)?) We "conclude" space "that" Argument } |
     Define
         { "Define" Argument DefineSymbol Argument } |
     Since
