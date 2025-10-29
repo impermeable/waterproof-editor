@@ -18,6 +18,7 @@ const tags = {
     vernac: Tag.define(),
     bullet: Tag.define(),
     focusBrace: Tag.define(),
+    magic: Tag.define(),
 }
 
 // Highlighting specific elements of the Coq language
@@ -29,17 +30,19 @@ export const highlight_dark = HighlightStyle.define([
     { tag: tags.vernac, color: "#e45649" },
     { tag: tags.bullet, color: "#ff7300ff" },
     { tag: tags.focusBrace, color: "#ff7300ff" },
+    { tag: tags.magic, color: "#faeda5" },
 ])
 
 // Highlighting specific elements of the Coq language
 export const highlight_light = HighlightStyle.define([
-    { tag: tags.tactic, color: "#4078f2" },    
-    { tag: tags.argument, color: "#333333" },         
-    { tag: tags.lemma, color: "#e45649" },               
-    { tag: tags.comment, color: "#787c99" },           
+    { tag: tags.tactic, color: "#4078f2" },
+    { tag: tags.argument, color: "#333333" },
+    { tag: tags.lemma, color: "#e45649" },
+    { tag: tags.comment, color: "#787c99" },
     { tag: tags.vernac, color: "#e45649" },
     { tag: tags.bullet, color: "#ff7300ff" },
     { tag: tags.focusBrace, color: "#ff7300ff" },
+    { tag: tags.magic, color: "#e0b300" },
 ]);
 
 // Defining the Coq language syntax, highlighting and indentation
@@ -119,8 +122,9 @@ export const coqLanguage = LRLanguage.define({
                 "In": tags.tactic,
                 "We": tags.tactic,
                 "All": tags.tactic,
+                "That": tags.tactic,
                 "DefineSymbol": tags.tactic,
-                "Magic": tags.tactic,
+                "Magic": tags.magic,
                 "SuchAn": tags.tactic,
                 "AccordingTo": tags.tactic
             })
