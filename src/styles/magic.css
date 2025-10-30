@@ -1,0 +1,33 @@
+/** Light mode hihglighting for the `magic` keyword */
+.magic-jump-light {
+    color: #e07700;
+    animation: magic-jump 5s ease;
+    position: relative;
+    animation-delay: 1s;
+    top: 0;
+}
+/** Dark mode hihglighting for the `magic` keyword */
+.magic-jump-dark {
+    color: #fadca5;
+    animation: magic-jump 5s ease-in-out;
+    position: relative;
+    animation-delay: 1s;
+    top: 0;
+}
+@keyframes magic-jump {
+  0% {
+    top: 0px;
+  }
+  5% {
+    top: -3px;
+  }
+  10% {
+    top: 0px;
+  }
+  15% {
+    top: -3px;
+  }
+  20%, 100% {
+    top: 0px;
+  }
+}

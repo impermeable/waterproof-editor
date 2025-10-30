@@ -1,7 +1,7 @@
 @top Program { Sentence* }
 
 Sentence {
-    Comment space | (( FocusOperation* WaterproofTactic | Vernac | Lemmas) ArgumentEnd)
+    Comment space | (( FocusOperation* WaterproofTactic | Vernac | Lemmas | Definitions ) ArgumentEnd)
 }
 
 @tokens {
@@ -69,14 +69,21 @@ LemmaKeyword {
         { "Lemma" } |
     Theorem
         { "Theorem" } |
-    Definition
-        { "Definition" } |
     Example
         { "Example" }
 }
 
+DefinitionKeyword { 
+    Definition
+        { "Definition" }
+}
+
 Lemmas {
     LemmaKeyword Argument
+}
+
+Definitions {
+    DefinitionKeyword Argument DefineSymbol Argument
 }
 
 WaterproofTactic {
@@ -94,21 +101,21 @@ WaterproofTactic {
         { "We" space "now" space "show" space "the" space "induction" space "step" } |
     Take
         { "Take" Argument (And Argument)? } |
-    WeNeedToShowThat
+    WeNeedToShow
         { "We" space "need" space "to" space "show" That Argument } |
     WeConclude
         { "We" space "conclude" That Argument } |
     Case
         { "Case" Argument } |
-    AssumeThat
+    Assume
         { "Assume" That Argument (As Argument)* (And Argument (As Argument)?)? } |
         // The above is not entirely semantic: the reason is that it may not be wise to
         // give a special role to commas, as they may occur in Rocq terms
-    ItSufficesToShowThat
+    ItSufficesToShow
         { "It" space "suffices" space "to" space "show" That Argument } |
-    ItHoldsThat
+    ItHolds
         { "It" space "holds" That Argument (As Argument)? } |
-    WeClaimThat
+    WeClaim
         { "We" space "claim" That Argument } |
     WeUseInductionOn
         { "We" space "use" space "induction" space "on" Argument } |
@@ -124,21 +131,21 @@ WaterproofTactic {
         { "Expand" (All | Argument) } |
     Obtain
         { "Obtain" (Argument AccordingTo | SuchAn ) Argument } |
-    ByItHoldsThat
+    ByItHolds
         { "By" (Magic | Argument (And Argument)?) It "holds" That Argument (As Argument)? } |
-    ByItSufficesToShowThat
+    ByItSufficesToShow
         { "By" (Magic | Argument (And Argument)?) It "suffices" space "to" space "show" That Argument } |
-    ByWeConcludeThat
+    ByWeConclude
         { "By" (Magic | Argument (And Argument)?) We "conclude" That Argument } |
     Define
         { "Define" Argument DefineSymbol Argument } |
     Since
-        { "Since" Argument "it" space "holds" That Argument (As Argument)? } |
+        { "Since" Argument It "holds" That Argument (As Argument)? } |
     Because
         { "Because" Argument Both Argument (As Argument)? And Argument (As Argument)? } |
     Either
         { "Either" Argument Or Argument } |
-    WeNeedToVerifyThat
+    WeNeedToVerify
         { "We" space "need" space "to" space "verify" That Argument }
 }
 
