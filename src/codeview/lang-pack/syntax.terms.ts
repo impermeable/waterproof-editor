@@ -23,8 +23,8 @@ export const
   Both = 48,
   Or = 50,
   Vernac = 52,
-  Lemmas = 65,
-  LemmaKeyword = 66,
-  Definitions = 70,
-  DefinitionKeyword = 71,
-  ArgumentEnd = 73
+  Lemmas = 69,
+  LemmaKeyword = 70,
+  Definitions = 74,
+  DefinitionKeyword = 75,
+  ArgumentEnd = 79

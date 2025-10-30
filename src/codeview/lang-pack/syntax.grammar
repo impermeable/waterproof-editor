@@ -61,7 +61,15 @@ Vernac {
     Variable
         { "Variable" Argument } |
     Parameter
-        { "Parameter" Argument }
+        { "Parameter" Argument } |
+    Check
+        { "Check" Argument } |
+    Hypothesis
+        { "Hypothesis" Argument } |
+    Module
+        { "Module" Argument} |
+    End
+        { "End" Argument}
 }
 
 LemmaKeyword {
@@ -75,7 +83,11 @@ LemmaKeyword {
 
 DefinitionKeyword { 
     Definition
-        { "Definition" }
+        { "Definition" } |
+    Inductive
+        { "Inductive" } |
+    Fixpoint
+        { "Fixpoint" }
 }
 
 Lemmas {

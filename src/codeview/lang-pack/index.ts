@@ -59,6 +59,8 @@ export const coqLanguage = LRLanguage.define({
                 "Example": tags.lemma,
                 // DefinitionKeyword
                 "Definition": tags.definition,
+                "Inductive": tags.definition,
+                "Fixpoint": tags.definition,
                 // Other
                 "Comment": tags.comment,
                 "Argument": tags.argument,
@@ -80,6 +82,10 @@ export const coqLanguage = LRLanguage.define({
                 "Section": tags.vernac,
                 "Variable": tags.vernac,
                 "Parameter": tags.vernac,
+                "Check": tags.vernac,
+                "Hypothesis": tags.vernac,
+                "Module": tags.vernac,
+                "End": tags.vernac,
                 // WaterproofTactic
                 "Help": tags.tactic,
                 "WeArgueByContradiction": tags.tactic,
