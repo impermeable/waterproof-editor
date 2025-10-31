@@ -3,6 +3,7 @@ import {
     HighlightStyle, LRLanguage, LanguageSupport, syntaxHighlighting
 } from "@codemirror/language"
 import { Tag, styleTags } from "@lezer/highlight"
+import { ThemeStyle } from "../../api"
 
 // Importing the parser for the Coq language
 import { parser } from "./syntax"
@@ -140,7 +141,7 @@ export function coq() {
     return new LanguageSupport(coqLanguage)
 }
 
-export function coqSyntaxHighlighting(theme: string) {
-    const highlight = theme === "dark" ? highlight_dark : highlight_light;
+export function coqSyntaxHighlighting(themeStyle: ThemeStyle) {
+    const highlight = themeStyle === ThemeStyle.Dark ? highlight_dark : highlight_light;
     return syntaxHighlighting(highlight);
 }
