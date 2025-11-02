@@ -27,13 +27,15 @@
 	},
   	".cm-cursor, .cm-dropCursor": {"borderLeftColor": "auto"},
 
-	".cm-panels": {"backgroundColor": "transparent", "color": "var(--vscode-list-highlightForeground)"},
-	".cm-panel-lint": {"backgroundColor": "transparent", "color": "var(--vscode-list-highlightForeground)"},
+	".cm-panels": {"color": "var(--vscode-list-highlightForeground)"},
+	".cm-panel-lint": {"backgroundColor": "var(--vscode-listFilterWidget-background)", "color": "var(--vscode-list-highlightForeground)"},
 	".cm-panel-lint > ul": {
-		"backgroundColor": "transparent", 
 		"color": "var(--wp-cm-lint-panel-foreground)",
 		"display": "flex", 
 		"flexFlow": "column"
+	},
+	".cm-panel.cm-panel-lint ul": {
+		"maxHeight": "25vh"
 	},
 	".cm-panel.cm-panel-lint ul [aria-selected]": {
 		"background-color": "var(--vscode-list-activeSelectionBackground)",
