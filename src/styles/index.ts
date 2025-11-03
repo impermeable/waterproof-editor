@@ -44,3 +44,6 @@ import "./autocomplete.css";
 
 // Imports all variable bindings:
 import "./waterproof.css";
+
+// Highlighting for the magic keyword:
+import "./magic.css";
