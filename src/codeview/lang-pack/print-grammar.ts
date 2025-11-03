@@ -1,6 +1,17 @@
 import { parser } from "./syntax";
 
-// const source = `Obtain such m.`;
+/////// MANUAL TEST FILE ///////////
+//
+// This file should be used for manually testing the grammar only!
+//
+// This file should **not** be imported anywhere and is hence
+// not included in the output build.
+//
+// Run using `ts-node print-grammar.ts` 
+//     see (https://www.npmjs.com/package/ts-node)
+//
+///////////////////////////////////
+
 const source = `Example example1_1_1 (a b c : ℤ) :
   c | b ⇒ b | a ⇒ True ⇒ c | a.
 Proof.
