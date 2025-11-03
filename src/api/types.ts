@@ -120,4 +120,6 @@ export type DiagnosticMessage = {
     version: number
 }
 
-export type ThemeStyle = "light" | "dark";
+export enum ThemeStyle {
+    Light, Dark
+}

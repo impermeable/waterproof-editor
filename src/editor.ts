@@ -32,7 +32,6 @@ import { OS } from "./osType";
 import { Positioned, WaterproofMapping, WaterproofEditorConfig, DiagnosticMessage, ThemeStyle } from "./api";
 import { Completion } from "@codemirror/autocomplete";
 import { FileFormat } from "./api/FileFormat";
-import { setCurrentTheme } from "./themeStore";
 import { ServerStatus } from "./api";
 
 /** Type that contains a coq diagnostics object fit for use in the ProseMirror editor context. */
@@ -72,7 +71,7 @@ export class WaterproofEditor {
 	 * @param editorElement The HTML element where the editor will be inserted in the document
 	 * @param config The configuration of the editor to use.
 	 */
-	constructor (editorElement: HTMLElement, config: WaterproofEditorConfig) {
+	constructor (editorElement: HTMLElement, config: WaterproofEditorConfig, private readonly initialThemeStyle: ThemeStyle) {
 		this._schema = WaterproofSchema;
 		this._editorElem = editorElement;
 		this.currentProseDiagnostics = [];
@@ -258,7 +257,7 @@ export class WaterproofEditor {
 			mathPlugin,
 			realMarkdownPlugin(this._schema),
 			coqdocPlugin(this._schema),
-			codePlugin(this._editorConfig.completions, this._editorConfig.symbols),
+			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this.initialThemeStyle),
 			progressBarPlugin,
 			documentProgressDecoratorPlugin,
 			menuPlugin(WaterproofSchema, FileFormat.MarkdownV, this._userOS),
@@ -282,7 +281,6 @@ export class WaterproofEditor {
 	}
 
 	public updateNodeViewThemes(theme: ThemeStyle) {
-		setCurrentTheme(theme);
 		const view = this._view!;
 		const state = view.state;
 
