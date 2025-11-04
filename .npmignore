@@ -10,6 +10,6 @@ README.md
 /eslint.config.mjs
 /jest.config.js
 package-lock.json
-package.json
 /tsconfig.json
 /tsconfig.tsbuildinfo
+sonar-project.properties
