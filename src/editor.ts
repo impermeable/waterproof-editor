@@ -232,6 +232,9 @@ export class WaterproofEditor {
 				},
 				"drop": (view, event) => {
 					event.preventDefault();
+				},
+				"mousedown": (view, event) => {
+					event.preventDefault();
 				}
 			}
 		});
