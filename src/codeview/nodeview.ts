@@ -1,4 +1,4 @@
-import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, completionKeymap } from "@codemirror/autocomplete";
+import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, acceptCompletion, completionStatus, hasNextSnippetField, nextSnippetField, snippetKeymap, prevSnippetField, clearSnippet } from "@codemirror/autocomplete";
 import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { coq, coqSyntaxHighlighting } from "./lang-pack"
 import { Compartment, EditorState, Extension } from "@codemirror/state"
@@ -142,9 +142,35 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 					addToOptions: [renderIcon],
 					defaultKeymap: false,
 				}),
-				cmKeymap.of([
-				...completionKeymap,
-						...this.embeddedCodeMirrorKeymap()
+				// This is the normal keymap
+				cmKeymap.of(this.embeddedCodeMirrorKeymap()),
+				// This is the keymap that is only ever used when in a snippet
+				// We use this to overload the functionality of the tab key
+				snippetKeymap.of([
+					{ 	key: "Tab",
+						run: (target: CodeMirror) => {
+							// Check whether a completion is active
+							const status = completionStatus(target.state);
+							if (status !== null) {
+								// if there is an active completion, then accept it
+								return acceptCompletion(target);
+							} else if (hasNextSnippetField(target.state)) {
+								// if there is not, but there is a next field in the snippet
+								// move to the next field
+								return nextSnippetField(target);
+							}
+							// Indicate that we have not yet handled this keypress
+							return false;
+						}
+					},
+					{
+						key: "Shift-Tab",
+						run: prevSnippetField,
+					},
+					{
+						key: "Escape",
+						run: clearSnippet
+					}
 				]),
 				customTheme,
 				syntaxHighlighting(defaultHighlightStyle),
