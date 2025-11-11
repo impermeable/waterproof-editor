@@ -1,9 +1,9 @@
-import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, acceptCompletion, completionStatus, hasNextSnippetField, nextSnippetField, snippetKeymap, prevSnippetField, clearSnippet } from "@codemirror/autocomplete";
+import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, acceptCompletion, completionStatus, hasNextSnippetField, nextSnippetField, snippetKeymap, prevSnippetField, clearSnippet, moveCompletionSelection, closeCompletion } from "@codemirror/autocomplete";
 import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { coq, coqSyntaxHighlighting } from "./lang-pack"
 import { Compartment, EditorState, Extension } from "@codemirror/state"
 import {
-	EditorView as CodeMirror, keymap as cmKeymap,
+	EditorView as CodeMirror, Command, keymap as cmKeymap,
 	highlightActiveLine,
 	lineNumbers, placeholder} from "@codemirror/view"
 import { Node, Schema } from "prosemirror-model"
@@ -162,6 +162,26 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 							// Indicate that we have not yet handled this keypress
 							return false;
 						}
+					},
+					{
+						key: "ArrowUp",
+						run: (target) => execCmdIfInCompletionContext(target, moveCompletionSelection(false))
+					},
+					{
+						key: "ArrowDown",
+						run: (target) => execCmdIfInCompletionContext(target, moveCompletionSelection(true))
+					},
+					{
+						key: "PageUp",
+						run: (target) => execCmdIfInCompletionContext(target, moveCompletionSelection(true, "page"))
+					},
+					{
+						key: "PageDown",
+						run: (target) => execCmdIfInCompletionContext(target, moveCompletionSelection(false, "page"))
+					},
+					{
+						key: "Escape",
+						run: (target) => execCmdIfInCompletionContext(target, closeCompletion)
 					},
 					{
 						key: "Shift-Tab",
@@ -447,4 +467,14 @@ const severityToString = (sv: number) => {
 		default:
 			return "error";
 	}
+}
+
+function execCmdIfInCompletionContext(target: CodeMirror, cmd: Command): boolean {
+	const status = completionStatus(target.state);
+	if (status !== null) {
+		// Execute the supplied command when we are in a completion context
+		return cmd(target);
+	}
+	// Indicate that we have not handled this key
+	return false;
 }
