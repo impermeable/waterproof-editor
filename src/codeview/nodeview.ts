@@ -255,7 +255,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			},
 		});
 
-		this.debouncer = new Debouncer(400, this.forceUpdateLinting.bind(this));
+		this.debouncer = new Debouncer(750, this.forceUpdateLinting.bind(this));
 
 		// Editors outer node is dom
 		this.dom = this._codemirror.dom;
