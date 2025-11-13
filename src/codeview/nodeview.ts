@@ -81,7 +81,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			// Matches any amount of whitespace followed by a character followed by characters or whitespace
 			// This is used for completions at the start of the line like "\tWe " should be autocompleteable to
 			// "\tWe conclude that 0 = 0."
-			const before = context.matchBefore(/\s*\w+\s[\s\w]*/);
+			const before = context.matchBefore(/\s*\w+(\s[\s\w]*)?/);
 			// The check line.text === before.text makes sure that there is nothing after the cursor.
 			// This prevents the case that we are in the first hole of the snippet
 			// "By ([hole 1]) we conclude that [hole 2].[hole 3]", we hit "i" and tab (with the intention of moving to the second hole) 
