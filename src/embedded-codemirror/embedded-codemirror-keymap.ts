@@ -30,6 +30,7 @@ export const indentMoreCustom: StateCommand = ({state, dispatch}) => {
  * https://github.com/codemirror/commands/blob/e27916c9b09d2cedd7e0c9770bff04eeb3696e69/src/commands.ts#L878
  */
 export const keybindings: KeyBinding[] = [
+    ...completionKeymap,
     { key: "Mod-A", run: selectAll, preventDefault: true },
     { key: "ArrowLeft", run: cursorCharLeft, shift: selectCharLeft, preventDefault: true },
     { key: "ArrowRight", run: cursorCharRight, shift: selectCharRight, preventDefault: true },
@@ -51,7 +52,6 @@ export const keybindings: KeyBinding[] = [
     { key: "End", run: cursorLineBoundaryForward, shift: selectLineBoundaryForward, preventDefault: true },
     { key: "Mod-End", run: cursorDocEnd, shift: selectDocEnd },
 
-    ...completionKeymap,
     { key: "Enter", run: insertNewlineAndIndent },
 
     { key: "Backspace", run: deleteCharBackward, shift: deleteCharBackward },
