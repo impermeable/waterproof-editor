@@ -53,23 +53,49 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._diags = [];
 		
 
-		const tacticCompletionSource: CompletionSource = function(context: CompletionContext): Promise<CompletionResult | null> {
-			return new Promise((resolve, _reject) => {
-				const before = context.matchBefore(/([^\s.\n\t\-+*])[^\s\n\t\-+*]*/gm);
-				const period = /\./gm 
-				const line = context.state.doc.lineAt(context.pos);
-				const firstletter = line.text.match(/[a-zA-Z]/);
-				const lineBeforeCursor = line.text.slice(0, context.pos - line.from);
-				
-				if ((!context.explicit && !before) || period.test(lineBeforeCursor)) resolve(null);
-				resolve({
-				// start completion instance from first letter of line
-				from: firstletter ? line.from + firstletter.index!: context.pos,
-				// non-null assertion operator "!" used to remove 'possibly null' error
+		const tacticCompletionSource: CompletionSource = function(context: CompletionContext) {
+			const completionResult: CompletionResult = {
+				from: context.pos,
 				options: completions,
-				validFor: /^[\t]*[^.]*/gm
-				})
-			});
+				validFor: /[^.]*/
+			};
+
+			// Manual triggered completions (using ctrl-space)
+			if (context.explicit) {
+				return completionResult;
+			}
+
+			// Matches bullet sequences
+			const bullet = context.matchBefore(/^\s*(?:\*+|\++|-+) /);
+			// Matches a curly brace
+			const brace = context.matchBefore(/^\s*{ /);
+			// Matches the end of a sentence (assuming no periods in the sentence)
+			const endOfSentence = context.matchBefore(/\.\s+/);
+
+			// Completions start when the cursor is after a bullet or a focus brace '{'
+			if (bullet !== null || brace !== null || endOfSentence !== null) {
+				return completionResult;
+			}
+
+			const line = context.state.doc.lineAt(context.pos);
+			// Matches any amount of whitespace followed by a character followed by characters or whitespace
+			// This is used for completions at the start of the line like "\tWe " should be autocompleteable to
+			// "\tWe conclude that 0 = 0."
+			const before = context.matchBefore(/\s*\w+\s[\s\w]*/);
+			// The check line.text === before.text makes sure that there is nothing after the cursor.
+			// This prevents the case that we are in the first hole of the snippet
+			// "By ([hole 1]) we conclude that [hole 2].[hole 3]", we hit "i" and tab (with the intention of moving to the second hole) 
+			// and this autocompletes to "It holds that"
+			if (before !== null && line.text === before.text) {
+				return {
+					from: context.pos - before.text.trimStart().length, // Already typed one or more characters
+					options: completions,
+					validFor: /[^.]*/
+				}
+			}
+		
+			// Not in a valid completion context, return null
+			return null;
   		}
 
 		// inline definition of the symbol completion source. (Used for completions of the form `\reals` for ℝ).
@@ -329,7 +355,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		});
 	};
 
-/**
+	/**
 	 * Add a new coq error to this view
 	 * @param from The from position of the error.
 	 * @param to The to postion of the error (should be larger than `from`).
