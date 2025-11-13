@@ -150,6 +150,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				// Add the linting extension for showing diagnostics (errors, warnings, etc)
 				linter(this.lintingFunction, {
 					autoPanel: inInputArea, // Only enable auto panel when this view is inside of an input area
+					tooltipFilter: inInputArea ? (() => { return []; }) : undefined, // Don't show tooltips inside of input-areas
 				}),
 				...optional, 
 				this._readOnlyCompartment.of(EditorState.readOnly.of(!this._outerView.editable)),
