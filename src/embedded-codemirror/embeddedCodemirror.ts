@@ -231,6 +231,7 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 
 		// 'Mod' is a platform independent 'Ctrl'/'Cmd'
 		return [
+			...keybindings,
 			{ key: "ArrowUp", run: this.maybeEscape(MovementUnit.line, MovementDirection.backward) },
 			{ key: "ArrowLeft", run: this.maybeEscape(MovementUnit.character, MovementDirection.backward) },
 			{ key: "ArrowDown", run: this.maybeEscape(MovementUnit.line, MovementDirection.forward) },
@@ -242,7 +243,6 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 					return true
 				}
 			},
-			...keybindings,
 		]
 	}
 }
