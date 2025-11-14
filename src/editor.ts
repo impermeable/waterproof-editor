@@ -30,7 +30,6 @@ import { CodeBlockView } from "./codeview/nodeview";
 import { OS } from "./osType";
 import { Positioned, WaterproofEditorConfig, DiagnosticMessage, ThemeStyle } from "./api";
 import { Completion } from "@codemirror/autocomplete";
-import { setCurrentTheme } from "./themeStore";
 import { ServerStatus } from "./api";
 import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "./commands/insert-command";
 import { InsertionPlace } from "./commands";
@@ -78,7 +77,7 @@ export class WaterproofEditor {
 	 * @param editorElement The HTML element where the editor will be inserted in the document
 	 * @param config The configuration of the editor to use.
 	 */
-	constructor (editorElement: HTMLElement, config: WaterproofEditorConfig) {
+	constructor (editorElement: HTMLElement, config: WaterproofEditorConfig, private readonly initialThemeStyle: ThemeStyle) {
 		this._schema = WaterproofSchema;
 		this._editorElem = editorElement;
 		this.currentProseDiagnostics = [];
@@ -218,6 +217,9 @@ export class WaterproofEditor {
 				},
 				"drop": (view, event) => {
 					event.preventDefault();
+				},
+				"mousedown": (view, event) => {
+					event.preventDefault();
 				}
 			}
 		});
@@ -247,7 +249,7 @@ export class WaterproofEditor {
 			updateStatusPlugin(this),
 			mathPlugin,
 			switchableViewPlugin(this._editorConfig),
-			codePlugin(this._editorConfig.completions, this._editorConfig.symbols),
+			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this.initialThemeStyle),
 			progressBarPlugin,
 			documentProgressDecoratorPlugin,
 			menuPlugin(this._userOS, this._editorConfig.tagConfiguration),
@@ -280,7 +282,6 @@ export class WaterproofEditor {
 	}
 
 	public updateNodeViewThemes(theme: ThemeStyle) {
-		setCurrentTheme(theme);
 		const view = this._view!;
 		const state = view.state;
 

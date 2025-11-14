@@ -14,7 +14,6 @@ import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, setDiagnosticsEffect, lintGutter } from "@codemirror/lint";
 import { Debouncer } from "./debouncer";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
-import { getCurrentTheme } from "../themeStore";
 import { ThemeStyle } from "../api";
 import { WaterproofSchema } from "../schema";
 
@@ -32,8 +31,6 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _readOnlyCompartment: Compartment;
 	private _themeCompartment: Compartment;
 	private _diags : Diagnostic[];
-	private _themeColor: ThemeStyle;
-
 	private debouncer: Debouncer;
 
 	constructor(
@@ -42,16 +39,14 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		getPos: (() => number | undefined),
 		schema: Schema,
 		completions: Array<Completion>,
-		symbols: Array<Completion>
+		symbols: Array<Completion>,
+		initialThemeStyle: ThemeStyle
 	) {
 		super(node, view, getPos, schema);
 		this._node = node;
 		this._outerView = view;
 		this._getPos = getPos;
 		this._lineNumbersExtension = [];
-
-		// Set initial theme color based on VSCode theme
-		this._themeColor =  getCurrentTheme(); // Default to light theme
 
 		this._lineNumberCompartment = new Compartment;
 		this._readOnlyCompartment = new Compartment;
@@ -132,11 +127,12 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				// Add the linting extension for showing diagnostics (errors, warnings, etc)
 				linter(this.lintingFunction, {
 					autoPanel: inInputArea, // Only enable auto panel when this view is inside of an input area
+					tooltipFilter: inInputArea ? (() => { return []; }) : undefined, // Don't show tooltips inside of input-areas
 				}),
 				...optional, 
 				this._readOnlyCompartment.of(EditorState.readOnly.of(!this._outerView.editable)),
 				this._lineNumberCompartment.of(this._lineNumbersExtension),
-				this._themeCompartment.of(coqSyntaxHighlighting(this._themeColor)),
+				this._themeCompartment.of(coqSyntaxHighlighting(initialThemeStyle)),
 
 				autocompletion({
 					override: [
