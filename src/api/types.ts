@@ -94,6 +94,10 @@ export type SimpleProgressInfo = {
         start: { line: number, character: number },
         end: { line: number, character: number },
     };
+    offsetRange: {
+        start: number,
+        end: number,
+    };
     /** Kind of progress that was reported. */
     kind?: CoqFileProgressKind;
 }

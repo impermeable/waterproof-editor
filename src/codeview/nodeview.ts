@@ -15,6 +15,8 @@ import { linter, LintSource, Diagnostic, setDiagnosticsEffect, lintGutter } from
 import { Debouncer } from "./debouncer";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { ThemeStyle } from "../api";
+import { addProgressIndicatorEffect, breakpointState, progressGutter, progressIndicatorField, removeProgressIndicatorEffect } from "./progress-indicator";
+import { WaterproofEditor } from "../editor";
 
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
@@ -35,6 +37,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	constructor(
 		node: Node,
 		view: EditorView,
+		private editorInstance: WaterproofEditor,
 		getPos: (() => number | undefined),
 		schema: Schema,
 		completions: Array<Completion>,
@@ -147,6 +150,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._codemirror = new CodeMirror({
 			doc: this._node.textContent,
 			extensions: [
+				breakpointState,
+				progressGutter,
+				progressIndicatorField,
 				// Add the linting extension for showing diagnostics (errors, warnings, etc)
 				linter(this.lintingFunction, {
 					autoPanel: inInputArea, // Only enable auto panel when this view is inside of an input area
@@ -313,6 +319,17 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				coqSyntaxHighlighting(theme)
 			)
 		});
+	}
+
+	public removeProgressIndicator() {
+		if (this._codemirror === undefined) return;
+		this._codemirror.dispatch({effects: removeProgressIndicatorEffect.of(null)});
+	}
+
+	public addProgressIndicator(pos: number) {
+		if (this._codemirror === undefined) return;
+		const line = this._codemirror.state.doc.lineAt(pos);
+		this._codemirror.dispatch({effects: addProgressIndicatorEffect.of({from: line.from, to: line.to})});
 	}
 
 	/**

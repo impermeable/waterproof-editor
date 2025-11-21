@@ -51,6 +51,10 @@ export const highlight_light = HighlightStyle.define([
 
 // Defining the Coq language syntax, highlighting and indentation
 export const coqLanguage = LRLanguage.define({
+    languageData: {
+        closeBrackets: { brackets: ["(", "[", "{", "'", '"', "`"] },
+        commentTokens: { block: {open: "(* ", close: " *)"} },
+    },
     parser: parser.configure({
         props: [
             styleTags({

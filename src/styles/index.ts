@@ -47,3 +47,5 @@ import "./waterproof.css";
 
 // Highlighting for the magic keyword:
 import "./magic.css";
+
+import "./loader.css";

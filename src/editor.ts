@@ -66,6 +66,11 @@ export class WaterproofEditor {
 
 	private _lineNumbersShown: boolean = false;
 
+	private oldRange: number = 0;
+	public get offsetChecked() {
+		return this.oldRange;
+	}
+
 	/**
 	 * Create a new WaterproofEditor instance.
 	 * @param editorElement The HTML element where the editor will be inserted in the document
@@ -260,7 +265,7 @@ export class WaterproofEditor {
 			mathPlugin,
 			realMarkdownPlugin(this._schema),
 			coqdocPlugin(this._schema),
-			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this.initialThemeStyle),
+			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this, this.initialThemeStyle),
 			progressBarPlugin,
 			documentProgressDecoratorPlugin,
 			menuPlugin(WaterproofSchema, FileFormat.MarkdownV, this._userOS),
@@ -620,6 +625,39 @@ export class WaterproofEditor {
 		tr.setMeta(PROGRESS_PLUGIN_KEY, {progressParams});
 		this._view.dispatch(tr);
 		this.updateDocumentProgress();
+	}
+
+	public verifiedUpToLine(progressParams: SimpleProgressParams): void {
+		// console.log("Verified Range", progressParams);
+
+		const first = progressParams.progress.at(0);
+		if (first === undefined) return;
+
+		if (this.oldRange === first.offsetRange.start) return;
+
+		// console.log(first.offsetRange.start);
+		if (this._mapping === undefined || this._view === undefined) return;
+		const mapped = this._mapping.findInvPosition(first.offsetRange.start);
+		// console.log(mapped);
+		
+		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
+		if (views === undefined) return;
+
+		for (const view of views) view.removeProgressIndicator();
+
+		// TODO: Binary search the views
+		for (const view of views) {
+			const pos : number | undefined = view._getPos();
+			if (pos === undefined) continue;
+			const viewSize : number | undefined = this._view.state.doc.nodeAt(pos)?.nodeSize
+			if (viewSize === undefined) continue;
+			const endPos : number = pos + viewSize - 1;
+			if (mapped < endPos && mapped > pos) {
+				view.addProgressIndicator(mapped - pos);
+			}
+		}
+
+		this.oldRange = first.offsetRange.start;
 	}
 
 	public updateServerStatus(status: ServerStatus) : void {
