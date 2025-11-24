@@ -1,5 +1,5 @@
 import { EditorView, Decoration, DecorationSet, WidgetType, gutter, GutterMarker } from "@codemirror/view"
-import { StateField, StateEffect, RangeSet } from "@codemirror/state"
+import { StateField, StateEffect, RangeSet, Range } from "@codemirror/state"
 
 export const addProgressIndicatorEffect = StateEffect.define<{from: number, to: number}>({
   map: ({from, to}, change) => ({from: change.mapPos(from), to: change.mapPos(to)})
@@ -17,7 +17,7 @@ export class ProgressWidget extends WidgetType {
     toDOM(_view: EditorView): HTMLElement {
         const el = document.createElement("div");
         el.classList.add("loader");
-        el.title = "Waterproof is busy checking this line";
+        el.innerText = "Waterproof is busy checking the lines below...";
         return el;
     }
     eq(_widget: WidgetType): boolean {
@@ -77,7 +77,7 @@ export const breakpointState = StateField.define<RangeSet<GutterMarker>>({
     for (const e of transaction.effects) {
         if (e.is(addProgressIndicatorEffect)) {
            const lines = transaction.state.doc.lines;
-           const toAdd = [];
+           const toAdd: Array<Range<GutterMarker>> = [];
            for (let i = 1; i <= lines; i++) {
                 const line = transaction.state.doc.line(i);
                 console.log("hello");
