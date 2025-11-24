@@ -34,7 +34,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	constructor(
 		node: Node,
 		view: EditorView,
-		private editorInstance: WaterproofEditor,
+		private readonly editorInstance: WaterproofEditor,
 		getPos: (() => number | undefined),
 		schema: Schema,
 		completions: Array<Completion>,

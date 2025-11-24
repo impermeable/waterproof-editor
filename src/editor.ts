@@ -740,17 +740,26 @@ export class WaterproofEditor {
 		this.diagnosticsUpdateCounter++;
 	}
 
-	public getDiagnosticsInRange(low: number, high: number, truncationLevel: number = 5, splitOnBounds: boolean = false): Array<DiagnosticObjectProse> {
-		if (splitOnBounds) {
+
+	/**
+	 * Return the set of stored diagnostics in the range low to high.
+	 * @param low Lower bound for the diagnostic range.
+	 * @param high Upper bound for the diagnostic range.
+	 * @param truncationLevel If desired, only include diagnostics with a severity level below the `truncationLevel`. 
+	 * @param trimToFitBounds When set to `true` will return 'partial' diagnostics. That is, diagnostics that would overflow the upper or lower bound
+	 * are returned with the start and end pos trimmed to low and high respectively. 
+	 * @returns The set of diagnostics in the range low to high.
+	 */
+	public getDiagnosticsInRange(low: number, high: number, truncationLevel: number = 5, trimToFitBounds: boolean = false): Array<DiagnosticObjectProse> {
+		if (trimToFitBounds) {
 			return this.currentProseDiagnostics.filter((value) => {
 				// Keep when there is overlap with the low to high range
 				return (value.start <= high && value.end >= low && value.severity < truncationLevel);
-				// return !((value.start > high) || (value.end < low)) && value.severity <= truncationLevel;
 			}).map(d => {
 				return {
 					message: d.message,
-					start: d.start <= low ? low : d.start,
-					end: d.end >= high ? high : d.end,
+					start: Math.max(d.start, low),
+					end: Math.min(d.end, high),
 					severity: d.severity
 				}
 			});
