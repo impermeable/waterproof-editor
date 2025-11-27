@@ -747,7 +747,7 @@ export class WaterproofEditor {
 	 * @param truncationLevel If desired, only include diagnostics with a severity level below the `truncationLevel`.
 	 * @returns The set of diagnostics in the range low to high.
 	 */
-	public getDiagnosticsInRange(low: number, high: number, truncationLevel: number = 5, trimToFitBounds: boolean = false): Array<DiagnosticObjectProse> {
+	public getDiagnosticsInRange(low: number, high: number, truncationLevel: number = 5): Array<DiagnosticObjectProse> {
 		return this.currentProseDiagnostics.filter((value) => {
 			return ((low <= value.start) && (value.end <= high) && (value.severity) <= truncationLevel);
 		});
