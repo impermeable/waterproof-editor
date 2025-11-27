@@ -15,7 +15,7 @@ import { linter, LintSource, Diagnostic, setDiagnosticsEffect, lintGutter } from
 import { Debouncer } from "./debouncer";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { ThemeStyle } from "../api";
-import { addProgressIndicatorEffect, breakpointState, progressGutter, progressIndicatorField, removeProgressIndicatorEffect } from "./progress-indicator";
+import { addProgressIndicatorEffect, busyGutter, busyIndicatorState, progressGutter, progressIndicatorField, progressState, removeProgressIndicatorEffect } from "./progress-indicator";
 import { WaterproofEditor } from "../editor";
 
 /**
@@ -150,9 +150,11 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._codemirror = new CodeMirror({
 			doc: this._node.textContent,
 			extensions: [
-				breakpointState,
-				progressGutter,
+				busyIndicatorState,
+				busyGutter,
 				progressIndicatorField,
+				progressState,
+				progressGutter,
 				// Add the linting extension for showing diagnostics (errors, warnings, etc)
 				linter(this.lintingFunction, {
 					autoPanel: inInputArea, // Only enable auto panel when this view is inside of an input area

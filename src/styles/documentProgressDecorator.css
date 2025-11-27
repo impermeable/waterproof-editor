@@ -4,10 +4,10 @@
 .document-progress-decorator {
   display: block;
   position: absolute;
-  left: 0;
+  background-color: var(--vscode-button-background);
+  left: 1px;
   top: 0;
   width: 4px;
-  min-height: 100%;
   border-radius: 2px;
   z-index: 10;
   pointer-events: none; /* Don't interfere with editor interactions */

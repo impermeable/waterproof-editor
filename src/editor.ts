@@ -364,76 +364,9 @@ export class WaterproofEditor {
 		this._editorConfig.api.lineNumbers(linenumbers, this._mapping.version);
 	}
 
-		private updateDocumentProgress() {
-		// Use getState with the CODE_PLUGIN_KEY to obtain linenumbers
+	private updateDocumentProgress(currentlyAt: number, ofTotal: number) {
 		if (!this._view) return;
-		const lineNumbers = CODE_PLUGIN_KEY.getState(this._view.state)?.lines;
-		// Use getState with the CODE_PLUGIN_KEY to obtain progress activeNodeViews
-		const activeNodeViews = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
-		// Use getState with the PROGRESS_PLUGIN_KEY to obtain progress status
-		const progressParams = PROGRESS_PLUGIN_KEY.getState(this._view.state)?.progressParams;
-		if (progressParams === undefined || lineNumbers === undefined || activeNodeViews === undefined) return;
-		// Compute currentLine from progressParams
-		if (progressParams.progress.length == 0) return;
-		const currentLine = progressParams?.progress[0].range.start.line + 1;
-		const endLine = progressParams?.progress[0].range.end.line + 1;
-	
-		if (currentLine == endLine) {
-			// Done checking, remove bar
-			const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, 
-				{progressHeightLow: 0, progressHeightHigh: 0, total: 0});
-			this._view.dispatch(tr);
-			return;
-		}
-
-		// Compute current nodeView using lineNumbers and activeNodeViews
-		let currentNodeView = undefined;
-		let viewLineNumber = undefined;
-		let nextLineNumber = undefined;
-		let nextNodeView = undefined;
-		
-		let i = 0;
-		for (const nodeView of activeNodeViews) {
-			if (currentNodeView != undefined) {
-				nextNodeView = nodeView;
-				break;
-			}
-			if (currentLine >= lineNumbers.linenumbers[i] && currentLine < lineNumbers.linenumbers[i + 1]) {
-				currentNodeView = nodeView; 
-				viewLineNumber = lineNumbers.linenumbers[i];
-				nextLineNumber = lineNumbers.linenumbers[i + 1];
-			}
-			i++;
-		}
-		if (currentNodeView === undefined || viewLineNumber === undefined || nextLineNumber === undefined) return;
-		let startPos = currentNodeView._getPos();
-		let nextPos = nextNodeView?._getPos();
-		if (startPos === undefined || nextPos === undefined) return;
-		const startDocCoords = this._view.coordsAtPos(0);
-		let startCoords = this._view.coordsAtPos(startPos, -1);
-		// If we don't find a good position, this is likely a hidden codeblock
-		// Go back until we find a position in the document or the top
-		while (startCoords == null || startCoords.top == 0) {
-			startPos--;
-			if (startPos < 0) break;
-			startCoords = this._view.coordsAtPos(startPos, -1);
-		}
-
-		// If we don't find a good position, this is likely a hidden codeblock
-		// Go forward until we find a position in the document or the bottom
-		let nextCoords = this._view.coordsAtPos(nextPos);
-		while (nextCoords == null || nextCoords.top == 0) {
-			nextPos++;
-			if (nextPos >= this._view.state.doc.content.size) break;
-			nextCoords = this._view.coordsAtPos(nextPos);
-		}
-		const endDocCoords = this._view.coordsAtPos(this._view.state.doc.content.size);
-		const height = startCoords.top - startDocCoords.top;
-
-		// Communicate the total size of the document, the low estimate where processing is happening
-		// and the high estimate, unit is pixels for each
-		const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, {
-			total: endDocCoords.top - startDocCoords.top, progressHeightLow: height, progressHeightHigh: nextCoords.top - startDocCoords.top});
+		const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, { completed: currentlyAt == ofTotal });
 		this._view.dispatch(tr);
 	}
 
@@ -458,8 +391,6 @@ export class WaterproofEditor {
 		if (!state) return;
 		const tr = this._view.state.tr.setMeta(CODE_PLUGIN_KEY, msg);
 		this._view.dispatch(tr);
-		// Document progress uses lines to compute the right size of the decorator
-		this.updateDocumentProgress();
 	}
 
 	/**
@@ -613,32 +544,25 @@ export class WaterproofEditor {
 		this._view.dispatch(trans);
 	}
     
-	/**
-	 * Updates the state of the progress bar in the editor. 
-	 * 
-	 * @param progressParams The type used to store information on the status of the checking of the current file
-	 */
-	public updateProgressBar(progressParams: SimpleProgressParams): void {
+	public setDocumentProgress(progressParams: SimpleProgressParams): void {
+		this.updateDocumentProgress(progressParams.progress.offsetRange.start, progressParams.progress.offsetRange.end);
+		this.updateProgressBar(progressParams);
+	}
+
+	private updateProgressBar(progressParams: SimpleProgressParams): void {
 		if (!this._view) return;
+		
 		const state = this._view.state;
 		const tr = state.tr;
 		tr.setMeta(PROGRESS_PLUGIN_KEY, {progressParams});
 		this._view.dispatch(tr);
-		this.updateDocumentProgress();
 	}
 
-	public verifiedUpToLine(progressParams: SimpleProgressParams): void {
-		// console.log("Verified Range", progressParams);
+	public setBusyRange(range: {from: number, to: number}) {
+		if (this.oldRange === range.from) return;
 
-		const first = progressParams.progress.at(0);
-		if (first === undefined) return;
-
-		if (this.oldRange === first.offsetRange.start) return;
-
-		// console.log(first.offsetRange.start);
 		if (this._mapping === undefined || this._view === undefined) return;
-		const mapped = this._mapping.findInvPosition(first.offsetRange.start);
-		// console.log(mapped);
+		const mapped = this._mapping.findInvPosition(range.from);
 		
 		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
 		if (views === undefined) return;
@@ -647,9 +571,9 @@ export class WaterproofEditor {
 
 		// TODO: Binary search the views
 		for (const view of views) {
-			const pos : number | undefined = view._getPos();
+			const pos = view._getPos();
 			if (pos === undefined) continue;
-			const viewSize : number | undefined = this._view.state.doc.nodeAt(pos)?.nodeSize
+			const viewSize = this._view.state.doc.nodeAt(pos)?.nodeSize
 			if (viewSize === undefined) continue;
 			const endPos : number = pos + viewSize - 1;
 			if (mapped < endPos && mapped > pos) {
@@ -657,7 +581,7 @@ export class WaterproofEditor {
 			}
 		}
 
-		this.oldRange = first.offsetRange.start;
+		this.oldRange = range.from;
 	}
 
 	public updateServerStatus(status: ServerStatus) : void {

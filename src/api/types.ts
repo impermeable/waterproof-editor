@@ -104,7 +104,7 @@ export type SimpleProgressInfo = {
 
 export type SimpleProgressParams = {
     numberOfLines: number;
-    progress: SimpleProgressInfo[];
+    progress: SimpleProgressInfo;
 }
 
 export enum CoqFileProgressKind {

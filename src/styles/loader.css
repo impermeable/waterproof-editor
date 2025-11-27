@@ -1,11 +1,38 @@
 
 .loader {
     display: inline-block;
-    min-width: 60px;
+    min-width: 1em;
+    /* min-width: 3em; */
     max-height: 1em;
 }
 
+/* border-radius: 50%; */
 .loader {
-    background-color: yellow;
-    color: green;
+    width: 1em;
+    height: 1em;
+    background:#ffae00;
+    box-shadow: 0 0 0 0 #ffae006e;
+    animation: pulse 1.5s infinite;
 }
+@keyframes pulse {
+    100% {box-shadow: 0 0 0 3em #0000}
+}
+
+
+/* .loader {
+    width: 60px;
+    aspect-ratio: 2;
+    --_g: no-repeat radial-gradient(circle closest-side,#ffae00 90%,#0000);
+    background: 
+    var(--_g) 0%   50%,
+    var(--_g) 50%  50%,
+    var(--_g) 100% 50%;
+    background-size: calc(100%/3) 50%;
+    animation: l3 1s infinite linear;
+}
+@keyframes l3 {
+    20%{background-position:0%   0%, 50%  50%,100%  50%}
+    40%{background-position:0% 100%, 50%   0%,100%  50%}
+    60%{background-position:0%  50%, 50% 100%,100%   0%}
+    80%{background-position:0%  50%, 50%  50%,100% 100%}
+} */
