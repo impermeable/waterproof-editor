@@ -716,8 +716,8 @@ export class WaterproofEditor {
 		this.currentProseDiagnostics = new Array<DiagnosticObjectProse>(diagnostics.length);
 		for (let i = 0; i < diagnostics.length; i++) {
 			const diag = diagnostics[i];
-			const start = map.findInvPosition(diag.startOffset);
-			const end = map.findInvPosition(diag.endOffset);
+			const start = map.findInvPosition(diag.startOffset) - 1;
+			const end = map.findInvPosition(diag.endOffset) - 1;
 			if (start >= end) continue;
 			this.currentProseDiagnostics[i] = {
 				message: diag.message,
