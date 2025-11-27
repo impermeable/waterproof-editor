@@ -29,7 +29,7 @@ import { UPDATE_STATUS_PLUGIN_KEY, updateStatusPlugin } from "./qedStatus";
 import { CodeBlockView } from "./codeview/nodeview";
 import { InsertionPlace, cmdInsertCode, cmdInsertLatex, cmdInsertMarkdown } from "./commands";
 import { OS } from "./osType";
-import { Positioned, WaterproofMapping, WaterproofEditorConfig, DiagnosticMessage, ThemeStyle } from "./api";
+import { Positioned, WaterproofMapping, WaterproofEditorConfig, ThemeStyle } from "./api";
 import { Completion } from "@codemirror/autocomplete";
 import { FileFormat } from "./api/FileFormat";
 import { ServerStatus } from "./api";
@@ -706,8 +706,7 @@ export class WaterproofEditor {
 	 * 
 	 * @param msg The set of diagnostics for the current document. 
 	 */
-	public setActiveDiagnostics(msg: DiagnosticMessage) {
-		const diagnostics = msg.positionedDiagnostics;
+	public setActiveDiagnostics(diagnostics: Array<OffsetDiagnostic>) {
 		// The diagnostics are positioned in offset based positions.
 		// We map the positions through the mapping to get prosemirror positions.
 		const map = this._mapping;
