@@ -66,10 +66,7 @@ export class WaterproofEditor {
 
 	private _lineNumbersShown: boolean = false;
 
-	private oldRange: number = 0;
-	public get offsetChecked() {
-		return this.oldRange;
-	}
+	private oldOffsetChecked: number = 0;
 
 	/**
 	 * Create a new WaterproofEditor instance.
@@ -365,8 +362,41 @@ export class WaterproofEditor {
 	}
 
 	private updateDocumentProgress(currentlyAt: number, ofTotal: number) {
-		if (!this._view) return;
-		const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, { completed: currentlyAt == ofTotal });
+		if (currentlyAt == 0) return;
+		if (this._mapping === undefined || this._view === undefined) return;
+		const mapped = this._mapping.findInvPosition(currentlyAt);
+		
+		if (currentlyAt === ofTotal) {
+			const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, { completed: true, height: 0 });
+			this._view.dispatch(tr);
+		}
+
+		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
+		if (views === undefined) return;
+		
+		for (const view of views) view.setProgressIndicator(mapped);
+
+		const pos = this._view.state.doc.resolve(mapped);
+
+		let height = undefined;
+
+		const node = pos.node(1);
+		const inHint = node.type.name === "hint";
+		const el = document.querySelector(`div#progress-marker`);
+		if (inHint) {
+			const id = node.attrs.hintid;
+			const el = document.querySelector(`div.hint-title-element[hintid="${id}"]`);
+			if (el === null) return;
+			const rect = el.getBoundingClientRect();
+			height = (rect.top + rect.bottom) / 2;
+		} else if (pos.node().type.name === "coqcode" && el !== null) {
+			height = el.getBoundingClientRect().bottom;
+		} else {
+			const rect = this._view.coordsAtPos(pos.pos);
+			height = rect.bottom;
+		}
+
+		const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, { completed: false, height });
 		this._view.dispatch(tr);
 	}
 
@@ -558,30 +588,23 @@ export class WaterproofEditor {
 		this._view.dispatch(tr);
 	}
 
-	public setBusyRange(range: {from: number, to: number}) {
-		if (this.oldRange === range.from) return;
+	public setBusyIndicator(busyPos: number) {
+		if (this.oldOffsetChecked === busyPos) return;
 
 		if (this._mapping === undefined || this._view === undefined) return;
-		const mapped = this._mapping.findInvPosition(range.from);
+		const mapped = this._mapping.findInvPosition(busyPos);
 		
 		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
 		if (views === undefined) return;
 
-		for (const view of views) view.removeProgressIndicator();
+		for (const view of views) view.setBusyIndicator(mapped);
+		
+		this.oldOffsetChecked = busyPos;
+	}
 
-		// TODO: Binary search the views
-		for (const view of views) {
-			const pos = view._getPos();
-			if (pos === undefined) continue;
-			const viewSize = this._view.state.doc.nodeAt(pos)?.nodeSize
-			if (viewSize === undefined) continue;
-			const endPos : number = pos + viewSize - 1;
-			if (mapped < endPos && mapped > pos) {
-				view.addProgressIndicator(mapped - pos);
-			}
-		}
-
-		this.oldRange = range.from;
+	public removeBusyIndicators() {
+		if (!this._view) return;
+		CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews.forEach(cv => cv.removeBusyIndicator());
 	}
 
 	public updateServerStatus(status: ServerStatus) : void {

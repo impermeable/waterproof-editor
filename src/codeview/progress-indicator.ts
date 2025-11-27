@@ -1,42 +1,40 @@
-import { EditorView, Decoration, DecorationSet, gutter, GutterMarker } from "@codemirror/view"
-import { StateField, StateEffect, RangeSet, Range } from "@codemirror/state"
+import { EditorView, Decoration, gutter, GutterMarker, DecorationSet } from "@codemirror/view"
+import { StateField, StateEffect, RangeSet } from "@codemirror/state"
 
-export const addProgressIndicatorEffect = StateEffect.define<{from: number, to: number}>({
-    map: ({from, to}, change) => ({from: change.mapPos(from), to: change.mapPos(to)})
+export const addProgressIndicatorEffect = StateEffect.define<number>({
+    map: (pos, change) => change.mapPos(pos)
 });
-
 export const removeProgressIndicatorEffect = StateEffect.define();
+
+export const addBusyIndicatorEffect = StateEffect.define<number>({
+    map: (pos, change) => change.mapPos(pos)
+});
+export const removeBusyIndicatorEffect = StateEffect.define();
 
 const checkedMarker = new class extends GutterMarker {
     toDOM(_view: EditorView): Node {
         const el = document.createElement("div");
         el.id = "progress-marker";
+        el.style.height = "1em";
         return el;
     }
 }
 
-export const progressIndicatorField = StateField.define<DecorationSet>({
+export const progressIndicatorState = StateField.define<RangeSet<GutterMarker>>({
     create() {
-        return Decoration.none
+        return RangeSet.empty;
     },
-    update(underlines, tr) {
-        underlines = underlines.map(tr.changes);
-        
-        
+    update(set, tr) {
+        set = set.map(tr.changes);
         for (const e of tr.effects) {
             if (e.is(addProgressIndicatorEffect)) {
-                underlines = underlines.update({
-                    // add: [underlineMark.range(e.value.from, e.value.to), progressWidget.range(e.value.to, e.value.to)]
-                    // add: [progressWidget.range(e.value.from, e.value.from)]
-                });
+                set = RangeSet.of(checkedMarker.range(e.value));
             } else if (e.is(removeProgressIndicatorEffect)) {
-                underlines = underlines.update({filter: () => false});
+                set = RangeSet.empty;
             }
         }
-        
-        return underlines
-    },
-    provide: f => EditorView.decorations.from(f)
+        return set
+    }
 });
 
 const delay = 2000; //ms
@@ -60,61 +58,30 @@ export const busyIndicatorState = StateField.define<RangeSet<GutterMarker>>({
     update(set, transaction) {
         set = set.map(transaction.changes)
         for (const e of transaction.effects) {
-            if (e.is(addProgressIndicatorEffect)) {
-                set = set.update({add: [loadingMarker.range(e.value.from)]});
-            } else if (e.is(removeProgressIndicatorEffect)) {
-                set = set.update({filter: () => false});
+            if (e.is(addBusyIndicatorEffect)) {
+                set = RangeSet.of(loadingMarker.range(e.value));
+            } else if (e.is(removeBusyIndicatorEffect)) {
+                set = RangeSet.empty;
             }
         }
-        return set
+        return set;
     }
-})
-
-export const progressState = StateField.define<RangeSet<GutterMarker>>({
-  create() { return RangeSet.empty },
-
-  update(set, transaction) {
-    set = set.map(transaction.changes)
-
-    for (const e of transaction.effects) {
-        if (e.is(addProgressIndicatorEffect)) {
-        //    const lines = transaction.state.doc.lines;
-           const toAdd: Array<Range<GutterMarker>> = [];
-           toAdd.push(checkedMarker.range(transaction.state.doc.lineAt(e.value.from).from));
-        //    for (let i = 1; i <= lines; i++) {
-        //         const line = transaction.state.doc.line(i);
-        //         // console.log("hello");
-        //         if (line.to < e.value.from)
-        //             toAdd.push(checkedMarker.range(line.from));
-        //    }
-           set = set.update({add: toAdd});
-        } else if (e.is(removeProgressIndicatorEffect)) {
-            set = set.update({filter: () => false});
-        }
-    }
-
-    // for (let e of transaction.effects) {
-    //   if (e.is(breakpointEffect)) {
-    //     if (e.value.on)
-    //       set = set.update({add: [breakpointMarker.range(e.value.pos)]})
-    //     else
-    //       set = set.update({filter: from => from != e.value.pos})
-    //   }
-    // }
-    return set
-  }
-});
-
-export const progressGutter = gutter({
-    side: "before",
-    markers: v => v.state.field(progressState),
 });
 
 /**
- * The busy indicator is used to display a busy indicator in the editor
+ * The busy indicator is used to display an indicator in the editor
  * for lines that take a long time.
  */
 export const busyGutter = gutter({
     side: "after", // Display to the right of the editor content
     markers: v => v.state.field(busyIndicatorState),
+});
+
+/**
+ * The progress gutter is used to add an invisible element into the editor that is used to
+ * display the progress line.
+ */
+export const progressGutter = gutter({
+    side: "before",
+    markers: v => v.state.field(progressIndicatorState),
 });

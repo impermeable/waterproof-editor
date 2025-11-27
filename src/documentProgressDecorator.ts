@@ -3,6 +3,7 @@ import { Plugin, PluginKey, PluginSpec } from 'prosemirror-state';
 // Interface for the document progress decorator plugin state
 export interface IDocumentProgressDecoratorState {
     completed: boolean;
+    height: number;
 }
 
 // Plugin key for the document progress decorator plugin
@@ -14,7 +15,8 @@ const DocumentProgressDecoratorPluginSpec: PluginSpec<IDocumentProgressDecorator
     state: {
         init(_config, _instance) {
             return {
-                completed: true
+                completed: true,
+                height: 0
             };
         },
         apply(tr, value, _oldState, _newState) {
@@ -38,22 +40,6 @@ const DocumentProgressDecoratorPluginSpec: PluginSpec<IDocumentProgressDecorator
         
         // Function to update the decorator height based on progress
         const updateDecorator = (state: IDocumentProgressDecoratorState) => {
-            // This one will work if the progress marker is in the document.
-            const queryId = document.querySelector("#progress-marker");
-            if (queryId === null) return;
-            // This one will only work if the progress marker is in the document and the codecell is in a collapsed hint cell
-            const queryIdInHint = document.querySelector(".hint[shown=false] #progress-marker");
-            const title = queryIdInHint?.closest('.hint')?.previousElementSibling;
-
-
-            let rect = queryId.getBoundingClientRect();
-            let hidden = false;
-            if (title !== null && title !== undefined) {
-                hidden = true;
-                // Element is in fact hidden.
-                rect = title.getBoundingClientRect();
-            }
-
             if (state.completed) {
                 // Done checking, remove bar
                 decoratorContainer.style.height = "0px";
@@ -61,11 +47,8 @@ const DocumentProgressDecoratorPluginSpec: PluginSpec<IDocumentProgressDecorator
             }
 
             const scrollTop = window.scrollY || window.pageYOffset;
-            // We give a small visual indication that we are checking inside of the hint, by
-            // stopping the progress line in the middle of the hint title.
-            const elementTop = scrollTop + (hidden ? (rect.top + rect.bottom) / 2 : rect.top);
 
-            decoratorContainer.style.height = `${elementTop}px`;
+            decoratorContainer.style.height = `${state.height + window.scrollY}px`;
         };
         
         // Initialize with current state

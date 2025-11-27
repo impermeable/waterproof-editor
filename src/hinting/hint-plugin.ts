@@ -74,6 +74,7 @@ function getHintDecorations(state: EditorState, hintNodeType: NodeType): Decorat
 function createCollapseDOM(view: EditorView, hint: {node: PNode, pos: number}) {
 	// Create hint title element.
 	const hintElement = document.createElement("div");
+	hintElement.setAttribute("hintid", hint.node.attrs.hintid);
 	hintElement.classList.add("hint-title-element");
 	// Set the content to the title attribute of the hint node.
 	hintElement.textContent = hint.node.attrs.title;

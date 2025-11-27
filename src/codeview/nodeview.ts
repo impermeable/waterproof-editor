@@ -15,7 +15,7 @@ import { linter, LintSource, Diagnostic, setDiagnosticsEffect, lintGutter } from
 import { Debouncer } from "./debouncer";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { ThemeStyle } from "../api";
-import { addProgressIndicatorEffect, busyGutter, busyIndicatorState, progressGutter, progressIndicatorField, progressState, removeProgressIndicatorEffect } from "./progress-indicator";
+import { addBusyIndicatorEffect, addProgressIndicatorEffect, busyGutter, busyIndicatorState, progressGutter, progressIndicatorState, removeBusyIndicatorEffect, removeProgressIndicatorEffect } from "./progress-indicator";
 import { WaterproofEditor } from "../editor";
 
 /**
@@ -152,8 +152,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			extensions: [
 				busyIndicatorState,
 				busyGutter,
-				progressIndicatorField,
-				progressState,
+				progressIndicatorState,
 				progressGutter,
 				// Add the linting extension for showing diagnostics (errors, warnings, etc)
 				linter(this.lintingFunction, {
@@ -323,15 +322,44 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		});
 	}
 
-	public removeProgressIndicator() {
+	public setProgressIndicator(progressIndicatorPos: number) {
 		if (this._codemirror === undefined) return;
-		this._codemirror.dispatch({effects: removeProgressIndicatorEffect.of(null)});
+		const minPos = this._getPos();
+		if (minPos === undefined) return;
+		const maxPos = this._codemirror.state.doc.length + minPos + 1;
+
+		if (progressIndicatorPos > maxPos || progressIndicatorPos < minPos) {
+			this._codemirror.dispatch({effects: removeProgressIndicatorEffect.of(null)});
+			return;
+		}
+
+		// The progress indicator should be placed in this codemirror instance
+		const pos = this._codemirror.state.doc.lineAt(progressIndicatorPos - minPos).from;
+		this._codemirror.dispatch({effects: addProgressIndicatorEffect.of(pos)});
 	}
 
-	public addProgressIndicator(pos: number) {
+	public removeProgressIndicator() {
+		this._codemirror?.dispatch({effects: removeProgressIndicatorEffect.of(null)});
+	}
+
+	public setBusyIndicator(busyIndicatorPos: number) {
 		if (this._codemirror === undefined) return;
-		const line = this._codemirror.state.doc.lineAt(pos);
-		this._codemirror.dispatch({effects: addProgressIndicatorEffect.of({from: line.from, to: line.to})});
+		const minPos = this._getPos();
+		if (minPos === undefined) return;
+		const maxPos = this._codemirror.state.doc.length + minPos + 1;
+
+		if (busyIndicatorPos > maxPos || busyIndicatorPos < minPos) {
+			this._codemirror.dispatch({effects: removeBusyIndicatorEffect.of(null)});
+			return;
+		}
+
+		// The busy indicator should be placed in this codemirror instance.
+		const pos = this._codemirror.state.doc.lineAt(busyIndicatorPos - minPos).from;
+		this._codemirror.dispatch({effects: addBusyIndicatorEffect.of(pos)});
+	}
+
+	public removeBusyIndicator() {
+		this._codemirror?.dispatch({effects: removeBusyIndicatorEffect.of(null)});
 	}
 
 	/**

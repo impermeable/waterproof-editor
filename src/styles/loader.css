@@ -1,12 +1,8 @@
 
 .loader {
-    display: inline-block;
-    min-width: 1em;
-    /* min-width: 3em; */
-    max-height: 1em;
+    display: block;
 }
 
-/* border-radius: 50%; */
 .loader {
     width: 1em;
     height: 1em;
