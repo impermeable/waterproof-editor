@@ -15,5 +15,6 @@ module.exports = {
   ],
   moduleNameMapper: {
     '\\.(css|less)$': '<rootDir>/__tests__/styleMock.js'
-  }
+  },
+  testMatch: ["**/__tests__/**/?(*.)+(spec|test).?([mc])[jt]s?(x)"]
 };
