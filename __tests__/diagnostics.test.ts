@@ -40,7 +40,9 @@ const cfg: WaterproofEditorConfig = {
 
 
 test("test", () => {
-    const el = new HTMLDivElement();
+
+
+    const el = document.createElement('div');
     const _editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
 
       
