@@ -4,9 +4,9 @@
 import { expect } from "@jest/globals";
 
 import { DiagnosticObjectProse, WaterproofEditor } from "../src/editor";
-import { DocChange, OffsetDiagnostic, StringCell, ThemeStyle, WaterproofEditorConfig, WaterproofMapping } from "../src/api";
+import { DocChange, OffsetDiagnostic, Severity, StringCell, ThemeStyle, WaterproofEditorConfig, WaterproofMapping } from "../src/api";
 
-class idMapping extends WaterproofMapping {
+class IdMapping extends WaterproofMapping {
     getMapping = () => new Map<number, StringCell>();
     get version() { return -1; }
     findPosition = (idx: number) => idx;
@@ -34,7 +34,7 @@ const cfg: WaterproofEditorConfig = {
     },
     completions: [],
     documentConstructor: () => [],
-    mapping: idMapping,
+    mapping: IdMapping,
     symbols: []
 }
 
@@ -45,7 +45,7 @@ type outType = Array<DiagnosticObjectProse>;
     const el = document.createElement('div');
     jest.spyOn(WaterproofEditor.prototype, "handleScroll").mockImplementation();
     
-    test("test", () => {
+    test("Basic diagnostics in range", () => {
         const diags: inType = [
             {
                 startOffset: 2, endOffset: 8,
@@ -72,7 +72,7 @@ type outType = Array<DiagnosticObjectProse>;
             }
         ]
     
-        expect(editor.getPartialDiagnosticsInRange(0, 11)).toStrictEqual(expected);
+        expect(editor.getDiagnosticsInRange(0, 11)).toStrictEqual(expected);
     });
 
     test("Fit to size", () => {
@@ -156,7 +156,7 @@ type outType = Array<DiagnosticObjectProse>;
         expect(retVal).toStrictEqual(expected);
     });
 
-    test("Add -> remove", () => {
+    test("Add and remove", () => {
         const diags: inType = [
             {
                 startOffset: 0, endOffset: 10,
@@ -187,6 +187,68 @@ type outType = Array<DiagnosticObjectProse>;
         const afterRemove = editor.getDiagnosticsInRange(0, 10);
         expect(afterRemove.length).toBe(0);
         expect(afterRemove).toStrictEqual([]);
+    });
+
+    test("Filter on levels", () => {
+        const diags: inType = [{
+            startOffset: 0, endOffset: 1,
+            message: "error", severity: Severity.Error
+        }, {
+            startOffset: 0, endOffset: 1,
+            message: "warning", severity: Severity.Warning
+        }, {
+            startOffset: 0, endOffset: 1,
+            message: "info", severity: Severity.Information
+        }, {
+            startOffset: 0, endOffset: 1,
+            message: "hint", severity: Severity.Hint
+        }];
+
+        //@ts-expect-error This method is private so no typing info available
+        jest.spyOn(WaterproofEditor.prototype, 'informCodemirrorViews').mockImplementation();
+
+        const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+        editor.init("");
+        expect(editor.diagnosticsVersion).toBe(0);
+
+        editor.setActiveDiagnostics(diags);
+        expect(editor.diagnosticsVersion).toBe(1);
+
+        const truncateAtError = editor.getDiagnosticsInRange(0, 10, Severity.Error);
+        const truncateAtWarning = editor.getPartialDiagnosticsInRange(0, 10, Severity.Warning);
+        const truncateAtInfo = editor.getDiagnosticsInRange(0, 10, Severity.Information);
+        const truncateAtHint = editor.getPartialDiagnosticsInRange(0, 10, Severity.Hint);
+
+        expect(truncateAtError.length).toBe(1);
+        expect(truncateAtWarning.length).toBe(2);
+        expect(truncateAtInfo.length).toBe(3);
+        expect(truncateAtHint.length).toBe(4);
+
+        const err: DiagnosticObjectProse = {
+            start: 0, end: 1,
+            message: "error",
+            severity: Severity.Error
+        };
+        const warn: DiagnosticObjectProse = {
+            start: 0, end: 1,
+            message: "warning",
+            severity: Severity.Warning
+        };
+        const info: DiagnosticObjectProse = {
+            start: 0, end: 1,
+            message: "info",
+            severity: Severity.Information
+        };
+        const hint: DiagnosticObjectProse = {
+            start: 0, end: 1,
+            message: "hint",
+            severity: Severity.Hint
+        }
+
+        expect(truncateAtError).toStrictEqual([err]);
+        expect(truncateAtWarning).toStrictEqual([err, warn]);
+        expect(truncateAtInfo).toStrictEqual([err, warn, info]);
+        expect(truncateAtHint).toStrictEqual([err, warn, info, hint]);
     });
 }
 

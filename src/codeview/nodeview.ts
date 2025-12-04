@@ -485,7 +485,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	}
 }
 
-const severityToString = (sv: number) => {
+export function severityToString(sv: number) {
 	switch (sv) {
 		case 0:
 			return "error";
