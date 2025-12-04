@@ -132,7 +132,7 @@ type outType = Array<DiagnosticObjectProse>;
     
         const expected: outType = [
             {
-                start: 1, end: 10, // TODO: There is no minus one here :(
+                start: 1, end: 10,
                 message: "test",
                 severity: 1
             },

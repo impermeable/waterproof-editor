@@ -152,6 +152,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 					needsRefresh: (() => this.lastUsedDiagnosticsVersion < this.editorInstance.diagnosticsVersion).bind(this),
 					autoPanel: inInputArea, // Only enable auto panel when this view is inside of an input area
 					tooltipFilter: inInputArea ? (() => { return []; }) : undefined, // Don't show tooltips inside of input-areas
+					delay: 500,
 				}),
 				...optional, 
 				this._readOnlyCompartment.of(EditorState.readOnly.of(!this._outerView.editable)),
