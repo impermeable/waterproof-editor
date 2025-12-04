@@ -53,12 +53,14 @@ type outType = Array<DiagnosticObjectProse>;
             }
         ]
         //@ts-expect-error This method is private so no typing info available
-        const mockDiagsChanged = jest.spyOn(WaterproofEditor.prototype, 'diagnosticsChanged').mockImplementation();
+        const mockDiagsChanged = jest.spyOn(WaterproofEditor.prototype, 'informCodemirrorViews').mockImplementation();
         
         const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
         editor.init("");
+        expect(editor.diagnosticsVersion).toBe(0);
     
         editor.setActiveDiagnostics(diags);
+        expect(editor.diagnosticsVersion).toBe(1);
     
         expect(mockDiagsChanged).toBeCalled();
     
@@ -85,12 +87,14 @@ type outType = Array<DiagnosticObjectProse>;
             }
         ]
         //@ts-expect-error This method is private so no typing info available
-        const mockDiagnostics = jest.spyOn(WaterproofEditor.prototype, 'diagnosticsChanged').mockImplementation();
+        const mockDiagnostics = jest.spyOn(WaterproofEditor.prototype, 'informCodemirrorViews').mockImplementation();
     
         const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
         editor.init("");
+        expect(editor.diagnosticsVersion).toBe(0);
     
         editor.setActiveDiagnostics(diags);
+        expect(editor.diagnosticsVersion).toBe(1);  
     
         expect(mockDiagnostics).toBeCalled();
     
@@ -117,16 +121,20 @@ type outType = Array<DiagnosticObjectProse>;
             }
         ]
         //@ts-expect-error This method is private so no typing info available
-        const mockDiagnostics = jest.spyOn(WaterproofEditor.prototype, 'diagnosticsChanged').mockImplementation();
+        const mockDiagnostics = jest.spyOn(WaterproofEditor.prototype, 'informCodemirrorViews').mockImplementation();
     
         const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
         editor.init("");
+
+        expect(editor.diagnosticsVersion).toBe(0);
     
         editor.setActiveDiagnostics(diags);
+        expect(editor.diagnosticsVersion).toBe(1);
         editor.pushDiagnostics({
             startOffset: 5, endOffset: 8,
             message: "new", severity: 0
         });
+        expect(editor.diagnosticsVersion).toBe(2);
     
         expect(mockDiagnostics).toBeCalled();
     
@@ -157,12 +165,14 @@ type outType = Array<DiagnosticObjectProse>;
         ];
 
         //@ts-expect-error This method is private so no typing info available
-        const mockDiagnostics = jest.spyOn(WaterproofEditor.prototype, 'diagnosticsChanged').mockImplementation();
+        const mockDiagnostics = jest.spyOn(WaterproofEditor.prototype, 'informCodemirrorViews').mockImplementation();
     
         const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
         editor.init("");
+        expect(editor.diagnosticsVersion).toBe(0);
     
         editor.setActiveDiagnostics(diags);
+        expect(editor.diagnosticsVersion).toBe(1);
 
         // expect(mockDiagnostics).toHaveBeenCalledTimes(1);
         expect(mockDiagnostics).toHaveBeenCalled();
@@ -172,6 +182,7 @@ type outType = Array<DiagnosticObjectProse>;
         expect(beforeRemove).toStrictEqual([{start: 0, end: 10, message: "test", severity: 1}]);
 
         const retVal = editor.removeDiagnostic({startOffset: 0, endOffset: 10, message: "test", severity: 1});
+        expect(editor.diagnosticsVersion).toBe(2);
         expect(retVal).toBeTruthy();
         const afterRemove = editor.getDiagnosticsInRange(0, 10);
         expect(afterRemove.length).toBe(0);

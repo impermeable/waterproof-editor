@@ -675,7 +675,8 @@ export class WaterproofEditor {
 		// Add the new diagnostics to the array of stored diagnostics
 		this.currentProseDiagnostics.push(...newDiags);
 		// diagnostics have changed
-		this.diagnosticsChanged();
+		this.diagnosticsUpdateCounter++;
+		this.informCodemirrorViews();
 	}
 
 	/**
@@ -704,7 +705,8 @@ export class WaterproofEditor {
 		);
 		const newLength = this.currentProseDiagnostics.length;
 		// diagnostics have changed
-		this.diagnosticsChanged();
+		this.diagnosticsUpdateCounter++;
+		this.informCodemirrorViews();
 		return oldLength > newLength;
 	}
 
@@ -738,17 +740,16 @@ export class WaterproofEditor {
 			};
 		}
 		// diagnostics have changed
-		this.diagnosticsChanged();
+		this.diagnosticsUpdateCounter++;
+		this.informCodemirrorViews();
 	}
 
-	private diagnosticsChanged() {
+	private informCodemirrorViews() {
 		if (this._view === undefined) return;
         // Get the available coq views
 		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
 		if (views === undefined) return;
 		for (const view of views) view.dispatchEmpty();
-
-		this.diagnosticsUpdateCounter++;
 	}
 
 
