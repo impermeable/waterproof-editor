@@ -369,7 +369,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			// The codemirror range is from 0 to _view.state.doc.length + 1.
 			// We need to translate the position that we get from the diagnostic object into this range by subtracting the starting
 			// position of this codemirror instance.
-			return this.preprocessDiagnostic(d.start - startPos, d.end - startPos, d.message, d.severity);
+			return this.preprocessDiagnostic(Math.max(d.start - startPos - 1, 0),
+				Math.min(d.end - startPos - 1, _view.state.doc.length),
+				d.message, d.severity);
 		});
 
 		// Update the version of the diagnostics we are using.

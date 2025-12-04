@@ -685,10 +685,22 @@ export class WaterproofEditor {
 	 * @param toRemove The diagnostic object to remove
 	 * @returns Whether any instance of `toRemove` was removed from the set of diagnostics.
 	 */
-	public removeDiagnostic(toRemove: DiagnosticObjectProse): boolean {
+	public removeDiagnostic(toRemove: OffsetDiagnostic): boolean {
+		const map = this._mapping;
+		if (map === undefined) return false;
+
+		const start = map.findInvPosition(toRemove.startOffset);
+		const end = map.findInvPosition(toRemove.endOffset);
+
+		const proseDiag: DiagnosticObjectProse = {
+			start, end,
+			message: toRemove.message,
+			severity: toRemove.severity
+		}
+
 		const oldLength = this.currentProseDiagnostics.length;
 		this.currentProseDiagnostics = this.currentProseDiagnostics.filter(d =>
-			d.start != toRemove.start && d.end != toRemove.end && d.message != toRemove.message && d.severity != toRemove.severity
+			d.start != proseDiag.start && d.end != proseDiag.end && d.message != proseDiag.message && d.severity != proseDiag.severity
 		);
 		const newLength = this.currentProseDiagnostics.length;
 		// diagnostics have changed
@@ -715,8 +727,8 @@ export class WaterproofEditor {
 		this.currentProseDiagnostics = new Array<DiagnosticObjectProse>(diagnostics.length);
 		for (let i = 0; i < diagnostics.length; i++) {
 			const diag = diagnostics[i];
-			const start = map.findInvPosition(diag.startOffset) - 1;
-			const end = map.findInvPosition(diag.endOffset) - 1;
+			const start = map.findInvPosition(diag.startOffset);
+			const end = map.findInvPosition(diag.endOffset);
 			if (start >= end) continue;
 			this.currentProseDiagnostics[i] = {
 				message: diag.message,

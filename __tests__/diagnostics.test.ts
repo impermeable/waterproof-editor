@@ -1,10 +1,10 @@
 /**
  * @jest-environment jsdom
- */
+*/
 import { expect } from "@jest/globals";
 
-import { WaterproofEditor } from "../src/editor";
-import { DocChange, StringCell, ThemeStyle, WaterproofEditorConfig, WaterproofMapping } from "../src/api";
+import { DiagnosticObjectProse, WaterproofEditor } from "../src/editor";
+import { DocChange, OffsetDiagnostic, StringCell, ThemeStyle, WaterproofEditorConfig, WaterproofMapping } from "../src/api";
 
 class idMapping extends WaterproofMapping {
     getMapping = () => new Map<number, StringCell>();
@@ -38,14 +38,145 @@ const cfg: WaterproofEditorConfig = {
     symbols: []
 }
 
+type inType = Array<OffsetDiagnostic>;
+type outType = Array<DiagnosticObjectProse>;
 
-test("test", () => {
-
-
+{
     const el = document.createElement('div');
-    const _editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+    jest.spyOn(WaterproofEditor.prototype, "handleScroll").mockImplementation();
+    
+    test("test", () => {
+        const diags: inType = [
+            {
+                startOffset: 2, endOffset: 8,
+                message: "test", severity: 1
+            }
+        ]
+        //@ts-expect-error This method is private so no typing info available
+        const mockDiagsChanged = jest.spyOn(WaterproofEditor.prototype, 'diagnosticsChanged').mockImplementation();
+        
+        const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+        editor.init("");
+    
+        editor.setActiveDiagnostics(diags);
+    
+        expect(mockDiagsChanged).toBeCalled();
+    
+        const expected: outType = [
+            {
+                start: 2, end: 8,
+                message: "test",
+                severity: 1
+            }
+        ]
+    
+        expect(editor.getPartialDiagnosticsInRange(0, 11)).toStrictEqual(expected);
+    });
 
-      
+    test("Fit to size", () => {
+        const diags: inType = [
+            {
+                startOffset: 0, endOffset: 10,
+                message: "test", severity: 1
+            },
+            {
+                startOffset: 1, endOffset: 3,
+                message: "test 2", severity: 3
+            }
+        ]
+        //@ts-expect-error This method is private so no typing info available
+        const mockDiagnostics = jest.spyOn(WaterproofEditor.prototype, 'diagnosticsChanged').mockImplementation();
+    
+        const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+        editor.init("");
+    
+        editor.setActiveDiagnostics(diags);
+    
+        expect(mockDiagnostics).toBeCalled();
+    
+        const expected: outType = [
+            {
+                start: 0, end: 5,
+                message: "test",
+                severity: 1
+            },
+            {
+                start: 1, end: 3,
+                message: "test 2", severity: 3
+            }
+        ]
+    
+        expect(editor.getPartialDiagnosticsInRange(0, 5)).toStrictEqual(expected);
+    });
 
-    expect(true).toBe(true);
-});
+    test("Push one", () => {
+        const diags: inType = [
+            {
+                startOffset: 1, endOffset: 10,
+                message: "test", severity: 1
+            }
+        ]
+        //@ts-expect-error This method is private so no typing info available
+        const mockDiagnostics = jest.spyOn(WaterproofEditor.prototype, 'diagnosticsChanged').mockImplementation();
+    
+        const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+        editor.init("");
+    
+        editor.setActiveDiagnostics(diags);
+        editor.pushDiagnostics({
+            startOffset: 5, endOffset: 8,
+            message: "new", severity: 0
+        });
+    
+        expect(mockDiagnostics).toBeCalled();
+    
+        const expected: outType = [
+            {
+                start: 1, end: 10, // TODO: There is no minus one here :(
+                message: "test",
+                severity: 1
+            },
+            {
+                start: 5, end: 8,
+                message: "new",
+                severity: 0 
+            }
+        ]
+        
+        const retVal = editor.getDiagnosticsInRange(0, 20);
+        expect(retVal.length).toBe(2);
+        expect(retVal).toStrictEqual(expected);
+    });
+
+    test("Add -> remove", () => {
+        const diags: inType = [
+            {
+                startOffset: 0, endOffset: 10,
+                message: "test", severity: 1
+            }
+        ];
+
+        //@ts-expect-error This method is private so no typing info available
+        const mockDiagnostics = jest.spyOn(WaterproofEditor.prototype, 'diagnosticsChanged').mockImplementation();
+    
+        const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+        editor.init("");
+    
+        editor.setActiveDiagnostics(diags);
+
+        // expect(mockDiagnostics).toHaveBeenCalledTimes(1);
+        expect(mockDiagnostics).toHaveBeenCalled();
+
+        const beforeRemove = editor.getDiagnosticsInRange(0, 10);
+        expect(beforeRemove.length).toBe(1);
+        expect(beforeRemove).toStrictEqual([{start: 0, end: 10, message: "test", severity: 1}]);
+
+        const retVal = editor.removeDiagnostic({startOffset: 0, endOffset: 10, message: "test", severity: 1});
+        expect(retVal).toBeTruthy();
+        const afterRemove = editor.getDiagnosticsInRange(0, 10);
+        expect(afterRemove.length).toBe(0);
+        expect(afterRemove).toStrictEqual([]);
+    });
+}
+
+
