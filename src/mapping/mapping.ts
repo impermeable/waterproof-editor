@@ -22,9 +22,8 @@ export class Mapping {
     private readonly textUpdate: TextUpdate;
 
     /**
-     * Constructs a prosemirror view vscode mapping for the inputted prosemirror html element
-     *
-     * @param inputBlocks a string containing the prosemirror content html element
+     * Constructs the mapping instance given the source document in the form of a block array.
+     * @param inputBlocks Array containing the blocks that make up this document.
      */
     constructor(inputBlocks: Block[], versionNum: number, tMap: TagConfiguration, serializer: DocumentSerializer) {
         this.textUpdate = new TextUpdate();
@@ -58,7 +57,11 @@ export class Mapping {
         return this._version;
     }
 
-    /** Returns the vscode document model index of prosemirror index */
+    /** 
+     * Map a ProseMirror index into the corresponding text offset.
+     * @param index A valid ProseMirror offset.
+     * @returns The corresponding text offset into the document.
+     */
     public pmIndexToTextOffset(index: number) {
         const node = this.tree.findNodeByProsePos(index);
         if (node === null) throw new MappingError(` [findPosition] The vscode document offset for prosemirror index (${index}) could not be found `);
@@ -66,9 +69,9 @@ export class Mapping {
     }
 
     /**
-     * Returns the prosemirror index corresponding to the given document offset.
+     * Map a text offset into the corresponding ProseMirror index.
      * @param offset The offset (in characters) in the document.
-     * @returns The corresponding prosemirror index.
+     * @returns The corresponding ProseMirror index into the ProseMirror view.
      */
     public textOffsetToPmIndex(offset: number) {
         const correctNode: TreeNode | null = this.tree.findNodeByOriginalPosition(offset);
@@ -80,7 +83,7 @@ export class Mapping {
         if (!(step instanceof ReplaceStep || step instanceof ReplaceAroundStep))
             throw new MappingError("Step update (in textDocMapping) should not be called with a non document changing step");
 
-        /** Check whether the edit is a text edit */       
+        // Check whether the edit is a text edit
         let isText: boolean;
         if (step.slice.content.firstChild?.type === WaterproofSchema.nodes.text) {
             // Short circuit when the content is a text node. This is the case for simple text insertions
@@ -99,7 +102,7 @@ export class Mapping {
 
         let result: ParsedStep;
 
-        /** Parse the step into a text document change */
+        // Parse the step into a text document change
         if (step instanceof ReplaceStep && isText) result = this.textUpdate.textUpdate(step, this);
         else result = this.nodeUpdate.nodeUpdate(step, this);
 
