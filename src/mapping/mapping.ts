@@ -32,8 +32,8 @@ export class Mapping {
         this._version = versionNum;
         this.tree = new Tree(
             "", // type
-            { from: 0, to: inputBlocks.at(-1)!.range.to }, // innerRange
-            { from: 0, to: inputBlocks.at(-1)!.range.to }, // range
+            { from: 0, to: inputBlocks.at(-1)!.range.to }, // contentRange
+            { from: 0, to: inputBlocks.at(-1)!.range.to }, // tagRange
             "", // title
             0, // prosemirrorStart
             0, // prosemirrorEnd
@@ -59,10 +59,10 @@ export class Mapping {
     }
 
     /** Returns the vscode document model index of prosemirror index */
-    public findPosition(index: number) {
+    public pmIndexToTextOffset(index: number) {
         const node = this.tree.findNodeByProsePos(index);
         if (node === null) throw new MappingError(` [findPosition] The vscode document offset for prosemirror index (${index}) could not be found `);
-        return (index - node.prosemirrorStart) + node.innerRange.from;
+        return (index - node.prosemirrorStart) + node.contentRange.from;
     }
 
     /**
@@ -70,10 +70,10 @@ export class Mapping {
      * @param offset The offset (in characters) in the document.
      * @returns The corresponding prosemirror index.
      */
-    public findInvPosition(offset: number) {
+    public textOffsetToPmIndex(offset: number) {
         const correctNode: TreeNode | null = this.tree.findNodeByOriginalPosition(offset);
         if (correctNode === null) throw new MappingError(` [findInvPosition] The prosemirror index for offset (${offset}) could not be found `);
-        return (offset - correctNode.innerRange.from) + correctNode.prosemirrorStart;
+        return (offset - correctNode.contentRange.from) + correctNode.prosemirrorStart;
     }
 
     public update(step: Step, doc: Node): DocChange | WrappingDocChange {
@@ -210,7 +210,7 @@ export class Mapping {
 
         if (node.children.length === 0) {
             // Leaf: add length of content + end tag + +1 for exiting level
-            offset += (node.innerRange.to - node.innerRange.from);
+            offset += (node.contentRange.to - node.contentRange.from);
         } else {
             // Non-leaf: handle children and end tag
             for (const child of node.children) {

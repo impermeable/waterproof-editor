@@ -22,8 +22,8 @@ test("testMapping markdown only", () => {
     const markdownNode = nodes.root.children[0];
 
     expect(markdownNode.type).toBe("markdown");
-    expect(markdownNode.innerRange).toStrictEqual<Range>({from: 0, to: 5});
-    expect(markdownNode.range).toStrictEqual<Range>({from: 0, to: 5});
+    expect(markdownNode.contentRange).toStrictEqual<Range>({from: 0, to: 5});
+    expect(markdownNode.tagRange).toStrictEqual<Range>({from: 0, to: 5});
     expect(markdownNode.prosemirrorStart).toBe(1);
     expect(markdownNode.prosemirrorEnd).toBe(6);
     expect(markdownNode.pmRange).toStrictEqual<Range>({from: 0, to: 7});
@@ -38,8 +38,8 @@ test("testMapping coqblock with code", () => {
     // Parent coqblock
     const coqblockNode = nodes[0];
     expect(coqblockNode.type).toBe("code");
-    expect(coqblockNode.innerRange).toStrictEqual<Range>({from: 7, to: 17});
-    expect(coqblockNode.range).toStrictEqual<Range>({from: 0, to: 21});
+    expect(coqblockNode.contentRange).toStrictEqual<Range>({from: 7, to: 17});
+    expect(coqblockNode.tagRange).toStrictEqual<Range>({from: 0, to: 21});
     expect(coqblockNode.prosemirrorStart).toBe(1);
     expect(coqblockNode.prosemirrorEnd).toBe(11);
     expect(coqblockNode.pmRange).toStrictEqual<Range>({from: 0, to: 12});
@@ -62,16 +62,16 @@ test("Input-area with nested coqblock", () => {
     // Input-area node
     const inputAreaNode = nodes[0];
     expect(inputAreaNode.type).toBe("input");
-    expect(inputAreaNode.innerRange.from).toBe(12);
-    expect(inputAreaNode.innerRange.to).toBe(29);
+    expect(inputAreaNode.contentRange.from).toBe(12);
+    expect(inputAreaNode.contentRange.to).toBe(29);
     expect(inputAreaNode.prosemirrorStart).toBe(1); 
     expect(inputAreaNode.prosemirrorEnd).toBe(9); 
 
     // Markdown node
     const markdownNode = nodes[1];
     expect(markdownNode.type).toBe("markdown");
-    expect(markdownNode.innerRange).toStrictEqual<Range>({from: 42, to: 47});
-    expect(markdownNode.range).toStrictEqual<Range>({from: 42, to: 47});
+    expect(markdownNode.contentRange).toStrictEqual<Range>({from: 42, to: 47});
+    expect(markdownNode.tagRange).toStrictEqual<Range>({from: 42, to: 47});
     expect(markdownNode.prosemirrorStart).toBe(11); 
     expect(markdownNode.prosemirrorEnd).toBe(16);
 
@@ -80,22 +80,22 @@ test("Input-area with nested coqblock", () => {
     const [first, second, third] = inputAreaNode.children;
     
     expect(first.type).toBe("newline");
-    expect(first.innerRange).toStrictEqual<Range>({from: 12, to: 13});
-    expect(first.range).toStrictEqual<Range>({from: 12, to: 13});
+    expect(first.contentRange).toStrictEqual<Range>({from: 12, to: 13});
+    expect(first.tagRange).toStrictEqual<Range>({from: 12, to: 13});
     expect(first.prosemirrorStart).toBe(1);
     expect(first.prosemirrorEnd).toBe(1);
     expect(first.pmRange).toStrictEqual<Range>({from: 1, to: 2});
 
     expect(second.type).toBe("code");
-    expect(second.innerRange).toStrictEqual<Range>({from: 20, to: 24});
-    expect(second.range).toStrictEqual<Range>({from: 13, to: 28});
+    expect(second.contentRange).toStrictEqual<Range>({from: 20, to: 24});
+    expect(second.tagRange).toStrictEqual<Range>({from: 13, to: 28});
     expect(second.prosemirrorStart).toBe(3);
     expect(second.prosemirrorEnd).toBe(7);
     expect(second.pmRange).toStrictEqual<Range>({from: 2, to: 8});
     
     expect(third.type).toBe("newline");
-    expect(third.innerRange).toStrictEqual<Range>({from: 28, to: 29});
-    expect(third.range).toStrictEqual<Range>({from: 28, to: 29});
+    expect(third.contentRange).toStrictEqual<Range>({from: 28, to: 29});
+    expect(third.tagRange).toStrictEqual<Range>({from: 28, to: 29});
     expect(third.prosemirrorStart).toBe(8);
     expect(third.prosemirrorEnd).toBe(8);
     expect(third.pmRange).toStrictEqual<Range>({from: 8, to: 9});
@@ -118,8 +118,8 @@ test("Hint block with coqblock and markdown inside", () => {
     // Hint node
     const hintNode = nodes[0];
     expect(hintNode.type).toBe("hint");
-    expect(hintNode.innerRange).toStrictEqual<Range>({from: 31, to: 65});
-    expect(hintNode.range).toStrictEqual<Range>({from: 0, to: 72});
+    expect(hintNode.contentRange).toStrictEqual<Range>({from: 31, to: 65});
+    expect(hintNode.tagRange).toStrictEqual<Range>({from: 0, to: 72});
     expect(hintNode.prosemirrorStart).toBe(1);
     expect(hintNode.prosemirrorEnd).toBe(26);
     expect(hintNode.pmRange).toStrictEqual<Range>({from: 0, to: 27});
@@ -129,22 +129,22 @@ test("Hint block with coqblock and markdown inside", () => {
     const [first, second, third] = hintNode.children;
     
     expect(first.type).toBe("newline");
-    expect(first.innerRange).toStrictEqual<Range>({from: 31, to: 32});
-    expect(first.range).toStrictEqual<Range>({from: 31, to: 32});
+    expect(first.contentRange).toStrictEqual<Range>({from: 31, to: 32});
+    expect(first.tagRange).toStrictEqual<Range>({from: 31, to: 32});
     expect(first.prosemirrorStart).toBe(1);
     expect(first.prosemirrorEnd).toBe(1);
     expect(first.pmRange).toStrictEqual<Range>({from: 1, to: 2});
     
     expect(second.type).toBe("code");
-    expect(second.innerRange).toStrictEqual<Range>({from: 39, to: 60});
-    expect(second.range).toStrictEqual<Range>({from: 32, to: 64});
+    expect(second.contentRange).toStrictEqual<Range>({from: 39, to: 60});
+    expect(second.tagRange).toStrictEqual<Range>({from: 32, to: 64});
     expect(second.prosemirrorStart).toBe(3);
     expect(second.prosemirrorEnd).toBe(24);
     expect(second.pmRange).toStrictEqual<Range>({from: 2, to: 25});
     
     expect(third.type).toBe("newline");
-    expect(third.innerRange).toStrictEqual<Range>({from: 60, to: 61});
-    expect(third.range).toStrictEqual<Range>({from: 60, to: 61});
+    expect(third.contentRange).toStrictEqual<Range>({from: 60, to: 61});
+    expect(third.tagRange).toStrictEqual<Range>({from: 60, to: 61});
     expect(third.prosemirrorStart).toBe(25);
     expect(third.prosemirrorEnd).toBe(25);
     expect(third.pmRange).toStrictEqual<Range>({from: 25, to: 26});
@@ -171,40 +171,40 @@ test("Mixed content: markdown, coqblock, input-area, markdown", () => {
 
     // Markdown node
     expect(md1.type).toBe("markdown");
-    expect(md1.innerRange).toStrictEqual<Range>({from: 0, to: 12});
-    expect(md1.range).toStrictEqual<Range>({from: 0, to: 12});
+    expect(md1.contentRange).toStrictEqual<Range>({from: 0, to: 12});
+    expect(md1.tagRange).toStrictEqual<Range>({from: 0, to: 12});
     expect(md1.prosemirrorStart).toBe(1);
     expect(md1.prosemirrorEnd).toBe(13);
     expect(md1.pmRange).toStrictEqual<Range>({from: 0, to: 14});
 
     // Newline node
     expect(nl1.type).toBe("newline");
-    expect(nl1.innerRange).toStrictEqual<Range>({from: 12, to: 13});
-    expect(nl1.range).toStrictEqual<Range>({from: 12, to: 13});
+    expect(nl1.contentRange).toStrictEqual<Range>({from: 12, to: 13});
+    expect(nl1.tagRange).toStrictEqual<Range>({from: 12, to: 13});
     expect(nl1.prosemirrorStart).toBe(14);
     expect(nl1.prosemirrorEnd).toBe(14);
     expect(nl1.pmRange).toStrictEqual<Range>({from: 14, to: 15});
 
     // Coqblock node
     expect(code1.type).toBe("code");
-    expect(code1.innerRange).toStrictEqual<Range>({from: 20, to: 30});
-    expect(code1.range).toStrictEqual<Range>({from: 13, to: 34});
+    expect(code1.contentRange).toStrictEqual<Range>({from: 20, to: 30});
+    expect(code1.tagRange).toStrictEqual<Range>({from: 13, to: 34});
     expect(code1.prosemirrorStart).toBe(16);
     expect(code1.prosemirrorEnd).toBe(26);
     expect(code1.pmRange).toStrictEqual<Range>({from: 15, to: 27});
 
     // Newline node
     expect(nl2.type).toBe("newline");
-    expect(nl2.innerRange).toStrictEqual<Range>({from: 34, to: 35});
-    expect(nl2.range).toStrictEqual<Range>({from: 34, to: 35});
+    expect(nl2.contentRange).toStrictEqual<Range>({from: 34, to: 35});
+    expect(nl2.tagRange).toStrictEqual<Range>({from: 34, to: 35});
     expect(nl2.prosemirrorStart).toBe(27);
     expect(nl2.prosemirrorEnd).toBe(27);
     expect(nl2.pmRange).toStrictEqual<Range>({from: 27, to: 28});
 
     // Input-area node
     expect(ia.type).toBe("input");
-    expect(ia.innerRange).toStrictEqual<Range>({from: 47, to: 84});
-    expect(ia.range).toStrictEqual<Range>({from: 35, to: 97});
+    expect(ia.contentRange).toStrictEqual<Range>({from: 47, to: 84});
+    expect(ia.tagRange).toStrictEqual<Range>({from: 35, to: 97});
     expect(ia.prosemirrorStart).toBe(29);
     expect(ia.prosemirrorEnd).toBe(57);
     expect(ia.pmRange).toStrictEqual<Range>({from: 28, to: 58});
@@ -214,22 +214,22 @@ test("Mixed content: markdown, coqblock, input-area, markdown", () => {
     const [ia_nl1, ia_code, ia_nl2] = ia.children;
     
     expect(ia_nl1.type).toBe("newline");
-    expect(ia_nl1.innerRange).toStrictEqual<Range>({from: 47, to: 48});
-    expect(ia_nl1.range).toStrictEqual<Range>({from: 47, to: 48});
+    expect(ia_nl1.contentRange).toStrictEqual<Range>({from: 47, to: 48});
+    expect(ia_nl1.tagRange).toStrictEqual<Range>({from: 47, to: 48});
     expect(ia_nl1.prosemirrorStart).toBe(29);
     expect(ia_nl1.prosemirrorEnd).toBe(29);
     expect(ia_nl1.pmRange).toStrictEqual<Range>({from: 29, to: 30});
     
     expect(ia_code.type).toBe("code");
-    expect(ia_code.innerRange).toStrictEqual<Range>({from: 55, to: 79});
-    expect(ia_code.range).toStrictEqual<Range>({from: 48, to: 83});
+    expect(ia_code.contentRange).toStrictEqual<Range>({from: 55, to: 79});
+    expect(ia_code.tagRange).toStrictEqual<Range>({from: 48, to: 83});
     expect(ia_code.prosemirrorStart).toBe(31);
     expect(ia_code.prosemirrorEnd).toBe(55);
     expect(ia_code.pmRange).toStrictEqual<Range>({from: 30, to: 56});
     
     expect(ia_nl2.type).toBe("newline");
-    expect(ia_nl2.innerRange).toStrictEqual<Range>({from: 83, to: 84});
-    expect(ia_nl2.range).toStrictEqual<Range>({from: 83, to: 84});
+    expect(ia_nl2.contentRange).toStrictEqual<Range>({from: 83, to: 84});
+    expect(ia_nl2.tagRange).toStrictEqual<Range>({from: 83, to: 84});
     expect(ia_nl2.prosemirrorStart).toBe(56);
     expect(ia_nl2.prosemirrorEnd).toBe(56);
     expect(ia_nl2.pmRange).toStrictEqual<Range>({from: 56, to: 57});
@@ -243,8 +243,8 @@ test("Empty coqblock", () => {
     
     const coq = nodes[0];
     expect(coq.type).toBe("code");
-    expect(coq.innerRange).toStrictEqual<Range>({from: 7, to: 7});
-    expect(coq.range).toStrictEqual<Range>({from: 0, to: 11});
+    expect(coq.contentRange).toStrictEqual<Range>({from: 7, to: 7});
+    expect(coq.tagRange).toStrictEqual<Range>({from: 0, to: 11});
     expect(coq.prosemirrorStart).toBe(1);
     expect(coq.prosemirrorEnd).toBe(1);
     expect(coq.pmRange).toStrictEqual<Range>({from: 0, to: 2});

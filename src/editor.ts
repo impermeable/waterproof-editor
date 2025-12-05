@@ -336,7 +336,7 @@ export class WaterproofEditor {
 		// If this is not a cursor update return
 		if (!(pos instanceof TextSelection)) return;
 		if (this._mapping === undefined) throw new Error(" Mapping is undefined, cannot synchronize with vscode");
-		this._editorConfig.api.cursorChange(this._mapping.findPosition(pos.$head.pos));
+		this._editorConfig.api.cursorChange(this._mapping.pmIndexToTextOffset(pos.$head.pos));
 	}
 
 	/** Called on every transaction update in which the textdocument was modified */
@@ -483,13 +483,13 @@ export class WaterproofEditor {
 		// Translate postions to line/offset
 		let offsetStart;
 		try {
-			offsetStart = this._mapping?.findPosition(pmOffsetStart);
+			offsetStart = this._mapping?.pmIndexToTextOffset(pmOffsetStart);
 		} catch {
 			offsetStart = pmOffsetStart;
 		}
 		let offsetEnd;
 		try {
-			offsetEnd = this._mapping?.findPosition(pmOffsetEnd);
+			offsetEnd = this._mapping?.pmIndexToTextOffset(pmOffsetEnd);
 		} catch {
 			offsetEnd = pmOffsetEnd;
 		}
@@ -660,8 +660,8 @@ export class WaterproofEditor {
 		const doc = this._view.state.doc;
 		this.currentProseDiagnostics = new Array<DiagnosticObjectProse>();
 		for (const diag of diagnostics) {
-			const start = map.findInvPosition(diag.startOffset);
-			const end = map.findInvPosition(diag.endOffset);
+			const start = map.pmIndexToTextOffset(diag.startOffset);
+			const end = map.pmIndexToTextOffset(diag.endOffset);
 			if (start >= end) continue;
 			this.currentProseDiagnostics.push({
 				message: diag.message,

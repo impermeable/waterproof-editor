@@ -23,10 +23,10 @@ test("ReplaceStep insert — inserts text into a block", () => {
   const {newTree, result} = textUpdate.textUpdate(step, mapping);
   
   const md = newTree.root.children[0];
-  expect(md.innerRange.from).toBe(0);
-  expect(md.innerRange.to).toBe(11);
-  expect(md.range.from).toBe(0);
-  expect(md.range.to).toBe(11);
+  expect(md.contentRange.from).toBe(0);
+  expect(md.contentRange.to).toBe(11);
+  expect(md.tagRange.from).toBe(0);
+  expect(md.tagRange.to).toBe(11);
   expect(md.prosemirrorStart).toBe(1);
   expect(md.prosemirrorEnd).toBe(12);
   
@@ -48,10 +48,10 @@ test("ReplaceStep insert — inserts text in the middle of a block", () => {
 
   const md = newTree.root.children[0];
   
-  expect(md.innerRange.from).toBe(0);
-  expect(md.innerRange.to).toBe(15);
-  expect(md.range.from).toBe(0);
-  expect(md.range.to).toBe(15);
+  expect(md.contentRange.from).toBe(0);
+  expect(md.contentRange.to).toBe(15);
+  expect(md.tagRange.from).toBe(0);
+  expect(md.tagRange.to).toBe(15);
   expect(md.prosemirrorStart).toBe(1);
   expect(md.prosemirrorEnd).toBe(16);
   
@@ -69,10 +69,10 @@ test("ReplaceStep delete — deletes part of a block", () => {
   const {newTree, result} = textUpdate.textUpdate(step, mapping);
 
   const md = newTree.root.children[0];
-  expect(md.innerRange.from).toBe(0);
-  expect(md.innerRange.to).toBe(6);
-  expect(md.range.from).toBe(0);
-  expect(md.range.to).toBe(6);
+  expect(md.contentRange.from).toBe(0);
+  expect(md.contentRange.to).toBe(6);
+  expect(md.tagRange.from).toBe(0);
+  expect(md.tagRange.to).toBe(6);
   expect(md.prosemirrorStart).toBe(1);
   expect(md.prosemirrorEnd).toBe(7);
 
@@ -92,10 +92,10 @@ test("ReplaceStep replace — replaces part of a block", () => {
   const {newTree, result} = textUpdate.textUpdate(step, mapping);
 
   const md = newTree.root.children[0];
-  expect(md.innerRange.from).toBe(0);
-  expect(md.innerRange.to).toBe(11);
-  expect(md.range.from).toBe(0);
-  expect(md.range.to).toBe(11);
+  expect(md.contentRange.from).toBe(0);
+  expect(md.contentRange.to).toBe(11);
+  expect(md.tagRange.from).toBe(0);
+  expect(md.tagRange.to).toBe(11);
   expect(md.prosemirrorStart).toBe(1);
   expect(md.prosemirrorEnd).toBe(12);
 
