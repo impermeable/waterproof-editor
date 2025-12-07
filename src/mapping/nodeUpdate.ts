@@ -141,13 +141,13 @@ export class NodeUpdate {
         // now we need to update the tree
         tree.traverseDepthFirst((thisNode: TreeNode) => {
             // Update all nodes that come fully after the insertion position
-            if (thisNode.pmRange.from >= nodeInTree.pmRange.to) {
+            if (thisNode.pmRange.from > step.to) {
                 thisNode.shiftOffsets(textOffset, proseOffset);
             }
 
             // The inserted nodes could be children of nodes already in the tree (at least of the root node,
             // but possibly also of hint or input nodes)
-            if (thisNode.pmRange.from <= nodeInTree.pmRange.from && thisNode.pmRange.to >= nodeInTree.pmRange.to) {
+            if (thisNode.pmRange.from < step.from && thisNode.pmRange.to > step.to) {
                 thisNode.shiftCloseOffsets(textOffset, proseOffset);
             }
         });
