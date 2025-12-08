@@ -2,7 +2,6 @@ import { Plugin, PluginKey, PluginSpec } from 'prosemirror-state';
 
 // Interface for the document progress decorator plugin state
 export interface IDocumentProgressDecoratorState {
-    completed: boolean;
     height: number;
 }
 
@@ -15,7 +14,6 @@ const DocumentProgressDecoratorPluginSpec: PluginSpec<IDocumentProgressDecorator
     state: {
         init(_config, _instance) {
             return {
-                completed: true,
                 height: 0
             };
         },
@@ -40,14 +38,6 @@ const DocumentProgressDecoratorPluginSpec: PluginSpec<IDocumentProgressDecorator
         
         // Function to update the decorator height based on progress
         const updateDecorator = (state: IDocumentProgressDecoratorState) => {
-            if (state.completed) {
-                // Done checking, remove bar
-                decoratorContainer.style.height = "0px";
-                return;
-            }
-
-            const scrollTop = window.scrollY || window.pageYOffset;
-
             decoratorContainer.style.height = `${state.height + window.scrollY}px`;
         };
         

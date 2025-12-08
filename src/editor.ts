@@ -365,11 +365,6 @@ export class WaterproofEditor {
 		if (currentlyAt == 0) return;
 		if (this._mapping === undefined || this._view === undefined) return;
 		const mapped = this._mapping.findInvPosition(currentlyAt);
-		
-		if (currentlyAt === ofTotal) {
-			const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, { completed: true, height: 0 });
-			this._view.dispatch(tr);
-		}
 
 		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
 		if (views === undefined) return;
@@ -396,7 +391,7 @@ export class WaterproofEditor {
 			height = rect.bottom;
 		}
 
-		const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, { completed: false, height });
+		const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, { height });
 		this._view.dispatch(tr);
 	}
 
