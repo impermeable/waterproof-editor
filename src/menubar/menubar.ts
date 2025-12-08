@@ -6,7 +6,6 @@ import { InsertionPlace, wrapInHint, wrapInInput, deleteSelection, wpLift } from
 import { OS } from "../osType";
 import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "../commands/insert-command";
 import { TagConfiguration } from "../api";
-import { debugMode } from "../debugConfig";
 
 /** MenuEntry type contains the DOM, whether to only show it in teacher mode and the command to execute on click */
 type MenuEntry = {
@@ -179,9 +178,9 @@ function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfigurat
         createMenuItem("🗑️", "Delete selection", teacherOnlyWrapper(deleteSelection(tagConf)), teacherOnly),
     ]
 
-    // If the DEBUG variable is set to `true` then we display a `dump` menu item, which outputs the current
-    // document in the console as a JSON object.
-    if (debugMode) {
+    // The DEBUG label will be dropped in case we are *not* in debug mode.
+    // eslint-disable-next-line no-unused-labels
+    DEBUG: {
         items.push(createMenuItem("DUMP DOC", "", (state, dispatch) => {
             if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m dumped doc", JSON.stringify(state.doc.toJSON()));
             return true;

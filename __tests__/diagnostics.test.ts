@@ -3,9 +3,6 @@
 */
 import { expect } from "@jest/globals";
 
-jest.mock('../src/debugConfig', () => ({
-    debugMode: false
-}));
 jest.mock("prosemirror-dev-tools", () => ({ applyDevTools: () => {} }));
 
 // We mock the mapping in order to not test against a possibly faulty mapping implementation
@@ -18,8 +15,11 @@ jest.mock('../src/mapping/mapping', () => {
         pmIndexToTextOffset = (x: number) => x;
         textOffsetToPmIndex = (x: number) => x;
     }
-  };
+};
 });
+
+// Note that this prevents console log statements from showing
+jest.spyOn(global.console, "log").mockImplementation();
 
 import { DiagnosticObjectProse, WaterproofEditor } from "../src/editor";
 import { configuration } from "../src/markdown-defaults";

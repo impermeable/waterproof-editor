@@ -36,10 +36,6 @@ import { InsertionPlace } from "./commands";
 import { deleteSelection } from "./commands/commands";
 import { Mapping } from "./mapping";
 
-//@ts-expect-error No types for this import, but only used in debug mode
-import { applyDevTools } from "prosemirror-dev-tools";
-import { debugMode } from "./debugConfig";
-
 /** Type that contains a coq diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {message: string, start: number, end: number, severity: Severity};
 
@@ -228,10 +224,14 @@ export class WaterproofEditor {
 			}
 		});
 		this._view = view;
-	
-		if (debugMode) {
+
+		// The DEBUG label will be dropped in case we are *not* in debug mode.
+		// eslint-disable-next-line no-unused-labels
+		DEBUG: {
 			console.log("\x1b[33m[DEBUG]\x1b[0m Debug mode enabled. We will attach pm-dev-tools");
-			applyDevTools(view);
+			// eslint-disable-next-line @typescript-eslint/no-require-imports
+			const devTools = require("prosemirror-dev-tools");
+			devTools.applyDevTools(view);
 		}
 	}
 
