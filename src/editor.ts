@@ -1,14 +1,14 @@
 import { mathPlugin, mathSerializer } from "@benrbray/prosemirror-math";
 import { deleteSelection, selectParentNode } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
-import { ResolvedPos, Schema, Node as ProseNode } from "prosemirror-model";
+import { Schema, Node as ProseNode } from "prosemirror-model";
 import { AllSelection, EditorState, NodeSelection, Plugin, Selection, TextSelection, Transaction } from "prosemirror-state";
 import { ReplaceAroundStep, ReplaceStep, Step } from "prosemirror-transform";
 import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { constructDocument } from "./document/construct-document";
 
-import { DocChange, LineNumber, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity } from "./api";
+import { DocChange, LineNumber, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
@@ -29,13 +29,13 @@ import { UPDATE_STATUS_PLUGIN_KEY, updateStatusPlugin } from "./qedStatus";
 import { CodeBlockView } from "./codeview/nodeview";
 import { InsertionPlace, cmdInsertCode, cmdInsertLatex, cmdInsertMarkdown } from "./commands";
 import { OS } from "./osType";
-import { Positioned, WaterproofMapping, WaterproofEditorConfig, DiagnosticMessage, ThemeStyle } from "./api";
+import { Positioned, WaterproofMapping, WaterproofEditorConfig, ThemeStyle } from "./api";
 import { Completion } from "@codemirror/autocomplete";
 import { FileFormat } from "./api/FileFormat";
 import { ServerStatus } from "./api";
 
 /** Type that contains a coq diagnostics object fit for use in the ProseMirror editor context. */
-type DiagnosticObjectProse = {message: string, start: number, end: number, $start: ResolvedPos, $end: ResolvedPos, severity: Severity};
+export type DiagnosticObjectProse = {message: string, start: number, end: number, severity: Severity};
 
 /**
  * WaterproofEditor class. Configured via the WaterproofEditorConfig object.
@@ -63,6 +63,11 @@ export class WaterproofEditor {
 	private readonly _userOS;
 
 	private currentProseDiagnostics: Array<DiagnosticObjectProse>;
+	
+	public get diagnosticsVersion() {
+		return this.diagnosticsUpdateCounter;
+	}
+	private diagnosticsUpdateCounter = 0;
 
 	private _lineNumbersShown: boolean = false;
 
@@ -260,7 +265,7 @@ export class WaterproofEditor {
 			mathPlugin,
 			realMarkdownPlugin(this._schema),
 			coqdocPlugin(this._schema),
-			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this.initialThemeStyle),
+			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this, this.initialThemeStyle),
 			progressBarPlugin,
 			documentProgressDecoratorPlugin,
 			menuPlugin(WaterproofSchema, FileFormat.MarkdownV, this._userOS),
@@ -609,7 +614,7 @@ export class WaterproofEditor {
 	}
     
 	/**
-	 * Updates the state of the progress bar in the editor. 
+	 * Updates the state of the progress bar in the editor.
 	 * 
 	 * @param progressParams The type used to store information on the status of the checking of the current file
 	 */
@@ -644,75 +649,140 @@ export class WaterproofEditor {
 	}
 
 	/**
-	 * Updates the current set of diagnostics in the document. This function takes in the set of all diagnostics in the current document and assigns them to the correct code cell in the document.
+	 * Pushes the diagnostics to the array of diagnostics stored in the editor.
+	 *
+	 * In comparison to {@linkcode setActiveDiagnostics} this will keep the old
+	 * diagnostics around.
+	 *
+	 * @param diagnostics The diagnostics to add.
+	 */
+	public pushDiagnostics(...diagnostics: Array<OffsetDiagnostic>) {
+		const map = this._mapping;
+		if (map === undefined || this._view === undefined) return;
+
+		// Map the positions
+		const newDiags = diagnostics.map(d => {
+			const start = map.findInvPosition(d.startOffset);
+			const end = map.findInvPosition(d.endOffset);
+
+			return {
+				message: d.message,
+				severity: d.severity,
+				start,
+				end
+			}
+		});
+		// Add the new diagnostics to the array of stored diagnostics
+		this.currentProseDiagnostics.push(...newDiags);
+		// diagnostics have changed
+		this.diagnosticsUpdateCounter++;
+		this.informCodemirrorViews();
+	}
+
+	/**
+	 * Removes the diagnostic `toRemove` from the set of stored diagnostics.
+	 * 
+	 * Note that if `toRemove` occurs more than once, all instances will be removed!
+	 * @param toRemove The diagnostic object to remove
+	 * @returns Whether any instance of `toRemove` was removed from the set of diagnostics.
+	 */
+	public removeDiagnostic(toRemove: OffsetDiagnostic): boolean {
+		const map = this._mapping;
+		if (map === undefined) return false;
+
+		const start = map.findInvPosition(toRemove.startOffset);
+		const end = map.findInvPosition(toRemove.endOffset);
+
+		const proseDiag: DiagnosticObjectProse = {
+			start, end,
+			message: toRemove.message,
+			severity: toRemove.severity
+		}
+
+		const oldLength = this.currentProseDiagnostics.length;
+		this.currentProseDiagnostics = this.currentProseDiagnostics.filter(d =>
+			d.start != proseDiag.start && d.end != proseDiag.end && d.message != proseDiag.message && d.severity != proseDiag.severity
+		);
+		const newLength = this.currentProseDiagnostics.length;
+		// diagnostics have changed
+		this.diagnosticsUpdateCounter++;
+		this.informCodemirrorViews();
+		return oldLength > newLength;
+	}
+
+	/**
+	 * Sets the current set of diagnostics in the document.
+	 * This function takes the set of all diagnostics in the current document,
+	 * translates the position to ProseMirror offsets and stores them.
+	 *
+	 * Note: Calling this function overwrites the set of diagnostics.
+	 * If you want to add a diagnostic use {@linkcode pushDiagnostics}
 	 * 
 	 * @param msg The set of diagnostics for the current document. 
 	 */
-	public parseCoqDiagnostics(msg: DiagnosticMessage) {
-		if (this._mapping === undefined || msg.version < this._mapping.version) return;
-
-		const diagnostics = msg.positionedDiagnostics;
+	public setActiveDiagnostics(diagnostics: Array<OffsetDiagnostic>) {
+		// The diagnostics are positioned in offset based positions.
+		// We map the positions through the mapping to get prosemirror positions.
 		const map = this._mapping;
-		if (this._view === undefined || map === undefined) return;
+		if (map === undefined) return;
 
-		// Get the available coq views
-		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
-		if (views === undefined) return;
-		// Clear the errors
-		for (const view of views) view.clearCoqErrors();
-
-		// Convert to inverse mapped positions.
-		const doc = this._view.state.doc;
-		this.currentProseDiagnostics = new Array<DiagnosticObjectProse>();
-		for (const diag of diagnostics) {
+		this.currentProseDiagnostics = new Array<DiagnosticObjectProse>(diagnostics.length);
+		for (let i = 0; i < diagnostics.length; i++) {
+			const diag = diagnostics[i];
 			const start = map.findInvPosition(diag.startOffset);
 			const end = map.findInvPosition(diag.endOffset);
 			if (start >= end) continue;
-			this.currentProseDiagnostics.push({
+			this.currentProseDiagnostics[i] = {
 				message: diag.message,
 				start,
-				$start: doc.resolve(start),
 				end,
-				$end: doc.resolve(end),
 				severity: diag.severity
-			});
+			};
 		}
-
-		// TODO: the below code can probably be optimized a bit
-	    for (const diag of this.currentProseDiagnostics) {
-			if (diag.start > diag.end) {
-				console.error("We do not support errors for which the start position is greater than the end postion.");
-				continue;
-			}
-
-			let viewFound : boolean = false;
-			for (const view of views) {
-				const pos : number | undefined = view._getPos();
-				if (pos === undefined) continue;
-				const viewSize : number | undefined = this._view.state.doc.nodeAt(pos)?.nodeSize
-				if (viewSize === undefined) continue;
-				const endPos : number = pos + viewSize - 1;
-				if (diag.start < endPos && diag.end > pos) {
-					viewFound = true;
-					const startPos = Math.max(diag.start, pos + 1);
-					const finalPos = Math.min(diag.end, endPos);
-					try {
-						view.addCoqError(startPos - pos - 1, finalPos - pos - 1, diag.message, diag.severity);
-					}
-					catch (e) {
-						console.error(`Could not display diagnostic information for codeview at position ${pos}:`);
-						console.error(e);
-					}
-				}
-			}
-
-			if (!viewFound) throw new Error("Diagnostic message does not match any coqblock");
-		}
+		// diagnostics have changed
+		this.diagnosticsUpdateCounter++;
+		this.informCodemirrorViews();
 	}
 
+	private informCodemirrorViews() {
+		if (this._view === undefined) return;
+        // Get the available coq views
+		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
+		if (views === undefined) return;
+		for (const view of views) view.dispatchEmpty();
+	}
+
+
+	/**
+	 * Returns the set of stored diagnostics in the range low to high.
+	 * @param low Lower bound for the diagnostic range.
+	 * @param high Upper bound for the diagnostic range.
+	 * @param truncationLevel If desired, only include diagnostics with a severity level below the `truncationLevel`.
+	 * @returns The set of diagnostics in the range low to high.
+	 */
 	public getDiagnosticsInRange(low: number, high: number, truncationLevel: number = 5): Array<DiagnosticObjectProse> {
 		return this.currentProseDiagnostics.filter((value) => {
-			return ((low <= value.end) && (value.start <= high) && (value.severity) <= truncationLevel);
+			return ((low <= value.start) && (value.end <= high) && (value.severity) <= truncationLevel);
+		});
+	}
+
+	/**
+	 * Returns the set of diagnostics for which the intersection of the diagnostic range and the range [low, high]
+	 * is non-empty. The ranges of these diagnostics will be trimmed such that they are fully contained in [low, high].
+	 * @param truncationLevel If desired, only include diagnostics with a severity level below the `truncationLevel`.
+	 * @returns The set of diagnostics which are (at least partially) contained in the range low to high.
+	 */
+	public getPartialDiagnosticsInRange(low: number, high: number, truncationLevel: number = 5): Array<DiagnosticObjectProse> {
+		return this.currentProseDiagnostics.filter((value) => {
+			// Keep when there is overlap with the low to high range
+			return (value.start <= high && value.end >= low && value.severity <= truncationLevel);
+		}).map(d => {
+			return {
+				message: d.message,
+				start: Math.max(d.start, low),
+				end: Math.min(d.end, high),
+				severity: d.severity
+			}
 		});
 	}
 

@@ -115,11 +115,6 @@ export interface OffsetDiagnostic {
     endOffset: number;
 }
 
-export type DiagnosticMessage = {
-    positionedDiagnostics: OffsetDiagnostic[],
-    version: number
-}
-
 export enum ThemeStyle {
     Light, Dark
 }
