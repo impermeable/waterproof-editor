@@ -347,11 +347,13 @@ export class WaterproofEditor {
 	public sendLineNumbers() {
 		if (!this._lineNumbersShown) return;
 		if (!this._view || CODE_PLUGIN_KEY.getState(this._view.state) === undefined) return;
+		if (this._mapping === undefined) return;
 		const linenumbers = Array<number>();
 		// @ts-expect-error TODO: Fix me
 		for (const codeCell of CODE_PLUGIN_KEY.getState(this._view.state).activeNodeViews) {
-			// @ts-expect-error TODO: Fix me
-			linenumbers.push(this._mapping?.findPosition(codeCell._getPos() + 1));
+			linenumbers.push(this._mapping.pmIndexToTextOffset(
+				//@ts-expect-error Fix the fact that _getPos can return undefined
+				codeCell._getPos() + 1));
 		}
 		if (this._mapping === undefined) {
 			// Fail when the mapping is undefined
