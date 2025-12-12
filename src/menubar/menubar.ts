@@ -181,18 +181,20 @@ function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfigurat
     // The DEBUG label will be dropped in case we are *not* in debug mode.
     // eslint-disable-next-line no-unused-labels
     DEBUG: {
-        items.push(createMenuItem("DUMP DOC", "", (state, dispatch) => {
-            if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m dumped doc", JSON.stringify(state.doc.toJSON()));
-            return true;
-        }, {showByDefault: true}));
-        items.push(createMenuItem("DUMP SELECTION", "", (state, dispatch) => {
-            if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m Selection", state.selection);
-            return true;
-        }, {showByDefault: true}));
-        items.push(createMenuItem("DUMP STATE", "", (state, dispatch) => {
-            if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m Editor State", JSON.stringify(state.toJSON()));
-            return true;
-        }, {showByDefault: true}));
+        items.push(
+            createMenuItem("DUMP DOC", "", (state, dispatch) => {
+                if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m dumped doc", JSON.stringify(state.doc.toJSON()));
+                return true;
+            }, {showByDefault: true}),
+            createMenuItem("DUMP SELECTION", "", (state, dispatch) => {
+                if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m Selection", state.selection);
+                return true;
+            }, {showByDefault: true}),
+            createMenuItem("DUMP STATE", "", (state, dispatch) => {
+                if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m Editor State", JSON.stringify(state.toJSON()));
+                return true;
+            }, {showByDefault: true})
+        );
     }
 
     // Return a new MenuView with the previously created items.

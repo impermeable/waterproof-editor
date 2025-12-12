@@ -1,14 +1,14 @@
 import { mathPlugin, mathSerializer } from "@benrbray/prosemirror-math";
 import { selectParentNode } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
-import { Schema, Node as ProseNode } from "prosemirror-model";
+import { Node as ProseNode } from "prosemirror-model";
 import { EditorState, NodeSelection, Plugin, Selection, TextSelection, Transaction } from "prosemirror-state";
 import { ReplaceAroundStep, ReplaceStep, Step } from "prosemirror-transform";
 import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { constructDocument } from "./document/construct-document";
 
-import { DocChange, LineNumber, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer } from "./api";
+import { DocChange, LineNumber, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ServerStatus, ThemeStyle, WaterproofEditorConfig } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
@@ -28,9 +28,7 @@ import "./styles";
 import { UPDATE_STATUS_PLUGIN_KEY, updateStatusPlugin } from "./qedStatus";
 import { CodeBlockView } from "./codeview/nodeview";
 import { OS } from "./osType";
-import { Positioned, WaterproofEditorConfig, ThemeStyle } from "./api";
 import { Completion } from "@codemirror/autocomplete";
-import { ServerStatus } from "./api";
 import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "./commands/insert-command";
 import { InsertionPlace } from "./commands";
 import { deleteSelection } from "./commands/commands";
@@ -44,13 +42,10 @@ export type DiagnosticObjectProse = {message: string, start: number, end: number
  */
 export class WaterproofEditor {
 
-	private _editorConfig: WaterproofEditorConfig;
-
-	// The schema used in this prosemirror editor.
-	private _schema: Schema;
+	private readonly _editorConfig: WaterproofEditorConfig;
 
 	// The editor and content html elements.
-	private _editorElem: HTMLElement;
+	private readonly _editorElem: HTMLElement;
 
 	// The prosemirror view
 	private _view: EditorView | undefined;
@@ -70,7 +65,7 @@ export class WaterproofEditor {
 
 	private _lineNumbersShown: boolean = false;
 
-	private _serializer: DocumentSerializer;
+	private readonly _serializer: DocumentSerializer;
 
 	/**
 	 * Create a new WaterproofEditor instance.
@@ -78,11 +73,10 @@ export class WaterproofEditor {
 	 * @param config The configuration of the editor to use.
 	 */
 	constructor (editorElement: HTMLElement, config: WaterproofEditorConfig, private readonly initialThemeStyle: ThemeStyle) {
-		this._schema = WaterproofSchema;
 		this._editorElem = editorElement;
 		this.currentProseDiagnostics = [];
 		this._editorConfig = config;
-		this._serializer = config.serializer === undefined ? new DefaultTagSerializer(config.tagConfiguration) : config.serializer;
+		this._serializer = config.serializer ?? new DefaultTagSerializer(config.tagConfiguration);
 
 		const userAgent = window.navigator.userAgent;
 		this._userOS = OS.Unknown;
@@ -238,7 +232,7 @@ export class WaterproofEditor {
 	/** Create initial prosemirror state */
 	createState(proseDoc: ProseNode): EditorState {
 		return EditorState.create({
-			schema: this._schema,
+			schema: WaterproofSchema,
 			doc: proseDoc,
 			plugins: this.createPluginsArray()
 		});
@@ -248,7 +242,7 @@ export class WaterproofEditor {
 	createPluginsArray(): Plugin[] {
 		return [
 			history(),
-			createHintPlugin(this._schema),
+			createHintPlugin(),
 			inputAreaPlugin,
 			updateStatusPlugin(this),
 			mathPlugin,

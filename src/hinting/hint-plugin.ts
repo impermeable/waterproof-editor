@@ -1,16 +1,17 @@
-import { NodeType, Node as PNode, Schema } from "prosemirror-model";
+import { NodeType, Node as PNode } from "prosemirror-model";
 import { EditorState, EditorStateConfig, Plugin, Transaction } from "prosemirror-state";
 import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
 import { findDescendantsWithType } from "../utilities";
+import { WaterproofSchema } from "../schema";
 
 /**
  * Function that returns the hint plugin.
  * @param schema The schema in use for the editor.
  * @returns A `Plugin` that enables the hint functionality.
  */
-export const createHintPlugin = (schema: Schema): Plugin => {
+export const createHintPlugin = (): Plugin  => {
 	// Get the hint node type from the supplied schema
-    const hintNodeType = schema.nodes.hint;
+    const hintNodeType = WaterproofSchema.nodes.hint;
 
 	// Create a new Plugin
     const plugin = new Plugin<DecorationSet>({
