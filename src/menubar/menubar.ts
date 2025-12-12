@@ -189,6 +189,10 @@ function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfigurat
             if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m Selection", state.selection);
             return true;
         }, {showByDefault: true}));
+        items.push(createMenuItem("DUMP STATE", "", (state, dispatch) => {
+            if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m Editor State", JSON.stringify(state.toJSON()));
+            return true;
+        }, {showByDefault: true}));
     }
 
     // Return a new MenuView with the previously created items.
