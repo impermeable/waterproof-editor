@@ -118,8 +118,7 @@ export const codePlugin = (completions: Array<WaterproofCompletion>, symbols: Ar
 	//   with template 'holes'
 	const cmCompletions =  completions.map((value) => {
 		return snippetCompletion(value.template, value);
-	});
-	const symbolCompletions = symbols.map(c => snippetCompletion(c.apply, c));
-	return new ProsePlugin(CoqCodePluginSpec(cmCompletions, symbolCompletions, editorInstance, initialThemeStyle));
+	}); 
+	return new ProsePlugin(CoqCodePluginSpec(cmCompletions, symbols, editorInstance, initialThemeStyle));
 };
 

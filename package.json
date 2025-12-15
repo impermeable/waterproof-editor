@@ -59,7 +59,7 @@
     "@codemirror/autocomplete": "6.18.1",
     "@codemirror/commands": "6.6.2",
     "@codemirror/language": "6.10.3",
-    "@codemirror/lint": "6.8.2",
+    "@codemirror/lint": "6.9.2",
     "@codemirror/view": "6.38.8",
     "@codemirror/state": "6.5.2",
     "@lezer/highlight": "1.2.1",

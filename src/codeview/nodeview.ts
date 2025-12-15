@@ -11,8 +11,7 @@ import { EditorView } from "prosemirror-view"
 import { customTheme } from "./color-scheme"
 import { renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
-import { linter, LintSource, Diagnostic, setDiagnosticsEffect, lintGutter } from "@codemirror/lint";
-import { Debouncer } from "./debouncer";
+import { linter, LintSource, Diagnostic, lintGutter } from "@codemirror/lint";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { ThemeStyle } from "../api";
 import { addBusyIndicatorEffect, addProgressIndicatorEffect, busyGutter, busyIndicatorState, progressGutter, progressIndicatorState, removeBusyIndicatorEffect, removeProgressIndicatorEffect } from "./progress-indicator";
@@ -31,13 +30,12 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _dynamicCompletions: Completion[] = [];
 	private _readOnlyCompartment: Compartment;
 	private _themeCompartment: Compartment;
-	private _diags : Diagnostic[];
-	private debouncer: Debouncer;
+	private lastUsedDiagnosticsVersion: number = 0;
 
 	constructor(
 		node: Node,
 		view: EditorView,
-		private editorInstance: WaterproofEditor,
+		private readonly editorInstance: WaterproofEditor,
 		getPos: (() => number | undefined),
 		schema: Schema,
 		completions: Array<Completion>,
@@ -53,8 +51,6 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._lineNumberCompartment = new Compartment;
 		this._readOnlyCompartment = new Compartment;
 		this._themeCompartment = new Compartment;
-		this._diags = [];
-		
 
 		const tacticCompletionSource: CompletionSource = function(context: CompletionContext) {
 			const completionResult: CompletionResult = {
@@ -156,8 +152,12 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				progressGutter,
 				// Add the linting extension for showing diagnostics (errors, warnings, etc)
 				linter(this.lintingFunction, {
+					// This codemirror instance needs to refresh diagnostics when the version of diagnostics stored in the
+					// outer editor instance is newer than what this codemirror instance is showing.
+					needsRefresh: (() => this.lastUsedDiagnosticsVersion < this.editorInstance.diagnosticsVersion).bind(this),
 					autoPanel: inInputArea, // Only enable auto panel when this view is inside of an input area
 					tooltipFilter: inInputArea ? (() => { return []; }) : undefined, // Don't show tooltips inside of input-areas
+					delay: 500,
 				}),
 				...optional, 
 				this._readOnlyCompartment.of(EditorState.readOnly.of(!this._outerView.editable)),
@@ -261,8 +261,6 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			},
 		});
 
-		this.debouncer = new Debouncer(750, this.forceUpdateLinting.bind(this));
-
 		// Editors outer node is dom
 		this.dom = this._codemirror.dom;
 
@@ -274,6 +272,11 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 
 		this.updating = false;
 		this.handleNewComplete([]);
+	}
+
+	// Dispatch an empty transaction, this causes the linter to rerun on idle.
+	public dispatchEmpty() {
+		this._codemirror?.dispatch({});
 	}
 
 	private partOfInputArea(): boolean {
@@ -293,10 +296,6 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			state: this._codemirror!.state,
 			dispatch: this._codemirror!.dispatch
 		}, completion ?? null, posFrom, posTo);
-	}
-
-	private lintingFunction: LintSource = (_view: CodeMirror): readonly Diagnostic[] => {
-		return this._diags;
 	}
 
 	/**
@@ -402,13 +401,39 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	};
 
 	/**
+	 * The {@linkcode LintSource} to use for the codemirror instance.
+	 * This will use the outer {@linkcode WaterproofEditor} to get diagnostics in the range of this
+	 * codemirror view.
+	 */
+	private lintingFunction: LintSource = (_view: CodeMirror): readonly Diagnostic[] => {
+		const startPos = this._getPos();
+
+		if (startPos === undefined) return [];
+
+		// We use the outer editor instance to query for diagnostics in the range of this codemirror instance.
+		const diags = this.editorInstance.getPartialDiagnosticsInRange(startPos, startPos + _view.state.doc.length + 1).map(d => {
+			// The codemirror range is from 0 to _view.state.doc.length + 1.
+			// We need to translate the position that we get from the diagnostic object into this range by subtracting the starting
+			// position of this codemirror instance.
+			return this.preprocessDiagnostic(Math.max(d.start - startPos - 1, 0),
+				Math.min(d.end - startPos - 1, _view.state.doc.length),
+				d.message, d.severity);
+		});
+
+		// Update the version of the diagnostics we are using.
+		this.lastUsedDiagnosticsVersion = this.editorInstance.diagnosticsVersion;
+
+		return diags;
+	}
+
+	/**
 	 * Add a new coq error to this view
 	 * @param from The from position of the error.
 	 * @param to The to postion of the error (should be larger than `from`).
 	 * @param message The message attached to this error.
 	 * @param severity The severity attached to this error.
 	 */
-	public addCoqError(from: number, to: number, message: string, severity: number) {
+	public preprocessDiagnostic(from: number, to: number, message: string, severity: number): Diagnostic {
 		const severityString = severityToString(severity);
 		
 		// By default, there is the copy action
@@ -439,7 +464,6 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 						selection: { anchor: from }
 					});
 					this.handleSnippet(toInsert, from, from);
-					this.forceUpdateLinting();
 				}
 			})];
 		} else if (message.startsWith("Hint, insert: ")) {
@@ -471,15 +495,13 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			})];
 		}
 
-		this._diags.push({
-			from:from,
-			to:to,
+		return {
+			from,
+			to,
 			message: (trimmedMessage === "" ? message : trimmedMessage),
 			severity: severityString,
 			actions,
-		});
-
-		this.debouncer.call();
+		};
 	}
 
 	private showCopyNotification(from:number) {
@@ -506,27 +528,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			setTimeout(() => notification.remove(), 500);
 		}, 1000);
 	}
-
-	/**
-	 * Helper function that forces the linter function to run.
-	 * Should be called after an error has been added or after the errors have been cleared.
-	 */
-	private forceUpdateLinting() {
-		this._codemirror?.dispatch({
-			effects: setDiagnosticsEffect.of(this._diags)
-		});
-	}
-
-	/**
-	 * Clear all coq errors from this view.
-	 */
-	public clearCoqErrors() {
-		this._diags = [];
-		this.debouncer.call();
-	}
 }
 
-const severityToString = (sv: number) => {
+export function severityToString(sv: number) {
 	switch (sv) {
 		case 0:
 			return "error";
