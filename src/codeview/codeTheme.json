@@ -50,7 +50,7 @@
 	},
   
 	".cm-gutters": {
-	  "backgroundColor": "var(--vscode-editorInlayHint-background)",
+	  "backgroundColor": "var(--wp-cm-background)",
 	  "color": "var(--vscode-editorInlayHint-foreground)",
 	  "border": "none"
 	},

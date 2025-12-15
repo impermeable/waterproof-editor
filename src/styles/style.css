@@ -7,6 +7,10 @@
   background-color: var(--vscode-textSeparator-foreground);
 }
 
+#editor {
+  margin-left: .75em;
+}
+
 #editor > .ProseMirror {
   margin-top: 10px;  /* same as body padding */
 }

@@ -38,7 +38,7 @@ export const inputArea = (childNodes: ProseNode[]): ProseNode => {
 
 /** Construct hint prosemirror node. */
 export const hint = (title: string, childNodes: ProseNode[]): ProseNode => {
-    return WaterproofSchema.nodes.hint.create({title}, childNodes);
+    return WaterproofSchema.nodes.hint.create({title, hintid: Date.now()}, childNodes);
 }
 
 /** Construct coq prosemirror node. */

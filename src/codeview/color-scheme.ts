@@ -1,5 +1,5 @@
 import { EditorView } from "@codemirror/view";
-import coqTheme from "./coqTheme.json";
+import coqTheme from "./codeTheme.json";
 
 /**
  * Inspired by:

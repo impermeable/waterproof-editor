@@ -55,10 +55,11 @@ export const WaterproofSchema: Schema = new Schema({
 			content: `${containercontent}*`,
 			attrs: {
 				title: {default: "💡 Hint"},
-				shown: {default: false}
+				shown: {default: false},
+				hintid: {default: ""}
 			},
 			toDOM(node: PNode) {
-				return ["div", {class: "hint", shown: node.attrs.shown}, 0];
+				return ["div", {class: "hint", shown: node.attrs.shown, hintid: node.attrs.hintid}, 0];
 			}
 		},
 		//#endregion

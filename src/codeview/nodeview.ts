@@ -15,6 +15,7 @@ import { linter, LintSource, Diagnostic, lintGutter } from "@codemirror/lint";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { ThemeStyle } from "../api";
 import { WaterproofEditor } from "../editor";
+import { removeProgressIndicatorEffect, addProgressIndicatorEffect, progressGutter, progressIndicatorState } from "./progress";
 
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
@@ -145,6 +146,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._codemirror = new CodeMirror({
 			doc: this._node.textContent,
 			extensions: [
+				progressGutter, progressIndicatorState,
 				// Add the linting extension for showing diagnostics (errors, warnings, etc)
 				linter(this.lintingFunction, {
 					// This codemirror instance needs to refresh diagnostics when the version of diagnostics stored in the
@@ -314,6 +316,26 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				coqSyntaxHighlighting(theme)
 			)
 		});
+	}
+
+	public setProgressIndicator(progressIndicatorPos: number) {
+		if (this._codemirror === undefined) return;
+		const minPos = this._getPos();
+		if (minPos === undefined) return;
+		const maxPos = this._codemirror.state.doc.length + minPos;
+
+		if (progressIndicatorPos > maxPos || progressIndicatorPos < minPos) {
+			this.removeProgressIndicator();
+			return;
+		}
+
+		// The progress indicator should be placed in this codemirror instance
+		const pos = this._codemirror.state.doc.lineAt(progressIndicatorPos - minPos).from;
+		this._codemirror.dispatch({effects: addProgressIndicatorEffect.of(pos)});
+	}
+
+	public removeProgressIndicator() {
+		this._codemirror?.dispatch({effects: removeProgressIndicatorEffect.of(null)});
 	}
 
 	/**

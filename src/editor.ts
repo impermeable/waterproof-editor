@@ -364,76 +364,51 @@ export class WaterproofEditor {
 		this._editorConfig.api.lineNumbers(linenumbers, this._mapping.version);
 	}
 
-		private updateDocumentProgress() {
-		// Use getState with the CODE_PLUGIN_KEY to obtain linenumbers
-		if (!this._view) return;
-		const lineNumbers = CODE_PLUGIN_KEY.getState(this._view.state)?.lines;
-		// Use getState with the CODE_PLUGIN_KEY to obtain progress activeNodeViews
-		const activeNodeViews = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
-		// Use getState with the PROGRESS_PLUGIN_KEY to obtain progress status
-		const progressParams = PROGRESS_PLUGIN_KEY.getState(this._view.state)?.progressParams;
-		if (progressParams === undefined || lineNumbers === undefined || activeNodeViews === undefined) return;
-		// Compute currentLine from progressParams
-		if (progressParams.progress.length == 0) return;
-		const currentLine = progressParams?.progress[0].range.start.line + 1;
-		const endLine = progressParams?.progress[0].range.end.line + 1;
-	
-		if (currentLine == endLine) {
-			// Done checking, remove bar
-			const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, 
-				{progressHeightLow: 0, progressHeightHigh: 0, total: 0});
+	private updateDocumentProgress(currentlyAt: number, ofTotal: number) {
+		if (currentlyAt == 0) return;
+		if (this._mapping === undefined || this._view === undefined) return;
+
+		if (currentlyAt === ofTotal) {
+			const endPos = this._view.state.doc.content.size;
+			const coords = this._view.coordsAtPos(endPos);
+			const height = coords.bottom;
+			const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, { height });
 			this._view.dispatch(tr);
 			return;
 		}
-
-		// Compute current nodeView using lineNumbers and activeNodeViews
-		let currentNodeView = undefined;
-		let viewLineNumber = undefined;
-		let nextLineNumber = undefined;
-		let nextNodeView = undefined;
 		
-		let i = 0;
-		for (const nodeView of activeNodeViews) {
-			if (currentNodeView != undefined) {
-				nextNodeView = nodeView;
-				break;
-			}
-			if (currentLine >= lineNumbers.linenumbers[i] && currentLine < lineNumbers.linenumbers[i + 1]) {
-				currentNodeView = nodeView; 
-				viewLineNumber = lineNumbers.linenumbers[i];
-				nextLineNumber = lineNumbers.linenumbers[i + 1];
-			}
-			i++;
-		}
-		if (currentNodeView === undefined || viewLineNumber === undefined || nextLineNumber === undefined) return;
-		let startPos = currentNodeView._getPos();
-		let nextPos = nextNodeView?._getPos();
-		if (startPos === undefined || nextPos === undefined) return;
-		const startDocCoords = this._view.coordsAtPos(0);
-		let startCoords = this._view.coordsAtPos(startPos, -1);
-		// If we don't find a good position, this is likely a hidden codeblock
-		// Go back until we find a position in the document or the top
-		while (startCoords == null || startCoords.top == 0) {
-			startPos--;
-			if (startPos < 0) break;
-			startCoords = this._view.coordsAtPos(startPos, -1);
+		const mapped = this._mapping.findInvPosition(currentlyAt);
+
+		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
+		if (views === undefined) return;
+		
+		for (const view of views) view.setProgressIndicator(mapped);
+
+		const pos = this._view.state.doc.resolve(mapped);
+
+		let height = undefined;
+
+		const node = pos.node(1);
+		
+		// FIXME: With mapping branch we can remove the hardcoded string here.
+		const inHint = node.type.name === "hint";
+		// FIXME: With mapping branch we can remove the hardcoded string here.
+		const inCode = pos.node().type.name === "coqcode";
+		
+		const el = document.querySelector(`div#progress-marker`);
+		if (inCode && el !== null) {
+			height = el.getBoundingClientRect().bottom;
+		} else if (inHint) {
+			const id = node.attrs.hintid;
+			const el = document.querySelector(`div.hint-title-element[hintid="${id}"]`);
+			if (el === null) return;
+			const rect = el.getBoundingClientRect();
+			height = (rect.top + rect.bottom) / 2;
 		}
 
-		// If we don't find a good position, this is likely a hidden codeblock
-		// Go forward until we find a position in the document or the bottom
-		let nextCoords = this._view.coordsAtPos(nextPos);
-		while (nextCoords == null || nextCoords.top == 0) {
-			nextPos++;
-			if (nextPos >= this._view.state.doc.content.size) break;
-			nextCoords = this._view.coordsAtPos(nextPos);
-		}
-		const endDocCoords = this._view.coordsAtPos(this._view.state.doc.content.size);
-		const height = startCoords.top - startDocCoords.top;
+		if (height === undefined) return;
 
-		// Communicate the total size of the document, the low estimate where processing is happening
-		// and the high estimate, unit is pixels for each
-		const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, {
-			total: endDocCoords.top - startDocCoords.top, progressHeightLow: height, progressHeightHigh: nextCoords.top - startDocCoords.top});
+		const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, { height });
 		this._view.dispatch(tr);
 	}
 
@@ -458,8 +433,6 @@ export class WaterproofEditor {
 		if (!state) return;
 		const tr = this._view.state.tr.setMeta(CODE_PLUGIN_KEY, msg);
 		this._view.dispatch(tr);
-		// Document progress uses lines to compute the right size of the decorator
-		this.updateDocumentProgress();
 	}
 
 	/**
@@ -473,7 +446,7 @@ export class WaterproofEditor {
 		func(view.state, view.dispatch, view);
 	}
 
-		public handleScroll(innerHeight: number) {
+	public handleScroll(innerHeight: number) {
 		if (!this._view) return;
 		const posTop = this._view.posAtCoords({left: 10, top: 80}) ?? {pos : 0, inside : -1};
 		const posBottom = this._view.posAtCoords({left: 10, top: innerHeight}) ?? {pos : this._view.state.doc.content.size, inside : -1};
@@ -612,19 +585,20 @@ export class WaterproofEditor {
 		trans.setMeta(INPUT_AREA_PLUGIN_KEY, {teacher: isTeacher});
 		this._view.dispatch(trans);
 	}
-    
-	/**
-	 * Updates the state of the progress bar in the editor.
-	 * 
-	 * @param progressParams The type used to store information on the status of the checking of the current file
-	 */
-	public updateProgressBar(progressParams: SimpleProgressParams): void {
+
+	public setDocumentProgress(progressParams: SimpleProgressParams): void {
+		console.log(progressParams);
+		this.updateDocumentProgress(progressParams.progress.offsetRange.start, progressParams.progress.offsetRange.end);
+		this.updateProgressBar(progressParams);
+	}
+
+	private updateProgressBar(progressParams: SimpleProgressParams): void {
 		if (!this._view) return;
+		
 		const state = this._view.state;
 		const tr = state.tr;
 		tr.setMeta(PROGRESS_PLUGIN_KEY, {progressParams});
 		this._view.dispatch(tr);
-		this.updateDocumentProgress();
 	}
 
 	public updateServerStatus(status: ServerStatus) : void {
