@@ -250,7 +250,7 @@ export class WaterproofEditor {
 			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this, this.initialThemeStyle),
 			progressBarPlugin,
 			documentProgressDecoratorPlugin,
-			menuPlugin(this._userOS, this._editorConfig.tagConfiguration),
+			menuPlugin(this._userOS, this._editorConfig.tagConfiguration, this._editorConfig.menubarEntries),
 			keymap({
 				"Mod-h": () => {
 					this.executeCommand("Help.");

@@ -93,6 +93,22 @@ export class MappingError extends Error {
     constructor(message: string) { super("[MappingError] " + message); }
 }
 
+export type MenuBarEntry = {
+    /** The text to show in the menubar */
+    title: string;
+    /** The text to show on hover over the menubar entry */
+    hoverText: string;
+    /** The function to execute when the button is clicked */
+    callback: () => void;
+    /** Control the visibility of the entry */
+    buttonVisibility?: {
+        /** When set to true the entry will only be visible in teacher mode */
+        teacherModeOnly?: boolean;
+        /** When set to true the button will be displayed regardless of whether the menubar entries are hidden via the setting */
+        showByDefault?: boolean;
+    }
+}
+
 /**
  * Configuration object for the WaterproofEditor.
  * 
@@ -141,7 +157,12 @@ export type WaterproofEditorConfig = {
     /**
      * Disables MarkdownIt features. Will likely be removed in the future once there is a nice way to support non markdown markup languages.
      */
-    disableMarkdownFeatures?: Array<string>
+    disableMarkdownFeatures?: Array<string>,
+
+    /**
+     * Specify custom entries that should be added to the menubar
+     */
+    menubarEntries?: Array<MenuBarEntry>
 }
 
 export enum HistoryChange {
