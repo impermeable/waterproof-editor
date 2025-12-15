@@ -700,6 +700,12 @@ export class WaterproofEditor {
 		return oldLength > newLength;
 	}
 
+	public clearDiagnostics() {
+		this.currentProseDiagnostics = [];
+		this.diagnosticsUpdateCounter++;
+		this.informCodemirrorViews();
+	}
+
 	/**
 	 * Sets the current set of diagnostics in the document.
 	 * This function takes the set of all diagnostics in the current document,
