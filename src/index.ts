@@ -7,3 +7,4 @@ export * from "./api";
 export { defaultToMarkdown } from "./translation";
 export * as "markdown" from "./markdown-defaults";
 export { DefaultTagSerializer } from "./serialization/DocumentSerializer";
+export * from "./edit-utils";
