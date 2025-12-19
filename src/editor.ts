@@ -247,7 +247,7 @@ export class WaterproofEditor {
 			updateStatusPlugin(this),
 			mathPlugin,
 			switchableViewPlugin(this._editorConfig),
-			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this, this.initialThemeStyle),
+			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this, this.initialThemeStyle, this._editorConfig.languageConfig),
 			progressBarPlugin,
 			documentProgressDecoratorPlugin,
 			menuPlugin(this._userOS, this._editorConfig.tagConfiguration, this._editorConfig.menubarEntries),

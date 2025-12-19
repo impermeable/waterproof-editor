@@ -1,6 +1,4 @@
 import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, acceptCompletion, completionStatus, hasNextSnippetField, nextSnippetField, snippetKeymap, prevSnippetField, clearSnippet, moveCompletionSelection, closeCompletion } from "@codemirror/autocomplete";
-import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { coq, coqSyntaxHighlighting } from "./lang-pack"
 import { Compartment, EditorState, Extension } from "@codemirror/state"
 import {
 	EditorView as CodeMirror, Command, keymap as cmKeymap,
@@ -13,9 +11,10 @@ import { renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, lintGutter } from "@codemirror/lint";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
-import { ThemeStyle } from "../api";
+import { LanguageConfiguration, ThemeStyle } from "../api";
 import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
+import { syntaxHighlighting } from "@codemirror/language";
 
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
@@ -40,7 +39,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		schema: Schema,
 		completions: Array<Completion>,
 		symbols: Array<Completion>,
-		initialThemeStyle: ThemeStyle
+		initialThemeStyle: ThemeStyle,
+		private readonly languageConfig: LanguageConfiguration
 	) {
 		super(node, view, getPos, schema);
 		this._node = node;
@@ -158,8 +158,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				...optional, 
 				this._readOnlyCompartment.of(EditorState.readOnly.of(!this._outerView.editable)),
 				this._lineNumberCompartment.of(this._lineNumbersExtension),
-				this._themeCompartment.of(coqSyntaxHighlighting(initialThemeStyle)),
-
+				// this._themeCompartment.of(waterproofSyntaxHighlighting(initialThemeStyle)),
+				this._themeCompartment.of(syntaxHighlighting(initialThemeStyle === ThemeStyle.Light ? languageConfig.highlightLight : languageConfig.highlightDark)),
+				languageConfig.languageSupport,
 				autocompletion({
 					override: [
 						tacticCompletionSource,
@@ -221,8 +222,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 					}
 				]),
 				customTheme,
-				syntaxHighlighting(defaultHighlightStyle),
-				coq(),
+				// syntaxHighlighting(defaultHighlightStyle),
+				languageConfig.languageSupport,
                 highlightActiveLine(),
 				CodeMirror.updateListener.of(update => this.forwardUpdate(update)),
 				placeholder(placeholderContent())
@@ -308,7 +309,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	public updateThemeFromVSCode(theme: ThemeStyle): void {
 		this._codemirror?.dispatch({
 			effects: this._themeCompartment.reconfigure(
-				coqSyntaxHighlighting(theme)
+				// waterproofSyntaxHighlighting(theme)
+				syntaxHighlighting(theme === ThemeStyle.Light ? this.languageConfig.highlightLight : this.languageConfig.highlightDark)
 			)
 		});
 	}

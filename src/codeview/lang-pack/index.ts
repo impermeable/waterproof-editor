@@ -50,7 +50,7 @@ export const highlight_light = HighlightStyle.define([
 ]);
 
 // Defining the Coq language syntax, highlighting and indentation
-export const coqLanguage = LRLanguage.define({
+export const wpLanguage = LRLanguage.define({
     parser: parser.configure({
         props: [
             styleTags({
@@ -137,11 +137,11 @@ export const coqLanguage = LRLanguage.define({
     })
 })
 
-export function coq() {
-    return new LanguageSupport(coqLanguage)
+export function WaterproofLanguageSupport() {
+    return new LanguageSupport(wpLanguage)
 }
 
-export function coqSyntaxHighlighting(themeStyle: ThemeStyle) {
+export function waterproofSyntaxHighlighting(themeStyle: ThemeStyle) {
     const highlight = themeStyle === ThemeStyle.Dark ? highlight_dark : highlight_light;
     return syntaxHighlighting(highlight);
 }

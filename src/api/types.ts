@@ -1,3 +1,4 @@
+import { HighlightStyle, LanguageSupport } from "@codemirror/language";
 import { Block } from "../document";
 import { DocumentSerializer } from "../serialization/DocumentSerializer";
 import { WaterproofCompletion, WaterproofSymbol } from "./Completions";
@@ -109,6 +110,12 @@ export type MenuBarEntry = {
     }
 }
 
+export type LanguageConfiguration = {
+    languageSupport: LanguageSupport;
+    highlightLight: HighlightStyle;
+    highlightDark: HighlightStyle;
+}
+
 /**
  * Configuration object for the WaterproofEditor.
  * 
@@ -162,7 +169,9 @@ export type WaterproofEditorConfig = {
     /**
      * Specify custom entries that should be added to the menubar
      */
-    menubarEntries?: Array<MenuBarEntry>
+    menubarEntries?: Array<MenuBarEntry>;
+
+    languageConfig: LanguageConfiguration;
 }
 
 export enum HistoryChange {
