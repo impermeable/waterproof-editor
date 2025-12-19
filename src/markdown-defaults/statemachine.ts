@@ -28,28 +28,37 @@ enum NestedState {
  * * The content between `<hint title="{title}">` and ` </hint>` is turned into a hint cell, `{title}` will turn into the title that is displayed in the editor.
  * * The content between `<input-area>` and `</input-area>` is turned into an input area.
  * @param document The document to convert into a `WaterproofDocument`
- * @param language The language tag to use for the code cells. That is, the part of the ` ``` ` when opening a code block (` ```python ` for a python 
+ * @param config An object that may contain
+ * - `language: string`: The language tag to use for the code cells. That is, the part of the ` ``` ` when opening a code block (` ```python ` for a python 
  * code block). Defaults to `""`.
+ * - `startParsingFrom: number`: An offset in `document` from where to start parsing the markdown document. Fox example, if you have a header in the
+ * markdown file use offset to start the markdown parser after the header content. Defaults to `0`.
+ * - `stopParsingAt: number`: Can be used to configure the parser to stop before the end of the file, when the file contains a footer for example.
+ * When not specified, parsing will stop only at the end of the file.
  * @returns A array of `Block` that form a `WaterproofDocument`.
  */
-export function parse(document: string, language: string = ""): WaterproofDocument {
+export function parse(document: string, config: {language?: string, startParsingFrom?: number, stopParsingAt?: number}): WaterproofDocument {
     // Stack to store the produced blocks
     const blocks: Block[] = [];
+
+    const language = config.language ?? "";
+    const startParsingFrom = config.startParsingFrom ?? 0;
+    const stopParsingAt = config.stopParsingAt ?? document.length;
 
     // Whether we are in a nested state, initially set to none.
     let nested: NestedState = NestedState.None;
 
     let innerBlocks: Block[] = []
     let state: ParserState = ParserState.Markdown;
-    let rangeStart = 0; // Range of the entire block
-    let innerRangeStart = 0; // Range of the content
+    let rangeStart = startParsingFrom; // Range of the entire block
+    let innerRangeStart = startParsingFrom; // Range of the content
 
-    let rangeStartNested = 0;
-    let innerRangeStartNested = 0;
+    let rangeStartNested = startParsingFrom;
+    let innerRangeStartNested = startParsingFrom;
 
     let hintTitle = "";
 
-    let i = 0;
+    let i = startParsingFrom;
 
     // Stores the offset of a codeblock (1 if we have an extra \n, 0 otherwise)
     let codeBlockOffset = 0;
@@ -175,7 +184,7 @@ export function parse(document: string, language: string = ""): WaterproofDocume
         }
     }
 
-    while (i < document.length) {
+    while (i < stopParsingAt) {
         switch (state) {
             case ParserState.Markdown: {
                 if (opensCodeBlock()) {
