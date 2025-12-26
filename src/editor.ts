@@ -8,7 +8,7 @@ import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { constructDocument } from "./document/construct-document";
 
-import { DocChange, LineNumber, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ServerStatus, ThemeStyle, WaterproofEditorConfig } from "./api";
+import { DocChange, LineNumber, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ServerStatus, ThemeStyle, WaterproofEditorConfig, TextContentOfSpecifier } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
@@ -279,6 +279,39 @@ export class WaterproofEditor {
 		return this._serializer.serializeDocument(this._view.state.doc);
 	}
 
+	/**
+	 * Returns the text content of specified parts of the document as well as the positions where the text starts.
+	 * 
+	 * Does not use the serializer, but extracts the text content directly from the nodes.
+	 * @param include Types of content to include.
+	 */
+	public textContentOfInputAreas(include: number = 0): Array<[string, {start: number, end: number}]> {		
+		if (!this._view || this._mapping === undefined) return [];
+		const mapping = this._mapping;
+		const contents: Array<[string, {start: number, end: number}]> = [];
+
+		const includeMarkdown = include & TextContentOfSpecifier.MARKDOWN;
+		const includeCode = include & TextContentOfSpecifier.CODE;
+		const includeMath = include & TextContentOfSpecifier.MATH_DISPLAY;
+
+		this._view.state.doc.descendants((node, _pos, parent) => {
+			// node type should be in include
+			if (parent !== null && parent.type === WaterproofSchema.nodes.input && (include === undefined ||
+				(node.type === WaterproofSchema.nodes.markdown && includeMarkdown) ||
+				(node.type === WaterproofSchema.nodes.code && includeCode) ||
+				(node.type === WaterproofSchema.nodes.math_display && includeMath))) {
+				// TODO: This is a bit strange since we are converting the positions using the mapping.
+				// Should we *always* do this, even in cases where we are not necessarily dealing with the raw text file? 
+				
+				// The +1 gives us the prose position inside the text node
+				contents.push([node.textContent, {start: mapping.pmIndexToTextOffset(_pos + 1), end: mapping.pmIndexToTextOffset(_pos + 1 + node.nodeSize)}]);
+				return false;
+			}
+			const shouldDescend = parent !== null && node.type === WaterproofSchema.nodes.input;
+			return shouldDescend;
+		});
+		return contents;
+	}
 	public updateNodeViewThemes(theme: ThemeStyle) {
 		const view = this._view!;
 		const state = view.state;

@@ -51,6 +51,12 @@ export type OpenCloseTag = {
     closeTag: string 
 }
 
+export const enum TextContentOfSpecifier {
+    CODE = 1, // = 001
+    MARKDOWN = 2, // = 010
+    MATH_DISPLAY = 4 // = 100
+}
+
 /**
  * Type describing whether the open tag requires a newline before and whether the closing tag requires a newline after.
  * 
