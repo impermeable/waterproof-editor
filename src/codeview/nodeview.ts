@@ -40,7 +40,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		completions: Array<Completion>,
 		symbols: Array<Completion>,
 		initialThemeStyle: ThemeStyle,
-		private readonly languageConfig: LanguageConfiguration
+		private readonly languageConfig?: LanguageConfiguration
 	) {
 		super(node, view, getPos, schema);
 		this._node = node;
@@ -159,8 +159,15 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				this._readOnlyCompartment.of(EditorState.readOnly.of(!this._outerView.editable)),
 				this._lineNumberCompartment.of(this._lineNumbersExtension),
 				// this._themeCompartment.of(waterproofSyntaxHighlighting(initialThemeStyle)),
-				this._themeCompartment.of(syntaxHighlighting(initialThemeStyle === ThemeStyle.Light ? languageConfig.highlightLight : languageConfig.highlightDark)),
-				languageConfig.languageSupport,
+				this._themeCompartment.of(
+					(() => {
+						if (languageConfig !== undefined) {
+							return syntaxHighlighting(initialThemeStyle === ThemeStyle.Light ? languageConfig.highlightLight : languageConfig.highlightDark);
+						}
+						return [];
+					})()
+				),
+				languageConfig?.languageSupport ?? [],
 				autocompletion({
 					override: [
 						tacticCompletionSource,
@@ -223,7 +230,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				]),
 				customTheme,
 				// syntaxHighlighting(defaultHighlightStyle),
-				languageConfig.languageSupport,
+				languageConfig?.languageSupport ?? [],
                 highlightActiveLine(),
 				CodeMirror.updateListener.of(update => this.forwardUpdate(update)),
 				placeholder(placeholderContent())
@@ -309,8 +316,12 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	public updateThemeFromVSCode(theme: ThemeStyle): void {
 		this._codemirror?.dispatch({
 			effects: this._themeCompartment.reconfigure(
-				// waterproofSyntaxHighlighting(theme)
-				syntaxHighlighting(theme === ThemeStyle.Light ? this.languageConfig.highlightLight : this.languageConfig.highlightDark)
+				(() => {
+					if (this.languageConfig !== undefined) {
+						return syntaxHighlighting(theme === ThemeStyle.Light ? this.languageConfig.highlightLight : this.languageConfig.highlightDark);
+					}
+					return [];
+				})()
 			)
 		});
 	}

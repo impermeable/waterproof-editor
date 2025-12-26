@@ -32,7 +32,7 @@ export const CODE_PLUGIN_KEY = new PluginKey<ICodePluginState>("waterproof-edito
  * Returns a function suitable for passing as a field in `EditorProps.nodeViews`.
  * @see https://prosemirror.net/docs/ref/#view.EditorProps.nodeViews
  */
-export function createCoqCodeView(completions: Array<Completion>, symbols: Array<Completion>, editorInstance: WaterproofEditor, initialThemeStyle: ThemeStyle, languageConfig: LanguageConfiguration){
+export function createCoqCodeView(completions: Array<Completion>, symbols: Array<Completion>, editorInstance: WaterproofEditor, initialThemeStyle: ThemeStyle, languageConfig?: LanguageConfiguration){
 	return (node: ProseNode, view: EditorView, getPos: () => number | undefined): CodeBlockView => {
 		/** @todo is this necessary?
 		* Docs says that for any function proprs, the current plugin instance
@@ -51,7 +51,7 @@ export function createCoqCodeView(completions: Array<Completion>, symbols: Array
 }
 
 
-const CoqCodePluginSpec = (completions: Array<Completion>, symbols: Array<Completion>, editorInstance: WaterproofEditor, initialThemeStyle: ThemeStyle, languageConfig: LanguageConfiguration) : PluginSpec<ICodePluginState> => { return {
+const CoqCodePluginSpec = (completions: Array<Completion>, symbols: Array<Completion>, editorInstance: WaterproofEditor, initialThemeStyle: ThemeStyle, languageConfig?: LanguageConfiguration) : PluginSpec<ICodePluginState> => { return {
 	key: CODE_PLUGIN_KEY,
 	state: {
 		init(config, instance){
@@ -113,7 +113,7 @@ const CoqCodePluginSpec = (completions: Array<Completion>, symbols: Array<Comple
 }};
 
 
-export const codePlugin = (completions: Array<WaterproofCompletion>, symbols: Array<WaterproofSymbol>, editorInstance: WaterproofEditor, initialThemeStyle: ThemeStyle, languageConfig: LanguageConfiguration) => {
+export const codePlugin = (completions: Array<WaterproofCompletion>, symbols: Array<WaterproofSymbol>, editorInstance: WaterproofEditor, initialThemeStyle: ThemeStyle, languageConfig?: LanguageConfiguration) => {
 	// Here we turn the waterproof completions into proper codemirror completions
 	//   with template 'holes'
 	console.log("LangConf", languageConfig);
