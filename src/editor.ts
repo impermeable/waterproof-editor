@@ -58,6 +58,7 @@ export class WaterproofEditor {
 
 	private currentProseDiagnostics: Array<DiagnosticObjectProse>;
 	
+	// @internal
 	public get diagnosticsVersion() {
 		return this.diagnosticsUpdateCounter;
 	}
@@ -137,11 +138,11 @@ export class WaterproofEditor {
 		this._editorConfig.api.editorReady();
 	}
 
-	get state(): EditorState | undefined {
+	private get state(): EditorState | undefined {
 		return this._view?.state;
 	}
 
-	createProseMirrorEditor(proseDoc: ProseNode) {
+	private createProseMirrorEditor(proseDoc: ProseNode) {
 		// Shadow this variable _userOS.
 		const userOS = this._userOS;
 		const view = new EditorView(this._editorElem, {
@@ -230,7 +231,7 @@ export class WaterproofEditor {
 	}
 
 	/** Create initial prosemirror state */
-	createState(proseDoc: ProseNode): EditorState {
+	private createState(proseDoc: ProseNode): EditorState {
 		return EditorState.create({
 			schema: WaterproofSchema,
 			doc: proseDoc,
@@ -239,7 +240,7 @@ export class WaterproofEditor {
 	}
 
 	/** Create the array of plugins used by the prosemirror editor */
-	createPluginsArray(): Plugin[] {
+	private createPluginsArray(): Plugin[] {
 		return [
 			history(),
 			createHintPlugin(),
@@ -312,6 +313,11 @@ export class WaterproofEditor {
 		});
 		return contents;
 	}
+
+	/**
+	 * Update the themestyle used inside of the code cells (switch between dark and light)
+	 * @param theme Either `ThemeStyle.Light` or `ThemeStyle.Dark` 
+	 */
 	public updateNodeViewThemes(theme: ThemeStyle) {
 		const view = this._view!;
 		const state = view.state;
@@ -363,7 +369,7 @@ export class WaterproofEditor {
 	}
 
 	/** Called on every selection update. */
-	public updateCursor(pos: Selection) : void {
+	private updateCursor(pos: Selection) : void {
 		// If this is not a cursor update return
 		if (!(pos instanceof TextSelection)) return;
 		if (this._mapping === undefined) throw new Error(" Mapping is undefined, cannot synchronize with vscode");
@@ -371,7 +377,7 @@ export class WaterproofEditor {
 	}
 
 	/** Called on every transaction update in which the textdocument was modified */
-	public sendLineNumbers() {
+	private sendLineNumbers() {
 		if (!this._lineNumbersShown) return;
 		if (!this._view || CODE_PLUGIN_KEY.getState(this._view.state) === undefined) return;
 		if (this._mapping === undefined) return;
@@ -390,7 +396,7 @@ export class WaterproofEditor {
 		this._editorConfig.api.lineNumbers(linenumbers, this._mapping.version);
 	}
 
-		private updateDocumentProgress() {
+	private updateDocumentProgress() {
 		// Use getState with the CODE_PLUGIN_KEY to obtain linenumbers
 		if (!this._view) return;
 		const lineNumbers = CODE_PLUGIN_KEY.getState(this._view.state)?.lines;
@@ -816,10 +822,12 @@ export class WaterproofEditor {
 	}
 
 	// Editor API
+	// @internal
 	public executeCommand(command: string) {
 		this._editorConfig.api.executeCommand(command, (new Date()).getTime());
 	}
 
+	// @internal
 	public executeHelp() {
 		this._editorConfig.api.executeHelp();
 	}
