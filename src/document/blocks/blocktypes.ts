@@ -21,9 +21,9 @@ export class InputAreaBlock implements Block {
      * @param innerRange The range (from position to to position in the original document) of the inner content of the input area block, excluding its tags.
      * @param childBlocks Either an array of child blocks of this input area block, or a function that constructs the child blocks given the inner range and content.
      */
-    constructor( public stringContent: string, public range: BlockRange, public innerRange: BlockRange, public lineStart: number, childBlocks: Block[] | ((innerContent: string, innerRange: BlockRange) => Block[])) {
+    constructor( public stringContent: string, public range: BlockRange, public innerRange: BlockRange, public lineStart: number, childBlocks: Block[] | ((innerContent: string, innerRange: BlockRange, lineStartOffset: number) => Block[])) {
         if (typeof childBlocks === "function") {
-            this.innerBlocks = childBlocks(stringContent, innerRange);
+            this.innerBlocks = childBlocks(stringContent, innerRange, lineStart);
         }
         else {
             this.innerBlocks = childBlocks;
@@ -59,9 +59,9 @@ export class HintBlock implements Block {
      * @param innerRange The range (from position to to position in the original document) of the inner content of the hint block, excluding its tags.
      * @param childBlocks Either an array of child blocks of this hint block, or a function that constructs the child blocks given the inner range and content.
      */
-    constructor( public stringContent: string, public title: string, public range: BlockRange, public innerRange: BlockRange, public lineStart: number, childBlocks: Block[] | ((innerContent: string, innerRange: BlockRange) => Block[])) {
+    constructor( public stringContent: string, public title: string, public range: BlockRange, public innerRange: BlockRange, public lineStart: number, childBlocks: Block[] | ((innerContent: string, innerRange: BlockRange, lineStartOffset: number) => Block[])) {
         if (typeof childBlocks === "function") {
-            this.innerBlocks = childBlocks(stringContent, innerRange);
+            this.innerBlocks = childBlocks(stringContent, innerRange, lineStart);
         } else {
             this.innerBlocks = childBlocks;
         }
