@@ -79,6 +79,8 @@ export class EditableView extends EmbeddedCodeMirrorEditor {
 		const pmSel = this._outerView.state.selection;
 		if (update.docChanged || pmSel.from != selFrom || pmSel.to != selTo) {
 			const tr = this._outerView.state.tr;
+
+			const lineDelta = update.state.doc.lines - update.startState.doc.lines;
 			update.changes.iterChanges((fromA, toA, fromB, toB, text) => {
 				if (text.length) {
 					tr.replaceWith(offset + fromA, offset + toA,
@@ -89,6 +91,7 @@ export class EditableView extends EmbeddedCodeMirrorEditor {
 					offset += (toB - fromB) - (toA - fromA);
 				}
 			});
+			if (lineDelta !== 0) tr.setMeta("lineDelta", lineDelta);
 			tr.setMeta(this._pluginKey, TextSelection.create(tr.doc,selFrom, selTo));
 		  	this._outerView.dispatch(tr);
 		}

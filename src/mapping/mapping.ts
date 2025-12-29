@@ -3,7 +3,7 @@ import { TextUpdate } from "./textUpdate";
 import { NodeUpdate } from "./nodeUpdate";
 import { ParsedStep } from "./types";
 import { Block, typeguards } from "../document";
-import { DocChange, DocumentSerializer, MappingError, TagConfiguration, WrappingDocChange } from "../api";
+import { DocChange, DocumentSerializer, MappingError, TagConfiguration, TextUpdateError, WrappingDocChange } from "../api";
 import { WaterproofSchema } from "../schema";
 import { Node } from "prosemirror-model";
 import { ReplaceAroundStep, ReplaceStep, Step } from "prosemirror-transform";
@@ -36,7 +36,9 @@ export class Mapping {
             "", // title
             0, // prosemirrorStart
             0, // prosemirrorEnd
-            { from: 0, to: 0 });
+            { from: 0, to: 0 },
+            0 // lineStart
+        );
         this.initTree(inputBlocks);
         console.log("MAPPED TREE", JSON.stringify(this.tree, null, 1));
     }
@@ -77,6 +79,22 @@ export class Mapping {
         const correctNode: TreeNode | null = this.tree.findNodeByOriginalPosition(offset);
         if (correctNode === null) throw new MappingError(` [findInvPosition] The prosemirror index for offset (${offset}) could not be found `);
         return (offset - correctNode.contentRange.from) + correctNode.prosemirrorStart;
+    }
+
+    public computeLineNumbers(): Array<number> {
+        return this.tree.computeLineNumbers();
+    }
+
+    public updateLines(lineDelta: number, from: number): void {
+        const targetCell: TreeNode | null = this.tree.findNodeByProsePos(from);
+        if (targetCell === null) throw new TextUpdateError(" Target cell is not in mapping!!! ");
+        const target = {prosemirrorStart: targetCell.prosemirrorStart, prosemirrorEnd: targetCell.prosemirrorEnd}
+        this.tree.traverseDepthFirst((node: TreeNode) => {
+            if (node.prosemirrorStart > target.prosemirrorStart && node.prosemirrorEnd > target.prosemirrorEnd) {
+                node.shiftLineStart(lineDelta);
+            }
+        });
+        
     }
 
     public update(step: Step, doc: Node): DocChange | WrappingDocChange {
@@ -148,6 +166,7 @@ export class Mapping {
                     0, // prosemirrorStart (to be calculated later)
                     0, // prosemirrorEnd (to be calculated later)
                     {from: 0, to: 0}, // full prosemirror range (to be computed later)
+                    block.lineStart
                 );
 
                 if (block.innerBlocks && block.innerBlocks.length > 0) {

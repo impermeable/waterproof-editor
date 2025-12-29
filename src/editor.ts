@@ -8,7 +8,7 @@ import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { constructDocument } from "./document/construct-document";
 
-import { DocChange, LineNumber, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ServerStatus, ThemeStyle, WaterproofEditorConfig } from "./api";
+import { DocChange, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ServerStatus, ThemeStyle, WaterproofEditorConfig } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
@@ -129,7 +129,7 @@ export class WaterproofEditor {
 		this.createProseMirrorEditor(proseDoc);
 
 		/** Ask for line numbers */
-		this.sendLineNumbers();
+		this.updateLineNumbers();
 		this.handleScroll(window.innerHeight);
 
 		// notify host that the editor is ready
@@ -174,6 +174,11 @@ export class WaterproofEditor {
 					}
 				}
 
+				const lineDelta = tr.getMeta("lineDelta");
+				if (lineDelta !== undefined && tr.steps.length === 1 && tr.steps[0] instanceof ReplaceStep) {
+					this._mapping?.updateLines(lineDelta, tr.steps[0].from);
+				}
+
 				// Only update the state when we know that the transaction did not cause an error
 				view.updateState(view.state.apply(tr));
 
@@ -184,7 +189,7 @@ export class WaterproofEditor {
 					this.updateCursor(tr.getMeta(SWITCHABLE_VIEW_PLUGIN_KEY));
 				}
 
-				if (step !== undefined) this.sendLineNumbers();
+				if (step !== undefined) this.updateLineNumbers();
 			}),
 			handleKeyDown(view, e) {
 				// Stop certain events from propagating
@@ -338,26 +343,16 @@ export class WaterproofEditor {
 	}
 
 	/** Called on every transaction update in which the textdocument was modified */
-	public sendLineNumbers() {
-		if (!this._lineNumbersShown) return;
-		if (!this._view || CODE_PLUGIN_KEY.getState(this._view.state) === undefined) return;
-		if (this._mapping === undefined) return;
-		const linenumbers = Array<number>();
-		// @ts-expect-error TODO: Fix me
-		for (const codeCell of CODE_PLUGIN_KEY.getState(this._view.state).activeNodeViews) {
-			linenumbers.push(this._mapping.pmIndexToTextOffset(
-				//@ts-expect-error Fix the fact that _getPos can return undefined
-				codeCell._getPos() + 1));
-		}
-		if (this._mapping === undefined) {
-			// Fail when the mapping is undefined
-			console.error("Encountered undefined mapping in sendLineNumbers function");
-			return;
-		}
-		this._editorConfig.api.lineNumbers(linenumbers, this._mapping.version);
+	private updateLineNumbers() {
+		if (!this._view || !this._mapping) return;
+		const nrs = this._mapping.computeLineNumbers();
+		console.log(nrs);
+		const tr = this._view.state.tr.setMeta(CODE_PLUGIN_KEY, nrs);
+		this._view.dispatch(tr);
+		this.updateDocumentProgress();
 	}
 
-		private updateDocumentProgress() {
+	private updateDocumentProgress() {
 		// Use getState with the CODE_PLUGIN_KEY to obtain linenumbers
 		if (!this._view) return;
 		const lineNumbers = CODE_PLUGIN_KEY.getState(this._view.state)?.lines;
@@ -391,10 +386,10 @@ export class WaterproofEditor {
 				nextNodeView = nodeView;
 				break;
 			}
-			if (currentLine >= lineNumbers.linenumbers[i] && currentLine < lineNumbers.linenumbers[i + 1]) {
+			if (currentLine >= lineNumbers[i] && currentLine < lineNumbers[i + 1]) {
 				currentNodeView = nodeView; 
-				viewLineNumber = lineNumbers.linenumbers[i];
-				nextLineNumber = lineNumbers.linenumbers[i + 1];
+				viewLineNumber = lineNumbers[i];
+				nextLineNumber = lineNumbers[i + 1];
 			}
 			i++;
 		}
@@ -442,17 +437,6 @@ export class WaterproofEditor {
 			.getState(state)
 			?.activeNodeViews
 			?.forEach(codeBlock => codeBlock.handleNewComplete(completions));
-	}
-
-	/** Called whenever a line number message is received from vscode to update line numbers of codemirror cells */
-	public setLineNumbers(msg: LineNumber) {
-		if (!this._view || !this._mapping || msg.version < this._mapping.version) return;
-		const state = CODE_PLUGIN_KEY.getState(this._view.state);
-		if (!state) return;
-		const tr = this._view.state.tr.setMeta(CODE_PLUGIN_KEY, msg);
-		this._view.dispatch(tr);
-		// Document progress uses lines to compute the right size of the decorator
-		this.updateDocumentProgress();
 	}
 
 	/**
@@ -568,7 +552,7 @@ export class WaterproofEditor {
 		const tr = view.state.tr;
 		tr.setMeta(CODE_PLUGIN_KEY, {setting: "update", show: this._lineNumbersShown});
 		view.dispatch(tr);
-		this.sendLineNumbers();
+		this.updateLineNumbers();
 	}
 
 	/**

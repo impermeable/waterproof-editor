@@ -21,7 +21,7 @@ export class InputAreaBlock implements Block {
      * @param innerRange The range (from position to to position in the original document) of the inner content of the input area block, excluding its tags.
      * @param childBlocks Either an array of child blocks of this input area block, or a function that constructs the child blocks given the inner range and content.
      */
-    constructor( public stringContent: string, public range: BlockRange, public innerRange: BlockRange, childBlocks: Block[] | ((innerContent: string, innerRange: BlockRange) => Block[])) {
+    constructor( public stringContent: string, public range: BlockRange, public innerRange: BlockRange, public lineStart: number, childBlocks: Block[] | ((innerContent: string, innerRange: BlockRange) => Block[])) {
         if (typeof childBlocks === "function") {
             this.innerBlocks = childBlocks(stringContent, innerRange);
         }
@@ -59,7 +59,7 @@ export class HintBlock implements Block {
      * @param innerRange The range (from position to to position in the original document) of the inner content of the hint block, excluding its tags.
      * @param childBlocks Either an array of child blocks of this hint block, or a function that constructs the child blocks given the inner range and content.
      */
-    constructor( public stringContent: string, public title: string, public range: BlockRange, public innerRange: BlockRange, childBlocks: Block[] | ((innerContent: string, innerRange: BlockRange) => Block[])) {
+    constructor( public stringContent: string, public title: string, public range: BlockRange, public innerRange: BlockRange, public lineStart: number, childBlocks: Block[] | ((innerContent: string, innerRange: BlockRange) => Block[])) {
         if (typeof childBlocks === "function") {
             this.innerBlocks = childBlocks(stringContent, innerRange);
         } else {
@@ -86,7 +86,7 @@ export class HintBlock implements Block {
  */
 export class MathDisplayBlock implements Block {
     public type = BLOCK_NAME.MATH_DISPLAY;
-    constructor( public stringContent: string, public range: BlockRange, public innerRange: BlockRange ) {};
+    constructor( public stringContent: string, public range: BlockRange, public innerRange: BlockRange, public lineStart: number ) {};
 
     toProseMirror() {
         if (this.stringContent === "") {
@@ -109,7 +109,7 @@ export class MarkdownBlock implements Block {
     public type = BLOCK_NAME.MARKDOWN;
     public isNewLineOnly = false;
 
-    constructor( public stringContent: string, public range: BlockRange, public innerRange: BlockRange ) {
+    constructor( public stringContent: string, public range: BlockRange, public innerRange: BlockRange, public lineStart: number ) {
         if (stringContent === "\n") this.isNewLineOnly = true;
     };
 
@@ -133,7 +133,7 @@ export class MarkdownBlock implements Block {
 export class CodeBlock implements Block {
     public type = BLOCK_NAME.CODE;
 
-    constructor( public stringContent: string, public range: BlockRange, public innerRange: BlockRange) {}
+    constructor( public stringContent: string, public range: BlockRange, public innerRange: BlockRange, public lineStart: number ) {}
 
     toProseMirror() {
         if (this.stringContent === "") {
@@ -156,7 +156,7 @@ export class CodeBlock implements Block {
 export class NewlineBlock implements Block {
     public type = BLOCK_NAME.NEWLINE;
     
-    constructor ( public range: BlockRange, public innerRange: BlockRange ) {}
+    constructor ( public range: BlockRange, public innerRange: BlockRange, public lineStart: number ) {}
 
     stringContent: string = "";
 

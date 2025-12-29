@@ -46,10 +46,13 @@ export function parse(document: string, language: string = ""): WaterproofDocume
 
     let rangeStartNested = 0;
     let innerRangeStartNested = 0;
+    let lineStartCounter = 0;
 
     let hintTitle = "";
 
     let i = 0;
+
+    let newlineCounter = 0;
 
     // Stores the offset of a codeblock (1 if we have an extra \n, 0 otherwise)
     let codeBlockOffset = 0;
@@ -89,12 +92,20 @@ export function parse(document: string, language: string = ""): WaterproofDocume
         }
     }
 
+    function setLineStart() {
+        lineStartCounter = newlineCounter;
+    }
+
     function getRangeStart(): number {
         return nested === NestedState.None ? rangeStart : rangeStartNested;
     }
 
     function getInnerRangeStart(): number {
         return nested === NestedState.None ? innerRangeStart : innerRangeStartNested;
+    }
+
+    function getLineStart() {
+        return lineStartCounter;
     }
 
 
@@ -157,6 +168,7 @@ export function parse(document: string, language: string = ""): WaterproofDocume
         state = ParserState.Markdown;
         setRangeStart();
         setInnerRangeStart();
+        setLineStart();
         if (clearNestedBlocks) {
             innerBlocks = [];
         }
@@ -170,9 +182,15 @@ export function parse(document: string, language: string = ""): WaterproofDocume
             const to = i;
             const markdownBlock = new MarkdownBlock(
                 document.slice(getRangeStart(), i),
-                {from, to}, {from, to});
+                {from, to}, {from, to}, 0);
             pushBlock(markdownBlock);
         }
+    }
+
+    function checkNewlineAndIncrementI(): void {
+        if (document[i] === "\n") newlineCounter++;
+        i++;
+        return;
     }
 
     while (i < document.length) {
@@ -184,7 +202,10 @@ export function parse(document: string, language: string = ""): WaterproofDocume
                     state = ParserState.Code;
                     setRangeStart();
                     i += codeBlockOffset + codeBlockOpenLength;
+                    newlineCounter+=codeBlockOffset;
+                    newlineCounter++;
                     setInnerRangeStart();
+                    setLineStart();
                     continue;
                 }
                 else if (opensLaTeXBlock()) {
@@ -193,11 +214,13 @@ export function parse(document: string, language: string = ""): WaterproofDocume
                     setRangeStart();
                     i += latexBlockOpenCloseLength; // Skip the $$
                     setInnerRangeStart();
+                    setLineStart();
                     continue;
                 }
                 else if (nested === NestedState.None && opensHintBlock()) {
                     closeMarkdown();
                     setRangeStart();
+                    setLineStart();
                     i += hintOpenLength; // Skip the <hint title="
                     innerRangeStartNested = i;
                     rangeStartNested = i;
@@ -210,6 +233,7 @@ export function parse(document: string, language: string = ""): WaterproofDocume
                     setRangeStart();
                     i += inputAreaOpenLength;
                     setInnerRangeStart();
+                    setLineStart();
 
                     innerRangeStartNested = i;
                     rangeStartNested = i;
@@ -226,6 +250,7 @@ export function parse(document: string, language: string = ""): WaterproofDocume
                         document.slice(innerRange.from, innerRange.to),
                         hintTitle,
                         range, innerRange,
+                        0,
                         innerBlocks);
                     pushBlock(hintBlock);
 
@@ -243,6 +268,7 @@ export function parse(document: string, language: string = ""): WaterproofDocume
                     const inputAreaBlock = new InputAreaBlock(
                         document.slice(innerRange.from, innerRange.to),
                         range, innerRange,
+                        0,
                         innerBlocks);
                     pushBlock(inputAreaBlock);
 
@@ -251,13 +277,14 @@ export function parse(document: string, language: string = ""): WaterproofDocume
                     continue;
                 }
                 else {
-                    i++;
+                    checkNewlineAndIncrementI();
                     continue;
                 }
             }
             case ParserState.Code: {
                 if (closesCodeBlock()) {
                     // End of this code block
+                    newlineCounter++;
 
                     // Check if we have a newline before this block
                     const newlineBefore = document[getRangeStart()] === '\n';
@@ -266,23 +293,25 @@ export function parse(document: string, language: string = ""): WaterproofDocume
                     const codeBlock = new CodeBlock(
                         document.slice(innerRange.from, innerRange.to),
                         range,
-                        innerRange);
+                        innerRange,
+                        getLineStart());
 
                     // Add a newline block before the block if needed 
                     if (newlineBefore) {
-                        pushBlock(new NewlineBlock({ from: getRangeStart(), to: getRangeStart() + 1 }, { from: getRangeStart(), to: getRangeStart() + 1 }));
+                        pushBlock(new NewlineBlock({ from: getRangeStart(), to: getRangeStart() + 1 }, { from: getRangeStart(), to: getRangeStart() + 1 }, 0));
                     }
                     pushBlock(codeBlock);
                     // Add a newline block after the block if needed
                     if (codeBlockOffset) {
-                        pushBlock(new NewlineBlock({ from: range.to, to: range.to + 1 }, { from: range.to, to: range.to + 1 }));
+                        newlineCounter++;
+                        pushBlock(new NewlineBlock({ from: range.to, to: range.to + 1 }, { from: range.to, to: range.to + 1 }, 0));
                     }
 
                     i += codeBlockCloseLength + codeBlockOffset; // Skip the closing ``` and possible \n
                     backToMarkdown();
                     continue;
                 } else {
-                    i++;
+                    checkNewlineAndIncrementI();
                     continue;
                 }
             }
@@ -294,13 +323,14 @@ export function parse(document: string, language: string = ""): WaterproofDocume
                     const mathBlock = new MathDisplayBlock(
                         document.slice(getInnerRangeStart(), i),
                         range,
-                        innerRange);
+                        innerRange,
+                        0);
                     pushBlock(mathBlock);
                     i += latexBlockOpenCloseLength; // Skip the closing $$
                     backToMarkdown();
                     continue;
                 } else {
-                    i++;
+                    checkNewlineAndIncrementI();
                     continue;
                 }
             }
@@ -317,7 +347,7 @@ export function parse(document: string, language: string = ""): WaterproofDocume
                         break;
                     } else {
                         hintTitle += char;
-                        i++;
+                        checkNewlineAndIncrementI();
                     }
                 }
                 break;
