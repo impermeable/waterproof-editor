@@ -14,15 +14,8 @@ export interface IUpdateStatusPluginState {
 export const UPDATE_STATUS_PLUGIN_KEY = new PluginKey<IUpdateStatusPluginState>('prosemirror-status-update');
 
 // Helper function to convert status updates to appropriate CSS classes
-const statusToDecoration = (status: InputAreaStatus) => {
-  switch (status) {
-    case InputAreaStatus.Proven:
-      return 'proven';
-    case InputAreaStatus.Incomplete:
-      return 'incomplete';
-    case InputAreaStatus.Invalid, InputAreaStatus.NotInView:
-      return '';
-  }
+const statusToDecoration = (status: InputAreaStatus): string => {
+  return status;
 };
 
 // Plugin specification
@@ -45,7 +38,7 @@ const UpdateStatusPluginSpec = (editor: WaterproofEditor): PluginSpec<IUpdateSta
           // newValues contains the values from newStatus, unless that value is NotInView,
           // then we use the previous value
           const newValues = newStatus.map((status : InputAreaStatus, index : number) => {
-            if (status === InputAreaStatus.NotInView) {
+            if (status === InputAreaStatus.OutOfView) {
               return value.status[index];
             }
             return status;
@@ -82,9 +75,9 @@ const UpdateStatusPluginSpec = (editor: WaterproofEditor): PluginSpec<IUpdateSta
                 if (thingies.length > 0) {
                   if (thingies.find((value) => value.severity == Severity.Error)) {
                     // Coq error in proof.
-                    className += "-contains-error";
+                    className += " contains-error";
                   } else {
-                    className += "-contains-warning";
+                    className += " contains-warning";
                   }
                 }
 

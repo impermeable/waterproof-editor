@@ -16,20 +16,21 @@
   outline: 1px solid var(--vscode-button-border); 
 }
 
-.inputarea.proven::before {
+.inputarea.correct::before {
   width: 8px;
   background-color: var(--vscode-terminal-ansiGreen);
 }
 
-.inputarea.proven-contains-warning::before {
+.inputarea.invalid::before,
+.inputarea.correct.contains-warning::before {
   width: 8px;
   background-color: var(--vscode-terminal-ansiYellow);
 }
 
-.inputarea.incomplete::before,
-.inputarea.incomplete-contains-error::before,
-.inputarea.incomplete-contains-warning::before, 
-.inputarea.proven-contains-error::before {
+.inputarea.incorrect::before,
+.inputarea.incorrect.contains-error::before,
+.inputarea.incorrect.contains-warning::before, 
+.inputarea.correct-contains-error::before {
   width: 8px;
   background-color: var(--vscode-terminal-ansiRed);
 }

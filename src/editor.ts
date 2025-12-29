@@ -667,9 +667,10 @@ export class WaterproofEditor {
 	/**
 	 * Updates the status of the input areas in the editor.
 	 * 
-	 * @param status Array containing the status of the input areas within the current document, where `status[i]` corresponds to the i-th input area (starting at zero for the first input area). 
+	 * @param status Array containing the status of the input areas within the current document, where `status[i]`
+	 * corresponds to the i-th input area (starting at zero for the first input area). 
 	 */
-	public updateQedStatus(status: InputAreaStatus[]) : void {
+	public setInputAreaStatus(status: InputAreaStatus[]) : void {
 		if (!this._view) return;
 		const state = this._view.state;
 		const tr = state.tr;
