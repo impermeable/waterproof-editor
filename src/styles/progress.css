@@ -1,0 +1,64 @@
+#progress {
+    position: sticky;
+    display: block;
+    top: 0;
+    margin-bottom: 1rem;
+    width: 100%;
+    z-index: 9001;
+}
+
+.progress-bar {
+    display: inline-block;
+    width: 90%; /* Progress bar takes 90% of the width */
+    position: relative;
+}
+
+/* Here we apply styles to the progress bar */
+.progress-bar progress {
+    background-color: var(--vscode-quickInput-background);
+    width: 100%;
+    height: 1.5rem;
+    border: none;
+    border-radius: 0.2rem;
+}
+
+.progress-bar-text {
+    color: var(--button-foreground);
+    /* Add a semi-transparent background for better contrast */
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 0.2rem;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    width: 100%;
+    white-space: nowrap;
+    font-family: var(--wp-font-family);
+    line-height: 1.5rem;
+}
+
+.spinner-container {
+    display: inline-block;
+    width: 10%; /* Spinner container takes remaining 10% */
+    text-align: center;
+    vertical-align: top;
+}
+
+/* Define the spinner animation */
+.spinner {
+    border: 0.3rem solid var(--vscode-quickInput-background);
+    border-top: 0.3rem solid var(--vscode-button-background);
+    border-radius: 100%;
+    width: 0.8rem;
+    height: 0.8rem;
+    background-color: var(--vscode-quickInput-background);
+    animation: spin 1s linear infinite;
+}
+
+/* Keyframes for the spinner animation */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+

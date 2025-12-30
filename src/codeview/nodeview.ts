@@ -126,10 +126,10 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				// This codemirror cell is part of an input area, we change
 				// the placeholder to `(* Type your proof here *)` and apply
 				// the appropriate styling.
-				div.innerText = "(* Type your proof here *)";
+				//div.innerText = "(* Type your proof here *)";
 				// The styling of this class is
 				// defined in `editor/src/kroqed-editor/styles/input-area.css`.
-				div.classList.add("empty-proof-placeholder");
+				div.classList.add("empty-input-area-placeholder");
 			} else {
 				// This codemirror cell is not part of an input area, use the
 				// `Empty code cell` placeholder.

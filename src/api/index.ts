@@ -14,8 +14,6 @@ export type { WaterproofCompletion, WaterproofSymbol } from "./Completions";
 
 export type { Completion } from "@codemirror/autocomplete";
 
-export type { ServerStatus, Idle, Busy } from "./ServerStatus";
-
 export { DocumentSerializer } from "../serialization/DocumentSerializer";
 
 export { Mapping } from "../mapping";

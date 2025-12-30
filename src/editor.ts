@@ -8,7 +8,7 @@ import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { constructDocument } from "./document/construct-document";
 
-import { DocChange, LineNumber, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ServerStatus, ThemeStyle, WaterproofEditorConfig, TextContentOfSpecifier } from "./api";
+import { DocChange, LineNumber, InputAreaStatus, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ThemeStyle, WaterproofEditorConfig, TextContentOfSpecifier } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
@@ -16,8 +16,7 @@ import { WaterproofSchema } from "./schema";
 import { SWITCHABLE_VIEW_PLUGIN_KEY, switchableViewPlugin } from "./markup-views";
 import { menuPlugin } from "./menubar";
 import { MENU_PLUGIN_KEY } from "./menubar/menubar";
-import { PROGRESS_PLUGIN_KEY, progressBarPlugin } from "./progressBar";
-import { DOCUMENT_PROGRESS_DECORATOR_KEY, documentProgressDecoratorPlugin } from "./documentProgressDecorator";
+import { documentProgressDecoratorPlugin } from "./documentProgressDecorator";
 import { createContextMenuHTML } from "./context-menu";
 import { DefaultTagSerializer } from "./serialization/DocumentSerializer";
 
@@ -33,6 +32,7 @@ import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "./com
 import { InsertionPlace } from "./commands";
 import { deleteSelection } from "./commands/commands";
 import { Mapping } from "./mapping";
+import { ProgressBar } from "./progressBar";
 
 /** Type that contains a coq diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {message: string, start: number, end: number, severity: Severity};
@@ -68,6 +68,8 @@ export class WaterproofEditor {
 
 	private readonly _serializer: DocumentSerializer;
 
+	private readonly _progressBar;
+
 	/**
 	 * Create a new WaterproofEditor instance.
 	 * @param editorElement The HTML element where the editor will be inserted in the document
@@ -88,6 +90,7 @@ export class WaterproofEditor {
 
 		const theContextMenu = createContextMenuHTML(this);
 
+		this._progressBar = new ProgressBar(editorElement);
 
 		document.body.appendChild(theContextMenu);
 
@@ -117,9 +120,7 @@ export class WaterproofEditor {
 		if(this._view) {
 			if (this._mapping && this._mapping.version == version) return;
 			// Hack to forcefully remove the 'old' menubar
-			document.querySelector(".menubar")?.remove();
 			document.querySelector(".progress-bar")?.remove();
-			document.querySelector(".spinner-container")?.remove();
 			this._view.dom.remove();
 		}
 
@@ -249,7 +250,6 @@ export class WaterproofEditor {
 			mathPlugin,
 			switchableViewPlugin(this._editorConfig),
 			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this, this.initialThemeStyle, this._editorConfig.languageConfig),
-			progressBarPlugin,
 			documentProgressDecoratorPlugin,
 			menuPlugin(this._userOS, this._editorConfig.tagConfiguration, this._editorConfig.menubarEntries),
 			keymap({
@@ -396,79 +396,6 @@ export class WaterproofEditor {
 		this._editorConfig.api.lineNumbers(linenumbers, this._mapping.version);
 	}
 
-	private updateDocumentProgress() {
-		// Use getState with the CODE_PLUGIN_KEY to obtain linenumbers
-		if (!this._view) return;
-		const lineNumbers = CODE_PLUGIN_KEY.getState(this._view.state)?.lines;
-		// Use getState with the CODE_PLUGIN_KEY to obtain progress activeNodeViews
-		const activeNodeViews = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
-		// Use getState with the PROGRESS_PLUGIN_KEY to obtain progress status
-		const progressParams = PROGRESS_PLUGIN_KEY.getState(this._view.state)?.progressParams;
-		if (progressParams === undefined || lineNumbers === undefined || activeNodeViews === undefined) return;
-		// Compute currentLine from progressParams
-		if (progressParams.progress.length == 0) return;
-		const currentLine = progressParams?.progress[0].range.start.line + 1;
-		const endLine = progressParams?.progress[0].range.end.line + 1;
-	
-		if (currentLine == endLine) {
-			// Done checking, remove bar
-			const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, 
-				{progressHeightLow: 0, progressHeightHigh: 0, total: 0});
-			this._view.dispatch(tr);
-			return;
-		}
-
-		// Compute current nodeView using lineNumbers and activeNodeViews
-		let currentNodeView = undefined;
-		let viewLineNumber = undefined;
-		let nextLineNumber = undefined;
-		let nextNodeView = undefined;
-		
-		let i = 0;
-		for (const nodeView of activeNodeViews) {
-			if (currentNodeView != undefined) {
-				nextNodeView = nodeView;
-				break;
-			}
-			if (currentLine >= lineNumbers.linenumbers[i] && currentLine < lineNumbers.linenumbers[i + 1]) {
-				currentNodeView = nodeView; 
-				viewLineNumber = lineNumbers.linenumbers[i];
-				nextLineNumber = lineNumbers.linenumbers[i + 1];
-			}
-			i++;
-		}
-		if (currentNodeView === undefined || viewLineNumber === undefined || nextLineNumber === undefined) return;
-		let startPos = currentNodeView._getPos();
-		let nextPos = nextNodeView?._getPos();
-		if (startPos === undefined || nextPos === undefined) return;
-		const startDocCoords = this._view.coordsAtPos(0);
-		let startCoords = this._view.coordsAtPos(startPos, -1);
-		// If we don't find a good position, this is likely a hidden codeblock
-		// Go back until we find a position in the document or the top
-		while (startCoords == null || startCoords.top == 0) {
-			startPos--;
-			if (startPos < 0) break;
-			startCoords = this._view.coordsAtPos(startPos, -1);
-		}
-
-		// If we don't find a good position, this is likely a hidden codeblock
-		// Go forward until we find a position in the document or the bottom
-		let nextCoords = this._view.coordsAtPos(nextPos);
-		while (nextCoords == null || nextCoords.top == 0) {
-			nextPos++;
-			if (nextPos >= this._view.state.doc.content.size) break;
-			nextCoords = this._view.coordsAtPos(nextPos);
-		}
-		const endDocCoords = this._view.coordsAtPos(this._view.state.doc.content.size);
-		const height = startCoords.top - startDocCoords.top;
-
-		// Communicate the total size of the document, the low estimate where processing is happening
-		// and the high estimate, unit is pixels for each
-		const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, {
-			total: endDocCoords.top - startDocCoords.top, progressHeightLow: height, progressHeightHigh: nextCoords.top - startDocCoords.top});
-		this._view.dispatch(tr);
-	}
-
 	/**
 	 * Updates the dynamic autocomplete suggestions shown in the editor.
 	 * @param completions Array of completions.
@@ -490,8 +417,6 @@ export class WaterproofEditor {
 		if (!state) return;
 		const tr = this._view.state.tr.setMeta(CODE_PLUGIN_KEY, msg);
 		this._view.dispatch(tr);
-		// Document progress uses lines to compute the right size of the decorator
-		this.updateDocumentProgress();
 	}
 
 	/**
@@ -641,28 +566,14 @@ export class WaterproofEditor {
 		trans.setMeta(INPUT_AREA_PLUGIN_KEY, {teacher: isTeacher});
 		this._view.dispatch(trans);
 	}
-    
-	/**
-	 * Updates the state of the progress bar in the editor.
-	 * 
-	 * @param progressParams The type used to store information on the status of the checking of the current file
-	 */
-	public updateProgressBar(progressParams: SimpleProgressParams): void {
-		if (!this._view) return;
-		const state = this._view.state;
-		const tr = state.tr;
-		tr.setMeta(PROGRESS_PLUGIN_KEY, {progressParams});
-		this._view.dispatch(tr);
-		this.updateDocumentProgress();
+
+	public reportProgress(current: number, total: number, text?: string): void {
+		this._progressBar.reportProgress(current, total, text);
 	}
 
-	public updateServerStatus(status: ServerStatus) : void {
-		if (!this._view) return;
-		const state = this._view.state;
-		const tr = state.tr;
-		tr.setMeta(PROGRESS_PLUGIN_KEY, {serverStatus: status});
-		this._view.dispatch(tr);
-	}
+	public startSpinner(): void { this._progressBar.startSpinner(); }
+	
+	public stopSpinner(): void { this._progressBar.stopSpinner(); }
 
 	/**
 	 * Updates the status of the input areas in the editor.

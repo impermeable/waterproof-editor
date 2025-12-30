@@ -1,12 +1,41 @@
 :root {
-    /* General Waterproof Editor styling */
+    /* Fonts used in the editor parts */
     --wp-editor-font-family: var(--vscode-editor-font-family);
     --wp-editor-font-size: var(--vscode-editor-font-size);
     --wp-editor-font-weight: var(--vscode-editor-font-weight);
+
+    /* Fonts used in a display context */
+    --wp-font-family: var(--vscode-font-family);
+    --wp-font-size: var(--vscode-font-size);
+    --wp-font-weight: var(--vscode-font-weight);
+
+    --wp-menu-foreground: var(--vscode-menu-foreground);
+    --wp-menu-background: var(--vscode-menu-background);
+    --wp-menu-selection-border: var(--vscode-menu-selectionBorder);
+    --wp-menu-selection-background: var(--vscode-menu-selectionBackground);
+    --wp-menu-selection-foreground: var(--vscode-menu-selectionForeground);
 
     /* CodeMirror related styling */
     --wp-cm-foreground: var(--vscode-input-foreground);
     --wp-cm-background: var(--vscode-listFilterWidget-background);
 
     --wp-cm-lint-panel-foreground: var(--vscode-list-highlightForeground);
+
+    /* Hint styling */
+    --wp-hint-outline: none;
+    --wp-hint-border: 2px dashed var(--vscode-minimap-findMatchHighlight);
+
+    /* input area styling */
+    --wp-empty-input-area-placeholder-color: #940;
+    --wp--empty-input-area-placeholder-content: "(* Type your proof here *)";
+
+    /* Colors */
+    --wp-red: var(--vscode-terminal-ansiRed);
+    --wp-green: var(--vscode-terminal-ansiGreen);
+    --wp-yellow: var(--vscode-terminal-ansiYellow);
+    --wp-blue: var(--vscode-terminal-ansiBlue);
+
+    /* notifications */
+    --wp-notification-background: var(--vscode-notifications-background);
+    --wp-notification-foreground: var(--vscode-notifications-foreground);
 }

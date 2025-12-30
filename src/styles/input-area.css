@@ -11,20 +11,20 @@
   left: 0px;
   height: 100%;
   width: 8px; 
-  background-color: var(--vscode-button-background);
+  background-color: var(--wp-blue);
   /* we add a border for some high contrast themes */
   outline: 1px solid var(--vscode-button-border); 
 }
 
 .inputarea.correct::before {
   width: 8px;
-  background-color: var(--vscode-terminal-ansiGreen);
+  background-color: var(--wp-green);
 }
 
 .inputarea.invalid::before,
 .inputarea.correct.contains-warning::before {
   width: 8px;
-  background-color: var(--vscode-terminal-ansiYellow);
+  background-color: var(--wp-yellow);
 }
 
 .inputarea.incorrect::before,
@@ -32,9 +32,13 @@
 .inputarea.incorrect.contains-warning::before, 
 .inputarea.correct-contains-error::before {
   width: 8px;
-  background-color: var(--vscode-terminal-ansiRed);
+  background-color: var(--wp-red);
 }
 
-.empty-proof-placeholder {
-  color: #940;
+.empty-input-area-placeholder {
+  color: var(--wp-empty-input-area-placeholder-color);
+}
+
+.empty-input-area-placeholder::before {
+  content: var(--wp--empty-input-area-placeholder-content);
 }
