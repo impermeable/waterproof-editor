@@ -32,6 +32,7 @@
     "unit-tests": "npx jest",
     "unit-tests-cov": "npx jest --coverage --collectCoverageFrom=src/**/*.ts",
     "lezer-generator": "npx lezer-generator ./src/codeview/lang-pack/syntax.grammar -o ./src/codeview/lang-pack/syntax.ts --typeScript",
+    "lezer-generator-verbose": "npx lezer-generator ./src/codeview/lang-pack-verbose/syntax.grammar -o ./src/codeview/lang-pack-verbose/syntax.ts --typeScript",
     "typecheck": "npx tsc -b",
     "build": "npm run typecheck && node esbuild.mjs --minify",
     "lint": "npx eslint .",

@@ -1,6 +1,7 @@
 import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, completionKeymap } from "@codemirror/autocomplete";
-import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { defaultHighlightStyle, Language, syntaxHighlighting } from "@codemirror/language";
 import { coq, coqSyntaxHighlighting } from "./lang-pack"
+import { verbose, verboseSyntaxHighlighting} from "./lang-pack-verbose"
 import { Compartment, EditorState, Extension } from "@codemirror/state"
 import {
 	EditorView as CodeMirror, keymap as cmKeymap,
@@ -30,6 +31,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _dynamicCompletions: Completion[] = [];
 	private _readOnlyCompartment: Compartment;
 	private _themeCompartment: Compartment;
+	private _languageCompartment: Compartment;
 	private _diags : Diagnostic[];
 	private debouncer: Debouncer;
 
@@ -51,6 +53,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._lineNumberCompartment = new Compartment;
 		this._readOnlyCompartment = new Compartment;
 		this._themeCompartment = new Compartment;
+		this._languageCompartment = new Compartment;
 		this._diags = [];
 		
 
@@ -150,7 +153,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				]),
 				customTheme,
 				syntaxHighlighting(defaultHighlightStyle),
-				coq(),
+				this._languageCompartment.of(coq()),
                 highlightActiveLine(),
 				CodeMirror.updateListener.of(update => this.forwardUpdate(update)),
 				placeholder(placeholderContent())
@@ -234,10 +237,21 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	/**
 	 * Update the theme of the editor.
 	 */
-	public updateThemeFromVSCode(theme: ThemeStyle): void {
+	public updateThemeFromVSCode(theme: ThemeStyle, lang: string): void {
+		this.updateLanguage(lang);
+		const lanSyntaxHighlighting = lang === "lean4" ? verboseSyntaxHighlighting : coqSyntaxHighlighting;
 		this._codemirror?.dispatch({
 			effects: this._themeCompartment.reconfigure(
-				coqSyntaxHighlighting(theme)
+				lanSyntaxHighlighting(theme)
+			)
+		});
+	}
+
+	private updateLanguage(lang: string){
+		const lan = lang === "lean4" ? verbose : coq;
+		this._codemirror?.dispatch({
+			effects: this._languageCompartment.reconfigure(
+				lan()
 			)
 		});
 	}

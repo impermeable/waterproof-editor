@@ -1,0 +1,27 @@
+@top Program {
+  FirstStatement? Statement*
+}
+
+@tokens {
+  delimiter { " " | "\n" | @eof }
+}
+
+FirstStatement {
+  Verbose delimiter
+}
+
+Statement {
+  delimiter Verbose delimiter
+}
+
+Verbose {
+  "Example" |
+  "Exercise" |
+  "Proof:" |
+  "QED" |
+  Param {
+    "Given:" | "Assume:" | "Conclusion:"
+  }
+}
+
+@detectDelim
