@@ -2,9 +2,9 @@ export class TreeNode {
     /** The type of this node, should be in the WaterproofSchema schema */
     type: string;
     /** The inner range of the node, that is, the range of the content */
-    innerRange: {to: number, from: number};
+    contentRange: {to: number, from: number};
     /** The outer range of the node, that is, the range of the content including possible tags */
-    range: {to: number, from: number};
+    tagRange: {to: number, from: number};
     /** The title of a node, only relevant for hint nodes */
     title: string;
     /** The computed start position in ProseMirror, this is the prosemirror position at which the content starts. 
@@ -15,25 +15,28 @@ export class TreeNode {
     /** The computed end position in ProseMirror */
     prosemirrorEnd: number;
     pmRange: {from: number, to: number};
+    lineStart: number;
     /** Potential children of this tree node */
     children: TreeNode[];
 
     constructor(
         type: string,
-        innerRange: {to: number, from: number},
-        range: {to: number, from: number},
+        contentRange: {to: number, from: number},
+        tagRange: {to: number, from: number},
         title: string,
         prosemirrorStart: number,
         prosemirrorEnd: number,
         pmRange: {to: number, from: number},
+        lineStart: number,
     ) {
         this.type = type;
-        this.innerRange = innerRange;
-        this.range = range;
+        this.contentRange = contentRange;
+        this.tagRange = tagRange;
         this.title = title;
         this.prosemirrorStart = prosemirrorStart;
         this.prosemirrorEnd = prosemirrorEnd;
-        this.pmRange= pmRange;
+        this.pmRange = pmRange;
+        this.lineStart = lineStart;
         this.children = [];
     }
 
@@ -50,8 +53,8 @@ export class TreeNode {
     shiftCloseOffsets(offset: number, offsetProsemirror?: number): void {
         this.prosemirrorEnd += offsetProsemirror ?? offset;
         this.pmRange.to += offsetProsemirror ?? offset;
-        this.innerRange.to += offset;
-        this.range.to += offset;
+        this.contentRange.to += offset;
+        this.tagRange.to += offset;
     }
 
     shiftOffsets(offset: number, offsetProsemirror?: number): void {
@@ -59,10 +62,14 @@ export class TreeNode {
         this.prosemirrorEnd += offsetProsemirror ?? offset;
         this.pmRange.from += offsetProsemirror ?? offset;
         this.pmRange.to += offsetProsemirror ?? offset;
-        this.innerRange.from += offset;
-        this.innerRange.to += offset;
-        this.range.from += offset;
-        this.range.to += offset;
+        this.contentRange.from += offset;
+        this.contentRange.to += offset;
+        this.tagRange.from += offset;
+        this.tagRange.to += offset;
+    }
+
+    shiftLineStart(offset: number): void {
+        this.lineStart += offset;
     }
 
     traverseDepthFirst(callback: (node: TreeNode) => void): void {
@@ -78,15 +85,16 @@ export class Tree {
     
     constructor(
         type: string,
-        innerRange: {from: number, to: number},
+        contentRange: {from: number, to: number},
         range: {from: number, to: number},
         title: string,
         prosemirrorStart: number,
         prosemirrorEnd: number,
-        pmRange: {from: number, to: number}
+        pmRange: {from: number, to: number},
+        lineStart: number,
     ) {
         // Explicitly create new ranges for the TreeNode to avoid shared references
-        this.root = new TreeNode(type, {from: innerRange.from, to: innerRange.to}, {from: range.from, to: range.to}, title, prosemirrorStart, prosemirrorEnd, {from: pmRange.from, to: pmRange.to});
+        this.root = new TreeNode(type, {from: contentRange.from, to: contentRange.to}, {from: range.from, to: range.to}, title, prosemirrorStart, prosemirrorEnd, {from: pmRange.from, to: pmRange.to}, lineStart);
     }
 
     traverseDepthFirst(callback: (node: TreeNode) => void, node: TreeNode = this.root): void {
@@ -133,7 +141,7 @@ export class Tree {
 
     findNodeByOriginalPosition(pos: number, node: TreeNode | null = this.root): TreeNode | null {
         if (!node) return null;
-        if (pos >= node.innerRange.from && pos <= node.innerRange.to) {
+        if (pos >= node.contentRange.from && pos <= node.contentRange.to) {
             for (const child of node.children) {
                 const result = this.findNodeByOriginalPosition(pos, child);
                 if (result) return result;
@@ -202,12 +210,22 @@ export class Tree {
         if (!this.root) return false;
         
         for (const rootNode of this.root.children) {
-            if (newNode.innerRange.from >= rootNode.innerRange.from && newNode.innerRange.to <= rootNode.innerRange.to) {
+            if (newNode.contentRange.from >= rootNode.contentRange.from && newNode.contentRange.to <= rootNode.contentRange.to) {
                 rootNode.addChild(newNode);
                 return true;
             }
         }
         this.root.addChild(newNode);
         return true;
+    }
+
+    computeLineNumbers(): Array<number> {
+        const arr: Array<number> = [];
+        this.traverseDepthFirst(node => {
+            if (node.type === "code") {
+                arr.push(node.lineStart);
+            }
+        });
+        return arr;
     }
 }

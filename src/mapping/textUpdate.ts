@@ -1,4 +1,4 @@
-import { Mapping } from "./newmapping";
+import { Mapping } from "./mapping";
 import { ParsedStep, OperationType } from "./types";
 import { TreeNode } from "./Tree";
 import { typeFromStep } from "./helper-functions";
@@ -40,8 +40,8 @@ export class TextUpdate {
 
         /** The resulting document change to document model */
         const result: DocChange = {
-            startInFile: targetCell.innerRange.from + offsetBegin,
-            endInFile: targetCell.innerRange.from + offsetEnd,
+            startInFile: targetCell.contentRange.from + offsetBegin,
+            endInFile: targetCell.contentRange.from + offsetEnd,
             finalText: text
         }
 

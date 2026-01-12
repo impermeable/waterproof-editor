@@ -23,9 +23,7 @@ const sharedConfig = {
     ".ttf": fontLoader,
     ".grammar": "file"
   },
-  define: {
-    "DEBUG": debugBuild ? "true" : "false"
-  },
+  dropLabels: debugBuild ? [] : ["DEBUG"],
   minify,
   plugins: [
     {

@@ -1,10 +1,10 @@
-import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, completionKeymap } from "@codemirror/autocomplete";
-import { defaultHighlightStyle, Language, syntaxHighlighting } from "@codemirror/language";
+import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, acceptCompletion, completionStatus, hasNextSnippetField, nextSnippetField, snippetKeymap, prevSnippetField, clearSnippet, moveCompletionSelection, closeCompletion } from "@codemirror/autocomplete";
 import { coq, coqSyntaxHighlighting } from "./lang-pack"
 import { verbose, verboseSyntaxHighlighting} from "./lang-pack-verbose"
 import { Compartment, EditorState, Extension } from "@codemirror/state"
 import {
-	EditorView as CodeMirror, keymap as cmKeymap,
+	EditorView as CodeMirror, Command, keymap as cmKeymap,
 	highlightActiveLine,
 	lineNumbers, placeholder} from "@codemirror/view"
 import { Node, Schema } from "prosemirror-model"
@@ -12,10 +12,10 @@ import { EditorView } from "prosemirror-view"
 import { customTheme } from "./color-scheme"
 import { renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
-import { linter, LintSource, Diagnostic, setDiagnosticsEffect, lintGutter } from "@codemirror/lint";
-import { Debouncer } from "./debouncer";
+import { linter, LintSource, Diagnostic, lintGutter } from "@codemirror/lint";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { ThemeStyle } from "../api";
+import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
 
 /**
@@ -33,11 +33,12 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _themeCompartment: Compartment;
 	private _languageCompartment: Compartment;
 	private _diags : Diagnostic[];
-	private debouncer: Debouncer;
+	private lastUsedDiagnosticsVersion: number = 0;
 
 	constructor(
 		node: Node,
 		view: EditorView,
+		private readonly editorInstance: WaterproofEditor,
 		getPos: (() => number | undefined),
 		schema: Schema,
 		completions: Array<Completion>,
@@ -55,40 +56,63 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._themeCompartment = new Compartment;
 		this._languageCompartment = new Compartment;
 		this._diags = [];
-		
 
-		const tacticCompletionSource: CompletionSource = function(context: CompletionContext): Promise<CompletionResult | null> {
-			return new Promise((resolve, _reject) => {
-				const before = context.matchBefore(/([^\s.\n\t\-+*])[^\s\n\t\-+*]*/gm);
-				const period = /\./gm 
-				const line = context.state.doc.lineAt(context.pos);
-				const firstletter = line.text.match(/[a-zA-Z]/);
-				const lineBeforeCursor = line.text.slice(0, context.pos - line.from);
-				
-				if ((!context.explicit && !before) || period.test(lineBeforeCursor)) resolve(null);
-				resolve({
-				// start completion instance from first letter of line
-				from: firstletter ? line.from + firstletter.index!: context.pos,
-				// non-null assertion operator "!" used to remove 'possibly null' error
+		const tacticCompletionSource: CompletionSource = function(context: CompletionContext) {
+			const completionResult: CompletionResult = {
+				from: context.pos,
 				options: completions,
-				validFor: /^[\t]*[^.]*/gm
-				})
-			});
+				validFor: /[^.]*/
+			};
+
+			// Manual triggered completions (using ctrl-space)
+			if (context.explicit) {
+				return completionResult;
+			}
+
+			// Matches bullet sequences
+			const bullet = context.matchBefore(/^\s*(?:\*+|\++|-+) /);
+			// Matches a curly brace
+			const brace = context.matchBefore(/^\s*{ /);
+			// Matches the end of a sentence (assuming no periods in the sentence)
+			const endOfSentence = context.matchBefore(/\.\s+/);
+
+			// Completions start when the cursor is after a bullet or a focus brace '{'
+			if (bullet !== null || brace !== null || endOfSentence !== null) {
+				return completionResult;
+			}
+
+			const line = context.state.doc.lineAt(context.pos);
+			// Matches any amount of whitespace followed by a character followed by characters or whitespace
+			// This is used for completions at the start of the line like "\tWe " should be autocompleteable to
+			// "\tWe conclude that 0 = 0."
+			const before = context.matchBefore(/\s*\w+(\s[\s\w]*)?/);
+			// The check line.text === before.text makes sure that there is nothing after the cursor.
+			// This prevents the case that we are in the first hole of the snippet
+			// "By ([hole 1]) we conclude that [hole 2].[hole 3]", we hit "i" and tab (with the intention of moving to the second hole)
+			// and this autocompletes to "It holds that"
+			if (before !== null && line.text === before.text) {
+				return {
+					from: context.pos - before.text.trimStart().length, // Already typed one or more characters
+					options: completions,
+					validFor: /[^.]*/
+				}
+			}
+
+			// Not in a valid completion context, return null
+			return null;
   		}
 
 		// inline definition of the symbol completion source. (Used for completions of the form `\reals` for ℝ).
-		const symbolCompletionSource: CompletionSource = (context: CompletionContext): Promise<CompletionResult | null> => {
-			return new Promise((resolve, _reject) => {
-				const before = context.matchBefore(/\\/);
-				// If completion wasn't explicitly started and there
-				// is no word before the cursor, don't open completions.
-				if (!context.explicit && !before) resolve(null);
-				resolve({
-					from: before ? before.from : context.pos,
-					options: symbols,
-					validFor: /\\[^ ]*/
-				});
-			});	
+		const symbolCompletionSource: CompletionSource = (context: CompletionContext) => {
+			const before = context.matchBefore(/\\[^ ]*/);
+			// If completion wasn't explicitly started and there
+			// is no word before the cursor, don't open completions.
+			if (!context.explicit && !before) return null;
+			return {
+				from: before ? before.from : context.pos,
+				options: symbols,
+				validFor: /\\[^ ]*/
+			};
 		}
 
 		// Shadow this._outerView for use in the next function.
@@ -129,10 +153,14 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			extensions: [
 				// Add the linting extension for showing diagnostics (errors, warnings, etc)
 				linter(this.lintingFunction, {
+					// This codemirror instance needs to refresh diagnostics when the version of diagnostics stored in the
+					// outer editor instance is newer than what this codemirror instance is showing.
+					needsRefresh: (() => this.lastUsedDiagnosticsVersion < this.editorInstance.diagnosticsVersion).bind(this),
 					autoPanel: inInputArea, // Only enable auto panel when this view is inside of an input area
 					tooltipFilter: inInputArea ? (() => { return []; }) : undefined, // Don't show tooltips inside of input-areas
+					delay: 500,
 				}),
-				...optional, 
+				...optional,
 				this._readOnlyCompartment.of(EditorState.readOnly.of(!this._outerView.editable)),
 				this._lineNumberCompartment.of(this._lineNumbersExtension),
 				this._themeCompartment.of(coqSyntaxHighlighting(initialThemeStyle)),
@@ -147,9 +175,55 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 					addToOptions: [renderIcon],
 					defaultKeymap: false,
 				}),
-				cmKeymap.of([
-				...completionKeymap,
-						...this.embeddedCodeMirrorKeymap()
+				// This is the normal keymap
+				cmKeymap.of(this.embeddedCodeMirrorKeymap()),
+				// This is the keymap that is only ever used when in a snippet
+				// We use this to overload the functionality of the tab key
+				snippetKeymap.of([
+					{ 	key: "Tab",
+						run: (target: CodeMirror) => {
+							// Check whether a completion is active
+							const status = completionStatus(target.state);
+							if (status !== null) {
+								// if there is an active completion, then accept it
+								return acceptCompletion(target);
+							} else if (hasNextSnippetField(target.state)) {
+								// if there is not, but there is a next field in the snippet
+								// move to the next field
+								return nextSnippetField(target);
+							}
+							// Indicate that we have not yet handled this keypress
+							return false;
+						}
+					},
+					{
+						key: "ArrowUp",
+						run: (target) => execCmdIfInCompletionContext(target, moveCompletionSelection(false))
+					},
+					{
+						key: "ArrowDown",
+						run: (target) => execCmdIfInCompletionContext(target, moveCompletionSelection(true))
+					},
+					{
+						key: "PageUp",
+						run: (target) => execCmdIfInCompletionContext(target, moveCompletionSelection(true, "page"))
+					},
+					{
+						key: "PageDown",
+						run: (target) => execCmdIfInCompletionContext(target, moveCompletionSelection(false, "page"))
+					},
+					{
+						key: "Escape",
+						run: (target) => execCmdIfInCompletionContext(target, closeCompletion)
+					},
+					{
+						key: "Shift-Tab",
+						run: prevSnippetField,
+					},
+					{
+						key: "Escape",
+						run: clearSnippet
+					}
 				]),
 				customTheme,
 				syntaxHighlighting(defaultHighlightStyle),
@@ -186,8 +260,6 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			},
 		});
 
-		this.debouncer = new Debouncer(400, this.forceUpdateLinting.bind(this));
-
 		// Editors outer node is dom
 		this.dom = this._codemirror.dom;
 
@@ -201,13 +273,18 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this.handleNewComplete([]);
 	}
 
+	// Dispatch an empty transaction, this causes the linter to rerun on idle.
+	public dispatchEmpty() {
+		this._codemirror?.dispatch({});
+	}
+
 	private partOfInputArea(): boolean {
 		const pos = this._getPos();
 		if (pos === undefined) return false;
 		// We check whether the parent node is an input area.
 		const parentNodeType = this._outerView.state.doc.resolve(pos).parent.type;
 		if (parentNodeType !== WaterproofSchema.nodes.input) return false;
-		return true; 
+		return true;
 	}
 
 	public handleSnippet(template: string, posFrom: number, posTo: number, completion? : Completion | undefined) {
@@ -216,10 +293,6 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			state: this._codemirror!.state,
 			dispatch: this._codemirror!.dispatch
 		}, completion ?? null, posFrom, posTo);
-	}
-
-	private lintingFunction: LintSource = (_view: CodeMirror): readonly Diagnostic[] => {
-		return this._diags;
 	}
 
 	/**
@@ -295,16 +368,42 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		});
 	};
 
-/**
+	/**
+	 * The {@linkcode LintSource} to use for the codemirror instance.
+	 * This will use the outer {@linkcode WaterproofEditor} to get diagnostics in the range of this
+	 * codemirror view.
+	 */
+	private lintingFunction: LintSource = (_view: CodeMirror): readonly Diagnostic[] => {
+		const startPos = this._getPos();
+
+		if (startPos === undefined) return [];
+
+		// We use the outer editor instance to query for diagnostics in the range of this codemirror instance.
+		const diags = this.editorInstance.getPartialDiagnosticsInRange(startPos, startPos + _view.state.doc.length + 1).map(d => {
+			// The codemirror range is from 0 to _view.state.doc.length + 1.
+			// We need to translate the position that we get from the diagnostic object into this range by subtracting the starting
+			// position of this codemirror instance.
+			return this.preprocessDiagnostic(Math.max(d.start - startPos - 1, 0),
+				Math.min(d.end - startPos - 1, _view.state.doc.length),
+				d.message, d.severity);
+		});
+
+		// Update the version of the diagnostics we are using.
+		this.lastUsedDiagnosticsVersion = this.editorInstance.diagnosticsVersion;
+
+		return diags;
+	}
+
+	/**
 	 * Add a new coq error to this view
 	 * @param from The from position of the error.
 	 * @param to The to postion of the error (should be larger than `from`).
 	 * @param message The message attached to this error.
 	 * @param severity The severity attached to this error.
 	 */
-	public addCoqError(from: number, to: number, message: string, severity: number) {
+	public preprocessDiagnostic(from: number, to: number, message: string, severity: number): Diagnostic {
 		const severityString = severityToString(severity);
-		
+
 		// By default, there is the copy action
 		let actions = [{
 			name: "📋",
@@ -333,7 +432,6 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 						selection: { anchor: from }
 					});
 					this.handleSnippet(toInsert, from, from);
-					this.forceUpdateLinting();
 				}
 			})];
 		} else if (message.startsWith("Hint, insert: ")) {
@@ -365,26 +463,24 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			})];
 		}
 
-		this._diags.push({
-			from:from,
-			to:to,
+		return {
+			from,
+			to,
 			message: (trimmedMessage === "" ? message : trimmedMessage),
 			severity: severityString,
 			actions,
-		});
-
-		this.debouncer.call();
+		};
 	}
 
 	private showCopyNotification(from:number) {
 		//coordinates of the the line with the diagnostic
 		const coords = this._codemirror?.coordsAtPos(from);
-	
+
 		if (!coords) {
 			console.warn("Could not determine coordinates for diagnostic line.");
 			return;
 		}
-	
+
 		// Create the notification element
 		const notification = document.createElement("div");
 		notification.textContent = `Copied!`;
@@ -392,7 +488,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		notification.style.left = `${coords.left}px`; // Align with the left edge of the line
 		notification.classList.add("copy-notification");
 		document.body.appendChild(notification);
-	
+
 		// Fade out after 1 second
 		setTimeout(() => {
 			notification.style.opacity = "0";
@@ -400,27 +496,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			setTimeout(() => notification.remove(), 500);
 		}, 1000);
 	}
-
-	/**
-	 * Helper function that forces the linter function to run.
-	 * Should be called after an error has been added or after the errors have been cleared.
-	 */
-	private forceUpdateLinting() {
-		this._codemirror?.dispatch({
-			effects: setDiagnosticsEffect.of(this._diags)
-		});
-	}
-
-	/**
-	 * Clear all coq errors from this view.
-	 */
-	public clearCoqErrors() {
-		this._diags = [];
-		this.debouncer.call();
-	}
 }
 
-const severityToString = (sv: number) => {
+export function severityToString(sv: number) {
 	switch (sv) {
 		case 0:
 			return "error";
@@ -433,4 +511,14 @@ const severityToString = (sv: number) => {
 		default:
 			return "error";
 	}
+}
+
+function execCmdIfInCompletionContext(target: CodeMirror, cmd: Command): boolean {
+	const status = completionStatus(target.state);
+	if (status !== null) {
+		// Execute the supplied command when we are in a completion context
+		return cmd(target);
+	}
+	// Indicate that we have not handled this key
+	return false;
 }

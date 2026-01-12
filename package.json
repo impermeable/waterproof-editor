@@ -1,6 +1,6 @@
 {
   "name": "@impermeable/waterproof-editor",
-  "version": "0.11.0",
+  "version": "0.13.0",
   "description": "Waterproof Editor ",
   "homepage": "https://github.com/impermeable/waterproof-editor#readme",
   "bugs": {
@@ -62,8 +62,8 @@
     "@codemirror/autocomplete": "6.18.1",
     "@codemirror/commands": "6.6.2",
     "@codemirror/language": "6.10.3",
-    "@codemirror/lint": "6.8.2",
-    "@codemirror/view": "6.27.0",
+    "@codemirror/lint": "6.9.2",
+    "@codemirror/view": "6.38.8",
     "@lezer/highlight": "1.2.1",
     "@lezer/lr": "1.4.2",
     "@types/markdown-it": "^14.1.2",

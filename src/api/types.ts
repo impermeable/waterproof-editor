@@ -35,9 +35,7 @@ export type WaterproofCallbacks = {
     /** Only ever used by the editor once an unrecoverable error has occured when mapping changes */
     applyStepError: (errorMessage: string) => void,
     /** Used by the editor to communicate the current cursor position, `cursorPosition` is an offset based position into the document.  */
-    cursorChange: (cursorPosition: number) => void
-    /** Used to communicate that the linenumbers need to be recomputed for the current document */
-    lineNumbers: (linenumbers: Array<number>, version: number) => void,
+    cursorChange: (cursorPosition: number) => void,
     /** Fired by the editor when the viewport (the user visible part of the editor changes) */
     viewportHint: (start: number, end: number) => void,
 }
@@ -174,11 +172,6 @@ export interface OffsetDiagnostic {
     severity: Severity;
     startOffset: number;
     endOffset: number;
-}
-
-export type DiagnosticMessage = {
-    positionedDiagnostics: OffsetDiagnostic[],
-    version: number
 }
 
 export enum ThemeStyle {

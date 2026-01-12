@@ -27,7 +27,7 @@ InputAreaBlock      ::= Container of InnerBlock+
 MarkdownBlock       ::= A container with markdown content (supports inline LaTeX).
 CoqBlock            ::= A container with code content.
 MathDisplayBlock    ::= A container with LaTeX content that should be rendered in math display mode.
-NewlineBlock        ::= A block that keeps track of signifcant newlines
+NewlineBlock        ::= A block that keeps track of significant newlines
 ```
 
 The schema `WaterproofSchema` defined in [`src/schema/schema.ts`](../src/schema/schema.ts) follows from the above grammar.

@@ -135,6 +135,8 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 		if (update.docChanged || pmSel.from != selFrom || pmSel.to != selTo) {
 			//..then we get the currnt transaction
 			const tr = this._outerView.state.tr;
+			
+			const lineDelta = update.state.doc.lines - update.startState.doc.lines;
 			update.changes.iterChanges((fromA, toA, fromB, toB, text) => {
 				//..iterate over all changes and create text changes in the outer editor.
 				if (text.length) {
@@ -146,6 +148,7 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 					offset += (toB - fromB) - (toA - fromA);
 				}
 			});
+			if (lineDelta !== 0) tr.setMeta("lineDelta", lineDelta);
 		  	tr.setSelection(TextSelection.create(tr.doc, selFrom, selTo));
 		  	this._outerView.dispatch(tr);
 		}
@@ -231,6 +234,7 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 
 		// 'Mod' is a platform independent 'Ctrl'/'Cmd'
 		return [
+			...keybindings,
 			{ key: "ArrowUp", run: this.maybeEscape(MovementUnit.line, MovementDirection.backward) },
 			{ key: "ArrowLeft", run: this.maybeEscape(MovementUnit.character, MovementDirection.backward) },
 			{ key: "ArrowDown", run: this.maybeEscape(MovementUnit.line, MovementDirection.forward) },
@@ -242,7 +246,6 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 					return true
 				}
 			},
-			...keybindings,
 		]
 	}
 }

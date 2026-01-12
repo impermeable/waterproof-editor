@@ -3,7 +3,7 @@ import { TextUpdate } from "./textUpdate";
 import { NodeUpdate } from "./nodeUpdate";
 import { ParsedStep } from "./types";
 import { Block, typeguards } from "../document";
-import { DocChange, DocumentSerializer, MappingError, TagConfiguration, WrappingDocChange } from "../api";
+import { DocChange, DocumentSerializer, MappingError, TagConfiguration, TextUpdateError, WrappingDocChange } from "../api";
 import { WaterproofSchema } from "../schema";
 import { Node } from "prosemirror-model";
 import { ReplaceAroundStep, ReplaceStep, Step } from "prosemirror-transform";
@@ -22,9 +22,8 @@ export class Mapping {
     private readonly textUpdate: TextUpdate;
 
     /**
-     * Constructs a prosemirror view vscode mapping for the inputted prosemirror html element
-     *
-     * @param inputBlocks a string containing the prosemirror content html element
+     * Constructs the mapping instance given the source document in the form of a block array.
+     * @param inputBlocks Array containing the blocks that make up this document.
      */
     constructor(inputBlocks: Block[], versionNum: number, tMap: TagConfiguration, serializer: DocumentSerializer) {
         this.textUpdate = new TextUpdate();
@@ -32,12 +31,14 @@ export class Mapping {
         this._version = versionNum;
         this.tree = new Tree(
             "", // type
-            { from: 0, to: inputBlocks.at(-1)!.range.to }, // innerRange
-            { from: 0, to: inputBlocks.at(-1)!.range.to }, // range
+            { from: 0, to: inputBlocks.at(-1)!.range.to }, // contentRange
+            { from: 0, to: inputBlocks.at(-1)!.range.to }, // tagRange
             "", // title
             0, // prosemirrorStart
             0, // prosemirrorEnd
-            { from: 0, to: 0 });
+            { from: 0, to: 0 },
+            0 // lineStart
+        );
         this.initTree(inputBlocks);
         console.log("MAPPED TREE", JSON.stringify(this.tree, null, 1));
     }
@@ -58,29 +59,49 @@ export class Mapping {
         return this._version;
     }
 
-    /** Returns the vscode document model index of prosemirror index */
-    public findPosition(index: number) {
+    /** 
+     * Map a ProseMirror index into the corresponding text offset.
+     * @param index A valid ProseMirror offset.
+     * @returns The corresponding text offset into the document.
+     */
+    public pmIndexToTextOffset(index: number) {
         const node = this.tree.findNodeByProsePos(index);
         if (node === null) throw new MappingError(` [findPosition] The vscode document offset for prosemirror index (${index}) could not be found `);
-        return (index - node.prosemirrorStart) + node.innerRange.from;
+        return (index - node.prosemirrorStart) + node.contentRange.from;
     }
 
     /**
-     * Returns the prosemirror index corresponding to the given document offset.
+     * Map a text offset into the corresponding ProseMirror index.
      * @param offset The offset (in characters) in the document.
-     * @returns The corresponding prosemirror index.
+     * @returns The corresponding ProseMirror index into the ProseMirror view.
      */
-    public findInvPosition(offset: number) {
+    public textOffsetToPmIndex(offset: number) {
         const correctNode: TreeNode | null = this.tree.findNodeByOriginalPosition(offset);
         if (correctNode === null) throw new MappingError(` [findInvPosition] The prosemirror index for offset (${offset}) could not be found `);
-        return (offset - correctNode.innerRange.from) + correctNode.prosemirrorStart;
+        return (offset - correctNode.contentRange.from) + correctNode.prosemirrorStart;
+    }
+
+    public computeLineNumbers(): Array<number> {
+        return this.tree.computeLineNumbers();
+    }
+
+    public updateLines(lineDelta: number, from: number): void {
+        const targetCell: TreeNode | null = this.tree.findNodeByProsePos(from);
+        if (targetCell === null) throw new TextUpdateError(" Target cell is not in mapping!!! ");
+        const target = {prosemirrorStart: targetCell.prosemirrorStart, prosemirrorEnd: targetCell.prosemirrorEnd}
+        this.tree.traverseDepthFirst((node: TreeNode) => {
+            if (node.prosemirrorStart > target.prosemirrorStart && node.prosemirrorEnd > target.prosemirrorEnd) {
+                node.shiftLineStart(lineDelta);
+            }
+        });
+        
     }
 
     public update(step: Step, doc: Node): DocChange | WrappingDocChange {
         if (!(step instanceof ReplaceStep || step instanceof ReplaceAroundStep))
             throw new MappingError("Step update (in textDocMapping) should not be called with a non document changing step");
 
-        /** Check whether the edit is a text edit */       
+        // Check whether the edit is a text edit
         let isText: boolean;
         if (step.slice.content.firstChild?.type === WaterproofSchema.nodes.text) {
             // Short circuit when the content is a text node. This is the case for simple text insertions
@@ -99,7 +120,7 @@ export class Mapping {
 
         let result: ParsedStep;
 
-        /** Parse the step into a text document change */
+        // Parse the step into a text document change
         if (step instanceof ReplaceStep && isText) result = this.textUpdate.textUpdate(step, this);
         else result = this.nodeUpdate.nodeUpdate(step, this);
 
@@ -145,6 +166,7 @@ export class Mapping {
                     0, // prosemirrorStart (to be calculated later)
                     0, // prosemirrorEnd (to be calculated later)
                     {from: 0, to: 0}, // full prosemirror range (to be computed later)
+                    block.lineStart
                 );
 
                 if (block.innerBlocks && block.innerBlocks.length > 0) {
@@ -210,7 +232,7 @@ export class Mapping {
 
         if (node.children.length === 0) {
             // Leaf: add length of content + end tag + +1 for exiting level
-            offset += (node.innerRange.to - node.innerRange.from);
+            offset += (node.contentRange.to - node.contentRange.from);
         } else {
             // Non-leaf: handle children and end tag
             for (const child of node.children) {

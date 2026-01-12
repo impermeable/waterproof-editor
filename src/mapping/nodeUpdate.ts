@@ -1,6 +1,6 @@
 import { Tree, TreeNode } from "./Tree";
 import { OperationType, ParsedStep } from "./types";
-import { Mapping } from "./newmapping";
+import { Mapping } from "./mapping";
 import { typeFromStep } from "./helper-functions";
 import { DocChange, DocumentSerializer, NodeUpdateError, TagConfiguration, WrappingDocChange } from "../api";
 import { WaterproofSchema } from "../schema";
@@ -95,7 +95,7 @@ export class NodeUpdate {
         // Should we use the to position of the node we found?
         const useTo = nodeInTree.pmRange.to === step.from;
 
-        const documentPos = atZero ? 0 : (useTo ? nodeInTree.range.to : nodeInTree.range.from);
+        const documentPos = atZero ? 0 : (useTo ? nodeInTree.tagRange.to : nodeInTree.tagRange.from);
 
         let offsetProse = atZero ? 0 : (useTo ? nodeInTree.pmRange.to : nodeInTree.pmRange.from);
         let offsetOriginal = documentPos;
@@ -141,13 +141,13 @@ export class NodeUpdate {
         // now we need to update the tree
         tree.traverseDepthFirst((thisNode: TreeNode) => {
             // Update all nodes that come fully after the insertion position
-            if (thisNode.pmRange.from >= nodeInTree.pmRange.to) {
+            if (thisNode.pmRange.from > step.to) {
                 thisNode.shiftOffsets(textOffset, proseOffset);
             }
 
             // The inserted nodes could be children of nodes already in the tree (at least of the root node,
             // but possibly also of hint or input nodes)
-            if (thisNode.pmRange.from <= nodeInTree.pmRange.from && thisNode.pmRange.to >= nodeInTree.pmRange.to) {
+            if (thisNode.pmRange.from < step.from && thisNode.pmRange.to > step.to) {
                 thisNode.shiftCloseOffsets(textOffset, proseOffset);
             }
         });
@@ -169,7 +169,8 @@ export class NodeUpdate {
                 {from: startOrig, to: startOrig + 1},
                 "",
                 startProse, startProse,
-                {from: startProse, to: startProse + node.nodeSize}
+                {from: startProse, to: startProse + node.nodeSize},
+                0
             );
         }
 
@@ -181,7 +182,8 @@ export class NodeUpdate {
             {from: startOrig, to: 0}, // full range
             node.attrs.title ? node.attrs.title : "", // title
             startProse + 1, 0, // prosemirror start, end
-            {from: startProse, to: 0}
+            {from: startProse, to: 0},
+            0
         );
 
 
@@ -217,8 +219,8 @@ export class NodeUpdate {
         });
 
         // Now fill in the to positions for innerRange and range
-        treeNode.innerRange.to = childOffsetOriginal;
-        treeNode.range.to = childOffsetOriginal + closeTagForNode.length;
+        treeNode.contentRange.to = childOffsetOriginal;
+        treeNode.tagRange.to = childOffsetOriginal + closeTagForNode.length;
         treeNode.prosemirrorEnd = childOffsetProse;
         treeNode.pmRange.to = childOffsetProse + 1;
         return treeNode;
@@ -239,8 +241,8 @@ export class NodeUpdate {
             if (node.prosemirrorStart >= step.from && node.prosemirrorEnd <= step.to) {
                 nodesToDelete.push(node);
 
-                if (node.range.from < from) from = node.range.from;
-                if (node.range.to > to) to = node.range.to;
+                if (node.tagRange.from < from) from = node.tagRange.from;
+                if (node.tagRange.to > to) to = node.tagRange.to;
 
                 // Remove from the tree immediately (saves an O(n) traversal over nodesToDelete later)
                 const parent = tree.findParent(node);
@@ -303,13 +305,13 @@ export class NodeUpdate {
         // Create document change
         const docChange: WrappingDocChange = {
             firstEdit: {
-                startInFile: wrapperNode.range.from,
-                endInFile: wrapperNode.innerRange.from,
+                startInFile: wrapperNode.tagRange.from,
+                endInFile: wrapperNode.contentRange.from,
                 finalText: ""
             },
             secondEdit: {
-                startInFile: wrapperNode.innerRange.to,
-                endInFile: wrapperNode.range.to,
+                startInFile: wrapperNode.contentRange.to,
+                endInFile: wrapperNode.tagRange.to,
                 finalText: ""
             }
         };
@@ -376,23 +378,23 @@ export class NodeUpdate {
         const docChange: WrappingDocChange = {
             firstEdit: {
                 finalText: openTag,
-                startInFile: nodesBeingWrappedStart.range.from,
-                endInFile: nodesBeingWrappedStart.range.from,
+                startInFile: nodesBeingWrappedStart.tagRange.from,
+                endInFile: nodesBeingWrappedStart.tagRange.from,
             }, 
             secondEdit: {
                 finalText: closeTag,
-                startInFile: nodesBeingWrappedEnd.range.to,
-                endInFile: nodesBeingWrappedEnd.range.to
+                startInFile: nodesBeingWrappedEnd.tagRange.to,
+                endInFile: nodesBeingWrappedEnd.tagRange.to
             }
         };
 
         // We now update the tree
 
         const positions = {
-            startFrom: nodesBeingWrappedStart.range.from, 
-            startTo: nodesBeingWrappedStart.range.to,
-            endFrom: nodesBeingWrappedEnd.range.from,
-            endTo: nodesBeingWrappedEnd.range.to,
+            startFrom: nodesBeingWrappedStart.tagRange.from, 
+            startTo: nodesBeingWrappedStart.tagRange.to,
+            endFrom: nodesBeingWrappedEnd.tagRange.from,
+            endTo: nodesBeingWrappedEnd.tagRange.to,
             proseStart: nodesBeingWrappedStart.pmRange.from,
             proseEnd: nodesBeingWrappedEnd.pmRange.to
         };
@@ -404,7 +406,8 @@ export class NodeUpdate {
             {from: positions.startFrom, to: positions.endTo + closeTag.length}, // full range
             title,
             positions.proseStart + 1, positions.proseEnd + 1, // prosemirror start, end
-            {from: positions.proseStart, to: positions.proseEnd + 2} // pmRange
+            {from: positions.proseStart, to: positions.proseEnd + 2}, // pmRange
+            0
         );
 
         // We need to find the parent of the first node being wrapped
