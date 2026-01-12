@@ -22,6 +22,8 @@ export interface Block {
     range: BlockRange;
     /** Range in the original document, but only the content within possible tags */
     innerRange: BlockRange;
+    /** The linenumber (0 based) at the start of this block */
+    lineStart: number;
 
     /** Blocks that are children of this block, only valid for InputArea and Hint Blocks. */
     innerBlocks?: Block[];

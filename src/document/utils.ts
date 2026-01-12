@@ -66,7 +66,7 @@ export function maskInputAndHints(inputDocument: string, blocks: Block[]): strin
 export function extractBlocksUsingRanges<BlockType extends Block>(
     inputDocument: string, 
     ranges: {from: number, to: number}[], 
-    BlockConstructor: new (content: string, range: { from: number, to: number }, innerRange: BlockRange) => BlockType,
+    BlockConstructor: new (content: string, range: { from: number, to: number }, innerRange: BlockRange, lineStart: number) => BlockType,
     parentOffset: number = 0): BlockType[]
 {
     const blocks = ranges.map((range) => {
@@ -74,7 +74,7 @@ export function extractBlocksUsingRanges<BlockType extends Block>(
         const eRange = { from: range.from + parentOffset, to: range.to + parentOffset };
         // Fixme: inner range is currently just the same as the outer range (fine for markdown)
         const iRange = { from: eRange.from, to: eRange.to };
-        return new BlockConstructor(content, eRange, iRange);
+        return new BlockConstructor(content, eRange, iRange, 0);
     }).filter(block => {
         return block.range.from !== block.range.to;
     });
