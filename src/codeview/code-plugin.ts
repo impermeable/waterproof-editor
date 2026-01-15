@@ -8,7 +8,7 @@ import { Plugin as ProsePlugin, PluginKey, PluginSpec } from "prosemirror-state"
 import { EditorView } from "prosemirror-view";
 import { CodeBlockView } from "./nodeview";
 import { ReplaceStep } from "prosemirror-transform";
-import { LanguageConfiguration, LineNumber, ThemeStyle, WaterproofCompletion, WaterproofSymbol } from "../api";
+import { LanguageConfiguration, ThemeStyle, WaterproofCompletion, WaterproofSymbol } from "../api";
 import { Completion, snippetCompletion } from "@codemirror/autocomplete";
 import { WaterproofEditor } from "../editor";
 
@@ -23,7 +23,7 @@ export interface ICodePluginState {
     /** Should the codemirror cells show line numbers */
     showLines: boolean;
 	/** The lastest versioned linenumbers */
-	lines: LineNumber;
+	lines: Array<number>;
 }
 
 export const CODE_PLUGIN_KEY = new PluginKey<ICodePluginState>("waterproof-editor-code-plugin");
@@ -60,7 +60,7 @@ const CoqCodePluginSpec = (completions: Array<Completion>, symbols: Array<Comple
 				activeNodeViews: new Set<CodeBlockView>(),
                 showLines: false,
                 schema: instance.schema,
-				lines: {linenumbers: [], version: 0},
+				lines: [],
 			};
 		},
 		apply(tr, value, _oldState, _newState){
@@ -87,10 +87,10 @@ const CoqCodePluginSpec = (completions: Array<Completion>, symbols: Array<Comple
 				else 
 					newlines = meta;
 				
-				if (value.activeNodeViews.size == newlines.linenumbers.length) {
+				if (value.activeNodeViews.size == newlines.length) {
 					let i = 0;
 					for (const view of value.activeNodeViews) {
-						view.updateLineNumbers(newlines.linenumbers[i] + 1, lineState);
+						view.updateLineNumbers(newlines[i] + 1, lineState);
 						i++;
 					}
 				}

@@ -15,6 +15,7 @@ export class TreeNode {
     /** The computed end position in ProseMirror */
     prosemirrorEnd: number;
     pmRange: {from: number, to: number};
+    lineStart: number;
     /** Potential children of this tree node */
     children: TreeNode[];
 
@@ -26,6 +27,7 @@ export class TreeNode {
         prosemirrorStart: number,
         prosemirrorEnd: number,
         pmRange: {to: number, from: number},
+        lineStart: number,
     ) {
         this.type = type;
         this.contentRange = contentRange;
@@ -33,7 +35,8 @@ export class TreeNode {
         this.title = title;
         this.prosemirrorStart = prosemirrorStart;
         this.prosemirrorEnd = prosemirrorEnd;
-        this.pmRange= pmRange;
+        this.pmRange = pmRange;
+        this.lineStart = lineStart;
         this.children = [];
     }
 
@@ -65,6 +68,10 @@ export class TreeNode {
         this.tagRange.to += offset;
     }
 
+    shiftLineStart(offset: number): void {
+        this.lineStart += offset;
+    }
+
     traverseDepthFirst(callback: (node: TreeNode) => void): void {
         callback(this);
         for(const child of this.children) {
@@ -83,10 +90,11 @@ export class Tree {
         title: string,
         prosemirrorStart: number,
         prosemirrorEnd: number,
-        pmRange: {from: number, to: number}
+        pmRange: {from: number, to: number},
+        lineStart: number,
     ) {
         // Explicitly create new ranges for the TreeNode to avoid shared references
-        this.root = new TreeNode(type, {from: contentRange.from, to: contentRange.to}, {from: range.from, to: range.to}, title, prosemirrorStart, prosemirrorEnd, {from: pmRange.from, to: pmRange.to});
+        this.root = new TreeNode(type, {from: contentRange.from, to: contentRange.to}, {from: range.from, to: range.to}, title, prosemirrorStart, prosemirrorEnd, {from: pmRange.from, to: pmRange.to}, lineStart);
     }
 
     traverseDepthFirst(callback: (node: TreeNode) => void, node: TreeNode = this.root): void {
@@ -209,5 +217,15 @@ export class Tree {
         }
         this.root.addChild(newNode);
         return true;
+    }
+
+    computeLineNumbers(): Array<number> {
+        const arr: Array<number> = [];
+        this.traverseDepthFirst(node => {
+            if (node.type === "code") {
+                arr.push(node.lineStart);
+            }
+        });
+        return arr;
     }
 }

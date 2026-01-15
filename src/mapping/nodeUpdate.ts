@@ -169,7 +169,8 @@ export class NodeUpdate {
                 {from: startOrig, to: startOrig + 1},
                 "",
                 startProse, startProse,
-                {from: startProse, to: startProse + node.nodeSize}
+                {from: startProse, to: startProse + node.nodeSize},
+                0
             );
         }
 
@@ -181,7 +182,8 @@ export class NodeUpdate {
             {from: startOrig, to: 0}, // full range
             node.attrs.title ? node.attrs.title : "", // title
             startProse + 1, 0, // prosemirror start, end
-            {from: startProse, to: 0}
+            {from: startProse, to: 0},
+            0
         );
 
 
@@ -404,7 +406,8 @@ export class NodeUpdate {
             {from: positions.startFrom, to: positions.endTo + closeTag.length}, // full range
             title,
             positions.proseStart + 1, positions.proseEnd + 1, // prosemirror start, end
-            {from: positions.proseStart, to: positions.proseEnd + 2} // pmRange
+            {from: positions.proseStart, to: positions.proseEnd + 2}, // pmRange
+            0
         );
 
         // We need to find the parent of the first node being wrapped
