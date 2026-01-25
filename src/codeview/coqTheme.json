@@ -1,7 +1,7 @@
 {
 	"&": {
-	  "color": "var(--wp-cm-foreground)",
-	  "backgroundColor": "var(--wp-cm-background)"
+	  "color": "var(--wp-inputForeground)",
+	  "backgroundColor": "var(--wp-listFilterWidgetBackground)"
 	},
 
 	".cm-diagnosticButton": {
@@ -21,16 +21,16 @@
 
 	".cm-content": {
 	  "caretColor": "auto",
-	  "fontFamily": "var(--wp-editor-font-family)",
-	  "fontSize": "var(--wp-editor-font-size)",
-	  "fontWeight": "var(--wp-editor-font-weight)"
+	  "fontFamily": "var(--wp-editorFontFamily)",
+	  "fontSize": "var(--wp-editorFontSize)",
+	  "fontWeight": "var(--wp-editorFontWeight)"
 	},
   	".cm-cursor, .cm-dropCursor": {"borderLeftColor": "auto"},
 
-	".cm-panels": {"color": "var(--vscode-list-highlightForeground)"},
-	".cm-panel-lint": {"backgroundColor": "var(--vscode-listFilterWidget-background)", "color": "var(--vscode-list-highlightForeground)"},
+	".cm-panels": {"color": "var(--wp-listHighlightForeground)"},
+	".cm-panel-lint": {"backgroundColor": "var(--wp-listFilterWidgetBackground)", "color": "var(--wp-listHighlightForeground)"},
 	".cm-panel-lint > ul": {
-		"color": "var(--wp-cm-lint-panel-foreground)",
+		"color": "var(--wp-listHighlightForeground)",
 		"display": "flex", 
 		"flexFlow": "column"
 	},
@@ -38,11 +38,11 @@
 		"maxHeight": "25vh"
 	},
 	".cm-panel.cm-panel-lint ul [aria-selected]": {
-		"background-color": "var(--vscode-list-activeSelectionBackground)",
-		"color": "var(--vscode-list-activeSelectionForeground)"
+		"background-color": "var(--wp-listActiveselectionBackground)",
+		"color": "var(--wp-listActiveselectionForeground)"
 	},
 
-	".cm-activeLine": {"backgroundColor": "var(--vscode-editor-lineHighlightBackground)"},
+	".cm-activeLine": {"backgroundColor": "var(--wp-editorLineHighlightBackground)"},
     "&:not(.cm-focused) .cm-activeLine": { "backgroundColor": "transparent"},
 	".cm-selectionMatch": {"backgroundColor": "#aafe661a"},
 	"&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket": {
@@ -50,13 +50,13 @@
 	},
   
 	".cm-gutters": {
-	  "backgroundColor": "var(--vscode-editorInlayHint-background)",
-	  "color": "var(--vscode-editorInlayHint-foreground)",
+	  "backgroundColor": "var(--wp-editorInlayHintBackground)",
+	  "color": "var(--wp-editorInlayHintForeground)",
 	  "border": "none"
 	},
 
 	".cm-activeLineGutter": {
-	  "backgroundColor": "var(--vscode-editorLightBulb-foreground)"
+	  "backgroundColor": "var(--wp-editorLightBulbForeground)"
 	},
   
 	".cm-foldPlaceholder": {
@@ -67,8 +67,8 @@
   
 	".cm-tooltip": {
 	  "border": "none",
-	  "color": "var(--vscode-menu-foreground)",
-	  "backgroundColor": "var(--vscode-menu-background)"
+	  "color": "var(--wp-menuForeground)",
+	  "backgroundColor": "var(--wp-menuBackground)"
 	},
 	".cm-tooltip-lint": {
 		"display": "flex",
@@ -82,13 +82,13 @@
 	  "borderBottomColor": "transparent"
 	},
 	".cm-tooltip .cm-tooltip-arrow:after": {
-	  "borderTopColor": "var(--vscode-menu-separatorBackground)",
-	  "borderBottomColor": "var(--vscode-menu-separatorBackground)"
+	  "borderTopColor": "var(--wp-menuSeparatorBackground)",
+	  "borderBottomColor": "var(--wp-menuSeparatorBackground)"
 	},
 	".cm-tooltip-autocomplete": {
 	  "& > ul > li[aria-selected]": {
-		"backgroundColor": "var(--vscode-menu-selectionBackground)",
-		"color": "var(--vscode-menu-selectionForeground)"
+		"backgroundColor": "var(--wp-menuSelectionBackground)",
+		"color": "var(--wp-menuSelectionForeground)"
 	  }
 	},
     ".cm-completionIcon": {

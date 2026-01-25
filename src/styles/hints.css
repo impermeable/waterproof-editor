@@ -1,7 +1,7 @@
 /* Default hint style */
 .hint {
     display: none;
-    outline: 2px dashed var(--vscode-minimap-findMatchHighlight);
+    outline: 2px dashed var(--wp-hintOutline);
 }
 
 /* Hint style that is applied when the hint should be shown */

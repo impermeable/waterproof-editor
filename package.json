@@ -15,7 +15,8 @@
   "main": "./dist/index.js",
   "exports": {
     ".": "./dist/index.js",
-    "./styles.css": "./dist/index.css"
+    "./styles.css": "./dist/index.css",
+    "./waterproof-defaults.css": "./dist/styles/waterproof-defaults.css"
   },
   "typesVersions": {
     "*": {
