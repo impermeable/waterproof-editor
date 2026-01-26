@@ -141,7 +141,7 @@ export class NodeUpdate {
         // now we need to update the tree
         tree.traverseDepthFirst((thisNode: TreeNode) => {
             // Update all nodes that come fully after the insertion position
-            if (thisNode.pmRange.from > step.to) {
+            if (thisNode.pmRange.from >= step.to) {
                 thisNode.shiftOffsets(textOffset, proseOffset);
             }
 
