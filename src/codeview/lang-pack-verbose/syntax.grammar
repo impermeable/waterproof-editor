@@ -1,0 +1,102 @@
+@top Program { Sentence* }
+
+@skip { space }
+
+Sentence {
+    Comment | (Atom+ EndOfSentence)
+}
+
+@tokens {
+    space { $[ \t\r]+ }
+    EndOfSentence { "\n" | @eof }
+    
+    // Comments first
+    Comment { "--" ![\n]* | "(*" (![*] | "*" ![)])* "*)" }
+    
+    // Strings
+    String  { '"' (!["\\] | "\\" _)* '"' }
+    
+    // Brackets
+    LParen   { "(" }  
+    RParen   { ")" }
+    LBrace   { "{" }  
+    RBrace { "}" }
+    LBracket { "[" }  
+    RBracket { "]" }
+    
+    // Keywords
+    Fix        { "Fix" }
+    By         { "By" }
+    Example    { "Example" }
+    Exercise   { "Exercise" }
+    Proof      { "Proof:" }
+    QED        { "QED" }
+    
+    Given      { "Given:" }
+    Assume     { "Assume:" }
+    Conclusion { "Conclusion:" }
+    
+    Lets       { "Let's" | "Lets" }
+    Let        { "Let" }
+    Us         { "us" }
+    Prove      { "prove" }
+    That       { "that" }
+    
+    We         { "We" | "we" }
+    Compute    { "compute" }
+    Conclude   { "conclude" }
+    ByWord     { "by" }
+    
+    Applied    { "applied" }
+    To         { "to" }
+    Using      { "using" }
+    Get        { "get" }
+    Such       { "such" }
+    It         { "it" }
+    Suffices   { "suffices" }
+    
+    // Generic chunk - must come last
+    Chunk { ![ \t\r\n\(\)\{\}\[\]"]+ }
+    
+    // Precedence: keywords before Chunk, Comment before Chunk and LParen
+    @precedence { Comment, Chunk }
+    @precedence { Comment, LParen }
+    @precedence { Fix, Chunk }
+    @precedence { By, Chunk }
+    @precedence { Example, Chunk }
+    @precedence { Exercise, Chunk }
+    @precedence { Proof, Chunk }
+    @precedence { QED, Chunk }
+    @precedence { Given, Chunk }
+    @precedence { Assume, Chunk }
+    @precedence { Conclusion, Chunk }
+    @precedence { Lets, Chunk }
+    @precedence { Let, Chunk }
+    @precedence { Us, Chunk }
+    @precedence { Prove, Chunk }
+    @precedence { That, Chunk }
+    @precedence { We, Chunk }
+    @precedence { Compute, Chunk }
+    @precedence { Conclude, Chunk }
+    @precedence { ByWord, Chunk }
+    @precedence { Applied, Chunk }
+    @precedence { To, Chunk }
+    @precedence { Using, Chunk }
+    @precedence { Get, Chunk }
+    @precedence { Such, Chunk }
+    @precedence { It, Chunk }
+    @precedence { Suffices, Chunk }
+}
+
+Atom {
+    Fix | By | Example | Exercise | Proof | QED |
+    Given | Assume | Conclusion |
+    Lets | Let | Us | Prove | That |
+    We | Compute | Conclude | ByWord |
+    Applied | To | Using | Get | Such | It | Suffices |
+    String |
+    LParen | RParen | LBrace | RBrace | LBracket | RBracket |
+    Chunk
+}
+
+@detectDelim

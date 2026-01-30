@@ -284,7 +284,7 @@ export class WaterproofEditor {
 		return this._serializer.serializeDocument(this._view.state.doc);
 	}
 
-	public updateNodeViewThemes(theme: ThemeStyle) {
+	public updateNodeViewThemes(theme: ThemeStyle, lang: string) {
 		const view = this._view!;
 		const state = view.state;
 
@@ -293,7 +293,7 @@ export class WaterproofEditor {
 
 		for (const nodeView of nodeViews ?? []) {
 			// Update the theme of the nodeView
-			nodeView.updateThemeFromVSCode(theme);
+			nodeView.updateThemeFromVSCode(theme, lang);
 		}
 	}
 
