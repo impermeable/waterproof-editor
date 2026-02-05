@@ -34,11 +34,10 @@ const cfg: WaterproofEditorConfig = {
         editorReady: () => {},
         executeCommand: () => {},
         executeHelp: () => {},
-        lineNumbers: () => {},
         viewportHint: () => {},
     },
     completions: [],
-    documentConstructor: () => [new CodeBlock("This is a very long sentence", {from: 0, to: 28}, {from: 0, to: 28})],
+    documentConstructor: () => [new CodeBlock("This is a very long sentence", {from: 0, to: 28}, {from: 0, to: 28}, 0)],
     symbols: [],
     tagConfiguration: configuration("coq")
 }

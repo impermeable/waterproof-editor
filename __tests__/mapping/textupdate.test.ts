@@ -13,8 +13,11 @@ function createMapping(doc: WaterproofDocument) {
   return mapping;
 }
 
+const PLACEHOLDER_LINENR = 0;
+
+// TODO: Test linenrs
 test("ReplaceStep insert — inserts text into a block", () => {
-  const blocks = [new MarkdownBlock("Hello", {from: 0, to: 5}, {from: 0, to: 5})];
+  const blocks = [new MarkdownBlock("Hello", {from: 0, to: 5}, {from: 0, to: 5}, PLACEHOLDER_LINENR)];
   const mapping = createMapping(blocks);
   const slice: Slice = new Slice(Fragment.from(WaterproofSchema.text(" world")), 0, 0);
   const step: ReplaceStep = new ReplaceStep(6, 6, slice);
@@ -37,8 +40,9 @@ test("ReplaceStep insert — inserts text into a block", () => {
   });
 });
 
-const helloWorldMarkdownBlock = new MarkdownBlock("Hello world", {from: 0, to: 11}, {from: 0, to: 11});
+const helloWorldMarkdownBlock = new MarkdownBlock("Hello world", {from: 0, to: 11}, {from: 0, to: 11}, PLACEHOLDER_LINENR);
 
+// TODO: Test linenrs
 test("ReplaceStep insert — inserts text in the middle of a block", () => {
   const mapping = createMapping([helloWorldMarkdownBlock]);
   const slice: Slice = new Slice(Fragment.from(WaterproofSchema.text("big ")), 0, 0);

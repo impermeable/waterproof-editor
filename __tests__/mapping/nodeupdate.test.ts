@@ -15,9 +15,12 @@ function createMapping(blocks: WaterproofDocument) {
   return mapping;
 }
 
+const PLACEHOLDER_LINENR = 0;
+
+// TODO: Test linenrs
 test("Insert code underneath markdown", () => {
     // # Hello
-    const mapping = createMapping([new MarkdownBlock("# Hello", {from: 0, to: 7}, {from: 0, to: 7})]);
+    const mapping = createMapping([new MarkdownBlock("# Hello", {from: 0, to: 7}, {from: 0, to: 7}, PLACEHOLDER_LINENR)]);
     const slice: Slice = new Slice(Fragment.from([WaterproofSchema.nodes.newline.create(), WaterproofSchema.nodes.code.create()]), 0, 0);
     const step: ReplaceStep = new ReplaceStep(9, 9, slice);
 
@@ -35,14 +38,16 @@ test("Insert code underneath markdown", () => {
     // TODO: Check new tree structure
 });
 
+// TODO: Test linenrs
 test("Insert code underneath markdown inside input area", () => {
     // <input-area># Hello</input-area>
     const mapping = createMapping([
         new InputAreaBlock("# Hello", 
             {from: 0, to: 32},
             {from: 12, to: 19},
+            PLACEHOLDER_LINENR,
             [
-                new MarkdownBlock("# Hello", {from: 12, to: 19}, {from: 12, to: 19})
+                new MarkdownBlock("# Hello", {from: 12, to: 19}, {from: 12, to: 19}, PLACEHOLDER_LINENR)
             ])]);
     const slice: Slice = new Slice(Fragment.from([WaterproofSchema.nodes.newline.create(), WaterproofSchema.nodes.code.create()]), 0, 0);
     const step: ReplaceStep = new ReplaceStep(10, 10, slice);

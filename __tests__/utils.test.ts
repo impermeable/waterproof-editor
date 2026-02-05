@@ -7,13 +7,22 @@ const toProseMirror = () => text("null");
 const debugPrint = () => null;
 const innerRange = {from: 0, to: 0};
 const type = BLOCK_NAME.CODE;
+const lineStart = 0;
+
+const defaultBlock: Block = {
+    stringContent: "",
+    toProseMirror,
+    debugPrint,
+    innerRange,
+    range: innerRange,
+    type,
+    lineStart
+}
 
 test("Sort blocks #1", () => {
-    const stringContent = "";
-
     const testBlocks: Array<Block> = [
-        {type: BLOCK_NAME.CODE, range: {from: 1, to: 2}, innerRange, stringContent, toProseMirror, debugPrint}, 
-        {type: BLOCK_NAME.INPUT_AREA, range: {from: 0, to: 1}, innerRange, stringContent, toProseMirror, debugPrint}
+        {...defaultBlock, type: BLOCK_NAME.CODE, range: {from: 1, to: 2}},
+        {...defaultBlock, type: BLOCK_NAME.INPUT_AREA, range: {from: 0, to: 1}}
     ];
 
     const sorted = sortBlocks(testBlocks);
@@ -23,12 +32,10 @@ test("Sort blocks #1", () => {
 });
 
 test("Sort blocks #2", () => {
-    const stringContent = "";
-
     const testBlocks: Array<Block> = [
-        {type: BLOCK_NAME.CODE, range: {from: 1, to: 2}, innerRange, stringContent, toProseMirror, debugPrint}, 
-        {type: BLOCK_NAME.INPUT_AREA, range: {from: 0, to: 1}, innerRange, stringContent, toProseMirror, debugPrint},
-        {type: BLOCK_NAME.HINT, range: {from: 2, to: 3}, innerRange, stringContent, toProseMirror, debugPrint}
+        {...defaultBlock, type: BLOCK_NAME.CODE, range: {from: 1, to: 2}},
+        {...defaultBlock, type: BLOCK_NAME.INPUT_AREA, range: {from: 0, to: 1}},
+        {...defaultBlock, type: BLOCK_NAME.HINT, range: {from: 2, to: 3}},
     ];
 
     const sorted = sortBlocks(testBlocks);
@@ -77,7 +84,7 @@ test("Iterate pairs (single element array)", () => {
 test("Mask input and hints #1", () => {
     const inputDocument = "# Example\n<input-area>\n# Test input area\n</input-area>\n";
     const blocks: Array<Block> = [
-        {type, range: {from: 10, to: 54}, innerRange, stringContent: "# Test input area", toProseMirror, debugPrint}
+        {...defaultBlock, range: {from: 10, to: 54}, stringContent: "# Test input area"}
     ];
 
     const maskedString = "# Example\n                                            \n";
@@ -87,8 +94,8 @@ test("Mask input and hints #1", () => {
 test("Mask input and hints #2", () => {
     const inputDocument = `<hint title="test">\nThis is a test hint\n<\\hint>\n# Example\n<input-area>\n# Test input area\n</input-area>\n`;
     const blocks: Array<Block> = [
-        {type, range: {from: 0, to: 47}, innerRange, stringContent: "This is a test hint", toProseMirror, debugPrint},
-        {type, range: {from: 58, to: 102}, innerRange, stringContent: "# Test input area", toProseMirror, debugPrint}
+        {...defaultBlock, range: {from: 0, to: 47}, stringContent: "This is a test hint"},
+        {...defaultBlock, range: {from: 58, to: 102}, stringContent: "# Test input area"}
     ];
 
     const maskedString = "                                               \n# Example\n                                            \n";
@@ -96,14 +103,12 @@ test("Mask input and hints #2", () => {
 });
 
 test("Extract inter-block ranges", () => {
-    const stringContent = "test";
-
     const document = "Hello, this is a test document, I am testing this document. Test test test test."
 
     const blocks: Array<Block> = [
-        { range: { from: 0, to: 10 }, innerRange, type, stringContent, toProseMirror, debugPrint },
-        { range: { from: 15, to: 20 }, innerRange, type, stringContent, toProseMirror, debugPrint },
-        { range: { from: 25, to: 30 }, innerRange, type, stringContent, toProseMirror, debugPrint },
+        {...defaultBlock, range: { from: 0, to: 10 }},
+        {...defaultBlock, range: { from: 15, to: 20 }},
+        {...defaultBlock, range: { from: 25, to: 30 }},
     ];
 
     const interBlockRanges = extractInterBlockRanges(blocks, document);
@@ -114,15 +119,13 @@ test("Extract inter-block ranges", () => {
     expect(interBlockRanges[2]).toEqual({ from: 30, to: document.length })
 });
 
-test("Extract inter-block ranges with touching blocks", () => {
-    const stringContent = "test";
-    
+test("Extract inter-block ranges with touching blocks", () => {    
     const document = "012345678901234567890123456789"
 
     const blocks: Block[] = [
-        { range: { from: 0, to: 10 }, innerRange, type, stringContent, toProseMirror, debugPrint },
-        { range: { from: 10, to: 20 }, innerRange, type, stringContent, toProseMirror, debugPrint },
-        { range: { from: 20, to: 30 }, innerRange, type, stringContent, toProseMirror, debugPrint },
+        {...defaultBlock, range: { from: 0, to: 10 }},
+        {...defaultBlock, range: { from: 10, to: 20 }},
+        {...defaultBlock, range: { from: 20, to: 30 }},
     ];
     
     const interBlockRanges = extractInterBlockRanges(blocks, document);

@@ -10,7 +10,8 @@ function fromJSON(json: any): Tree {
             obj.title,
             obj.prosemirrorStart,
             obj.prosemirrorEnd,
-            obj.pmRange
+            obj.pmRange,
+            obj.lineStart
         );
         if (obj.children && Array.isArray(obj.children)) {
             for (const childObj of obj.children) {
@@ -27,7 +28,8 @@ function fromJSON(json: any): Tree {
         rootObj.title,
         rootObj.prosemirrorStart,
         rootObj.prosemirrorEnd,
-        rootObj.pmRange
+        rootObj.pmRange,
+        rootObj.lineStart
     );
     for (const childObj of rootObj.children) {
         tree.root.addChild(parseNode(childObj));
@@ -35,6 +37,7 @@ function fromJSON(json: any): Tree {
     return tree;
 }
 
+// TODO: Update the trees, add where the tree came from and test line number logic.
 const treeJSON = {
     "root": {
         "type": "",
