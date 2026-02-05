@@ -5,7 +5,7 @@ export const parser = LRParser.deserialize({
   states: "!^QVQPOOOOQO'#C`'#C`OOQO'#DU'#DUO#cQPO'#C^OOQO'#C^'#C^OOQO'#DT'#DTQVQPOOOOQO-E7S-E7SOOQO,58x,58xOOQO-E7R-E7R",
   stateData: "$X~O{OS~ORSOTPOUPOVPOWPOXPOYPOZPO[PO]PO^PO_PO`POaPObPOcPOdPOePOfPOgPOhPOiPOjPOkPOlPOmPOnPOoPOpPOqPOrPOsPOtPOuPO~OvWO~PYORmlkjihgfedcba`o^_[ZYXWVUT]u~",
   goto: "!byPPzP!OPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP!T!ZTTOUVQORUQUORXUSROURVR",
-  nodeNames: "⚠ Program Sentence Comment Atom Fix By Example Exercise Proof QED Given Assume Conclusion Lets Let Us Prove That We Compute Conclude ByWord Applied To Using Get Such It Suffices String LParen RParen LBrace RBrace LBracket RBracket Chunk EndOfSentence",
+  nodeNames: "⚠ Program Sentence Comment Atom Fix By Example Exercise Proof QED Given Assume Conclusion Lets Let Us Prove That We Compute Conclude ByWord Applied To Using Get Such It Suffices Strings LParen RParen LBrace RBrace LBracket RBracket Chunk EndOfSentence",
   maxTerm: 43,
   skippedNodes: [0],
   repeatNodeCount: 2,

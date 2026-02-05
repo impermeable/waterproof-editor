@@ -14,7 +14,7 @@ Sentence {
     Comment { "--" ![\n]* | "(*" (![*] | "*" ![)])* "*)" }
     
     // Strings
-    String  { '"' (!["\\] | "\\" _)* '"' }
+    Strings  { '"' (!["\\] | "\\" _)* '"' }
     
     // Brackets
     LParen   { "(" }  
@@ -94,7 +94,7 @@ Atom {
     Lets | Let | Us | Prove | That |
     We | Compute | Conclude | ByWord |
     Applied | To | Using | Get | Such | It | Suffices |
-    String |
+    Strings |
     LParen | RParen | LBrace | RBrace | LBracket | RBracket |
     Chunk
 }

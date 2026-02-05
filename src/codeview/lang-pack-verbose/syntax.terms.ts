@@ -29,7 +29,7 @@ export const
   Such = 27,
   It = 28,
   Suffices = 29,
-  String = 30,
+  Strings = 30,
   LParen = 31,
   RParen = 32,
   LBrace = 33,
