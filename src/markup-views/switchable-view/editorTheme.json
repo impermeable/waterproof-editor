@@ -1,19 +1,19 @@
 {
 	"&": {
-	  "color": "var(--vscode-foreground)",
+	  "color": "var(--wp-foreground)",
 	  "backgroundColor": "transparent"
 	},
   
 	".cm-content": {
 	  "caretColor": "auto",
-	  "fontFamily": "var(--vscode-font-family)",
-	  "fontSize": "var(--vscode-editor-font-size)",
-	  "fontWeight": "var(--vscode-editor-font-weight)"
+	  "fontFamily": "var(--wp-fontFamily)",
+	  "fontSize": "var(--wp-editorFontSize)",
+	  "fontWeight": "var(--wp-editorFontWeight)"
 	},
   
 	".cm-cursor, .cm-dropCursor": {"borderLeftColor": "auto"},
 	
-	".cm-panels": {"backgroundColor": "var(--vscode-list-dropBackground)", "color": "var(--vscode-list-highlightForeground)"},
+	".cm-panels": {"backgroundColor": "var(--wp-listDropBackground)", "color": "var(--wp-listHighlightForeground)"},
 	".cm-panels.cm-panels-top": {"borderBottom": "2px solid black"},
 	".cm-panels.cm-panels-bottom": {"borderTop": "2px solid black"},
   
@@ -30,21 +30,21 @@
   
 	".cm-tooltip": {
 	  "border": "none",
-	  "color": "var(--vscode-menu-foreground)",
-	  "backgroundColor": "var(--vscode-menu-background)"
+	  "color": "var(--wp-menuForeground)",
+	  "backgroundColor": "var(--wp-menuBackground)"
 	},
 	".cm-tooltip .cm-tooltip-arrow:before": {
 	  "borderTopColor": "transparent",
 	  "borderBottomColor": "transparent"
 	},
 	".cm-tooltip .cm-tooltip-arrow:after": {
-	  "borderTopColor": "var(--vscode-menu-separatorBackground)",
-	  "borderBottomColor": "var(--vscode-menu-separatorBackground)"
+	  "borderTopColor": "var(--wp-menuSeparatorBackground)",
+	  "borderBottomColor": "var(--wp-menuSeparatorBackground)"
 	},
 	".cm-tooltip-autocomplete": {
 	  "& > ul > li[aria-selected]": {
-		"backgroundColor": "var(--vscode-menu-selectionBackground)",
-		"color": "var(--vscode-menu-selectionForeground)"
+		"backgroundColor": "var(--wp-menuSelectionBackground)",
+		"color": "var(--wp-menuSelectionForeground)"
 	  }
 	},
     ".cm-completionIcon": {

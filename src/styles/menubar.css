@@ -1,15 +1,15 @@
 :root {
     --body-padding: 10px;
-    --button-foreground: var(--vscode-button-foreground);
-    --button-background: var(--vscode-button-background);
-    --button-border: var(--vscode-button-border);
-    --button-background-hover: var(--vscode-button-hoverBackground);
-    --font-family: var(--vscode-font-family);
-    --font-weight: var(--vscode-font-weight);
-    --font-size: var(--vscode-font-size);
-    --bg-color: var(--vscode-quickInput-background);
-    --dropdown-background: var(--vscode-dropdown-listBackground);
-    --dropdown-border: var(--vscode-dropdown-border);
+    --button-foreground: var(--wp-buttonForeground);
+    --button-background: var(--wp-buttonBackground);
+    --button-border: var(--wp-buttonBorder);
+    --button-background-hover: var(--wp-buttonHoverBackground);
+    --font-family: var(--wp-fontFamily);
+    --font-weight: var(--wp-fontWeight);
+    --font-size: var(--wp-fontSize);
+    --bg-color: var(--wp-quickInputBackground);
+    --dropdown-background: var(--wp-dropdownListBackground);
+    --dropdown-border: var(--wp-dropdownBorder);
 }
 
 body {

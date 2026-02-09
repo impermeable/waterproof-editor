@@ -1,6 +1,6 @@
 .markdown-view-empty:before {
     display: inline;
-    color: var(--vscode-errorForeground);
+    color: var(--wp-errorForeground);
     content: "...";
 }
 
@@ -13,14 +13,14 @@
 } */
 
 .markdown-view-editor::before {
-    --border-color: var(--vscode-input-border);
+    --border-color: var(--wp-inputBorder);
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
-    color: var(--vscode-input-foreground);
-    background-color: var(--vscode-input-background);
-    font-family: var(--vscode-font-family);
-    font-size: var(--vscode-font-size);
-    font-weight: var(--vscode-font-weight);
+    color: var(--wp-inputForeground);
+    background-color: var(--wp-inputBackground);
+    font-family: var(--wp-fontFamily);
+    font-size: var(--wp-fontSize);
+    font-weight: var(--wp-fontWeight);
     border-radius: 0px 0px 5px 0px;
     content: "Markdown";
     padding: 0.2em;
@@ -28,7 +28,7 @@
 
 /* Styles the inline code parts of the markdown cells */
 code {
-    font-family: var(--wp-editor-font-family);
+    font-family: var(--wp-editorFontFamily);
 }
 
 
