@@ -541,6 +541,15 @@ export class WaterproofEditor {
 		return true;
 	}
 
+	public replaceRange(startOffset: number, endOffset: number, text: string): boolean {
+        if (!this._view || !this._mapping) return false;
+        const from = this._mapping.textOffsetToPmIndex(startOffset);
+        const to = this._mapping.textOffsetToPmIndex(endOffset);
+        const tr = this._view.state.tr.insertText(text, from, to);
+        this._view.dispatch(tr);
+        return true;
+    }
+
 	/**
 	 * Toggles line numbers for all codeblocks.
 	 * @param show The editor will show line numbers in the code cells when set to `true`.
