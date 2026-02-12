@@ -1,7 +1,7 @@
 import { Fragment, Slice } from "prosemirror-model";
-import { DocChange, Mapping, WaterproofDocument } from "../../src/api";
+import { DocChange, Mapping, WaterproofDocument, WrappingDocChange } from "../../src/api";
 import { configuration } from "../../src/markdown-defaults";
-import { ReplaceStep } from "prosemirror-transform";
+import { ReplaceAroundStep, ReplaceStep } from "prosemirror-transform";
 import { WaterproofSchema } from "../../src/schema";
 import { NodeUpdate } from "../../src/mapping/nodeUpdate";
 import { InputAreaBlock, MarkdownBlock } from "../../src/document";
@@ -111,3 +111,53 @@ test("Insert code underneath markdown inside input area", () => {
 
     // TODO: Check new tree structure
 });
+
+test("Wrap markdown in hint area", () => {
+    const mapping = createMapping([new MarkdownBlock("# Hello", {from: 0, to: 7}, {from: 0, to: 7}, PLACEHOLDER_LINENR)]);
+
+
+    const slice: Slice = new Slice(Fragment.from([ WaterproofSchema.nodes.hint.create()]), 0, 0);
+    const step = new ReplaceAroundStep(0, 9, 0, 9, slice, 1);
+
+    const nodeUpdate = new NodeUpdate(config, serializer);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping);
+    sanityCheckTree(newTree.root);
+
+    expect(result).toStrictEqual<WrappingDocChange>({
+        firstEdit : {
+         finalText: "<hint title=\"💡 Hint\">",
+        startInFile: 0,
+        endInFile: 0   
+        },
+        secondEdit : {
+        finalText: "</hint>",
+        startInFile: 7,
+        endInFile: 7
+        }  
+    })
+})
+
+test("Wrap markdown in input area", () => {
+    const mapping = createMapping([new MarkdownBlock("# Hello", {from: 0, to: 7}, {from: 0, to: 7}, PLACEHOLDER_LINENR)]);
+
+
+    const slice: Slice = new Slice(Fragment.from([ WaterproofSchema.nodes.input.create()]), 0, 0);
+    const step = new ReplaceAroundStep(0, 9, 0, 9, slice, 1);
+
+    const nodeUpdate = new NodeUpdate(config, serializer);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping);
+    sanityCheckTree(newTree.root);
+
+    expect(result).toStrictEqual<WrappingDocChange>({
+        firstEdit : {
+         finalText: "<input-area>",
+        startInFile: 0,
+        endInFile: 0   
+        },
+        secondEdit : {
+        finalText: "</input-area>",
+        startInFile: 7,
+        endInFile: 7
+        }  
+    })
+})

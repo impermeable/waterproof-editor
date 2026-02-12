@@ -1,6 +1,11 @@
 import { TreeNode } from "../../src/mapping";
 
 export function sanityCheckTree(node: TreeNode, parent?: TreeNode) {
+    expect(node.contentRange.from).toBeLessThanOrEqual(node.contentRange.to);
+    expect(node.tagRange.from).toBeLessThanOrEqual(node.tagRange.to);
+    expect(node.pmRange.from).toBeLessThanOrEqual(node.pmRange.to);
+    expect(node.prosemirrorStart).toBeLessThanOrEqual(node.prosemirrorEnd);
+
     // Assumption: All ranges are nested within the parent ranges.
     if (parent) {
         expect(node.contentRange.from).toBeGreaterThanOrEqual(parent.contentRange.from);
