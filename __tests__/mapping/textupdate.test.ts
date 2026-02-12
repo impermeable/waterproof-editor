@@ -7,6 +7,7 @@ import { configuration } from "../../src/markdown-defaults";
 import { WaterproofSchema } from "../../src/schema";
 import { MarkdownBlock } from "../../src/document";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
+import { sanityCheckTree } from "./util";
 
 function createMapping(doc: WaterproofDocument) {
   const mapping = new Mapping(doc, 0, configuration("coq"), new DefaultTagSerializer(configuration("coq")));
@@ -24,6 +25,8 @@ test("ReplaceStep insert — inserts text into a block", () => {
   console.log("here is the step", step);
   const textUpdate = new TextUpdate();
   const {newTree, result} = textUpdate.textUpdate(step, mapping);
+
+  sanityCheckTree(newTree.root);
   
   const md = newTree.root.children[0];
   expect(md.contentRange.from).toBe(0);
@@ -50,6 +53,8 @@ test("ReplaceStep insert — inserts text in the middle of a block", () => {
   const textUpdate = new TextUpdate();
   const {newTree, result} = textUpdate.textUpdate(step, mapping);
 
+  sanityCheckTree(newTree.root);
+
   const md = newTree.root.children[0];
   
   expect(md.contentRange.from).toBe(0);
@@ -71,6 +76,8 @@ test("ReplaceStep delete — deletes part of a block", () => {
   const step: ReplaceStep = new ReplaceStep(7, 12, Slice.empty);
   const textUpdate = new TextUpdate();
   const {newTree, result} = textUpdate.textUpdate(step, mapping);
+
+  sanityCheckTree(newTree.root);
 
   const md = newTree.root.children[0];
   expect(md.contentRange.from).toBe(0);
@@ -94,6 +101,8 @@ test("ReplaceStep replace — replaces part of a block", () => {
   const step: ReplaceStep = new ReplaceStep(7, 12, slice);
   const textUpdate = new TextUpdate();
   const {newTree, result} = textUpdate.textUpdate(step, mapping);
+
+  sanityCheckTree(newTree.root);
 
   const md = newTree.root.children[0];
   expect(md.contentRange.from).toBe(0);

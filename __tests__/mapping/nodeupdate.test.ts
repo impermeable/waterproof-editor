@@ -6,6 +6,7 @@ import { WaterproofSchema } from "../../src/schema";
 import { NodeUpdate } from "../../src/mapping/nodeUpdate";
 import { InputAreaBlock, MarkdownBlock } from "../../src/document";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
+import { sanityCheckTree } from "./util";
 
 const config = configuration("coq");
 const serializer = new DefaultTagSerializer(config);
@@ -34,7 +35,53 @@ test("Insert code underneath markdown", () => {
     });
 
     expect(newTree.root.children.length).toBe(3);
+
+    // Content added is 3 newlines, 6 ticks and coq, so 12 characters, so 19 characters in total
+
+    expect(newTree.root.contentRange).toEqual({from: 0, to: 19})
+
+    // For prosemirror, the begin and end tags of the code node count as one, and each newline counts as one, so this gives 5 new prosemirror positions
+    expect(newTree.root.prosemirrorStart).toEqual(0);
+    expect(newTree.root.prosemirrorEnd).toEqual(12);
+    expect(newTree.root.pmRange).toEqual({from: 0, to: 13})
+
+    sanityCheckTree(newTree.root);
+
     
+    expect(newTree.root.children[0]).toMatchObject({
+        type: 'markdown',
+        contentRange: { from: 0, to: 7 },
+        tagRange: { from: 0, to: 7 },
+        title: '',
+        prosemirrorStart: 1,
+        prosemirrorEnd: 8,
+        pmRange: { from: 0, to: 9 },
+        lineStart: 0,
+        children: []
+    })
+    expect(newTree.root.children[1]).toMatchObject({
+      type: 'newline',
+      contentRange: { from: 7, to: 8 },
+      tagRange: { from: 7, to: 8 },
+      title: '',
+      prosemirrorStart: 9,
+      prosemirrorEnd: 9,
+      pmRange: { from: 9, to: 10 },
+      lineStart: 0,
+      children: []
+    })
+    expect(newTree.root.children[2]).toMatchObject({
+      type: 'code',
+      contentRange: { from: 15, to: 15 },
+      tagRange: { from: 8, to: 19 },
+      title: '',
+      prosemirrorStart: 11,
+      prosemirrorEnd: 11,
+      pmRange: { from: 10, to: 12 },
+      lineStart: 0,
+      children: []
+    })
+    console.log("New tree", newTree.root.children[3]) 
     // TODO: Check new tree structure
 });
 
@@ -53,8 +100,9 @@ test("Insert code underneath markdown inside input area", () => {
     const step: ReplaceStep = new ReplaceStep(10, 10, slice);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {result} = nodeUpdate.nodeUpdate(step, mapping);
-
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping);
+    console.log(JSON.stringify(newTree.root, null, " "))
+    sanityCheckTree(newTree.root);
     expect(result).toStrictEqual<DocChange>({
         finalText: "\n```coq\n\n```",
         startInFile: 19,
