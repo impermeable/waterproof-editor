@@ -399,11 +399,14 @@ export class NodeUpdate {
             proseEnd: nodesBeingWrappedEnd.pmRange.to
         };
         
+        const contentEnd = positions.endTo + openTag.length;
+        const tagEnd = positions.endTo + openTag.length + closeTag.length;
+
         // Create the new wrapping node
         const newNode = new TreeNode(
             insertedNodeType,
-            {from: positions.startFrom + openTag.length, to: positions.endTo}, // inner range
-            {from: positions.startFrom, to: positions.endTo + closeTag.length}, // full range
+            {from: positions.startFrom + openTag.length, to: contentEnd}, // inner range
+            {from: positions.startFrom, to: tagEnd}, // full range
             title,
             positions.proseStart + 1, positions.proseEnd + 1, // prosemirror start, end
             {from: positions.proseStart, to: positions.proseEnd + 2}, // pmRange
