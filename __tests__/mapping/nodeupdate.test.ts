@@ -333,14 +333,14 @@ test("Complex deletion undo", () => {
     const hint = WaterproofSchema.nodes.hint.create({title: "💡 Hint"}, 
         Fragment.from([
             WaterproofSchema.nodes.markdown.create(null, 
-                Fragment.from([WaterproofSchema.text("Md"),
-                    WaterproofSchema.nodes.newline.create(),
-                    WaterproofSchema.nodes.code.create(null,
-                        Fragment.from([WaterproofSchema.text("Code")])
-                    )
-                ])
+                Fragment.from([WaterproofSchema.text("Md")])
+                    
 
-            )
+            ),
+            WaterproofSchema.nodes.newline.create(),
+            WaterproofSchema.nodes.code.create(null, Fragment.from([WaterproofSchema.text("Code")]))
+                    
+                
         ])
     )
 
@@ -355,8 +355,8 @@ test("Complex deletion undo", () => {
     sanityCheckTree(newTree.root);
 
     expect(result).toStrictEqual<DocChange>({
-        finalText: "",
+        finalText: "<hint title=\"💡 Hint\">Md\n```coq\nCode\n```</hint>",
         startInFile: 7,
-        endInFile: 54
+        endInFile: 7
     })
 })

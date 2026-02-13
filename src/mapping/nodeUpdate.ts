@@ -173,6 +173,18 @@ export class NodeUpdate {
                 0
             );
         }
+        // Shortcut for text nodes
+        if (node.type == WaterproofSchema.nodes.text) {
+            return new TreeNode(
+                "text",
+                {from: startOrig, to: startOrig + node.nodeSize},
+                {from: startOrig, to: startOrig + node.nodeSize},
+                "",
+                startProse, startProse + node.nodeSize,
+                {from: startProse, to: startProse + node.nodeSize},
+                0
+            )
+        }
 
         const [openTagForNode, closeTagForNode] = this.nodeNameToTagPair(node.type.name, node.attrs.title ? node.attrs.title : "");
 
