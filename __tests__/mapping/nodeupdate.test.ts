@@ -316,3 +316,47 @@ test("Complex deletion", () => {
         endInFile: 54
     })
 })
+
+test("Complex deletion undo", () => {
+    // # Hello
+    // <hint title="💡 Hint">
+    // Md
+    // <code>
+    // Code
+    // </code>
+    // </hint>
+    // Then remove hint block and undo
+    const mapping = createMapping([
+        new MarkdownBlock("# Hello", {from: 0, to: 7}, {from: 0, to: 7}, PLACEHOLDER_LINENR),
+    ]);
+
+    const hint = WaterproofSchema.nodes.hint.create({title: "💡 Hint"}, 
+        Fragment.from([
+            WaterproofSchema.nodes.markdown.create(null, 
+                Fragment.from([WaterproofSchema.text("Md"),
+                    WaterproofSchema.nodes.newline.create(),
+                    WaterproofSchema.nodes.code.create(null,
+                        Fragment.from([WaterproofSchema.text("Code")])
+                    )
+                ])
+
+            )
+        ])
+    )
+
+    const slice: Slice = new Slice(Fragment.from([hint]), 0, 0);
+
+    const step = new ReplaceStep(9, 9, slice);
+
+
+    const nodeUpdate = new NodeUpdate(config, serializer);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping);
+    console.log(JSON.stringify(newTree.root, null, " "));
+    sanityCheckTree(newTree.root);
+
+    expect(result).toStrictEqual<DocChange>({
+        finalText: "",
+        startInFile: 7,
+        endInFile: 54
+    })
+})
