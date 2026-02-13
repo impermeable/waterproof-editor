@@ -161,3 +161,24 @@ test("Wrap markdown in input area", () => {
         }  
     })
 })
+
+test("Delete markdown cell", () => {
+    const mapping = createMapping([
+        new MarkdownBlock("# Hello", {from: 0, to: 7}, {from: 0, to: 7}, PLACEHOLDER_LINENR),
+        new MarkdownBlock("# Hello", {from: 7, to: 14}, {from: 7, to: 14}, PLACEHOLDER_LINENR)
+         ]);
+
+    const slice: Slice = new Slice(Fragment.from([]), 0, 0);
+
+    const step = new ReplaceStep(9, 18, slice);
+
+    const nodeUpdate = new NodeUpdate(config, serializer);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping);
+    sanityCheckTree(newTree.root);
+
+    expect(result).toStrictEqual<DocChange>({
+        finalText: "",
+        startInFile: 7,
+        endInFile: 14
+    })
+})
