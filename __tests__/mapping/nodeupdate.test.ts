@@ -4,7 +4,7 @@ import { configuration } from "../../src/markdown-defaults";
 import { ReplaceAroundStep, ReplaceStep } from "prosemirror-transform";
 import { WaterproofSchema } from "../../src/schema";
 import { NodeUpdate } from "../../src/mapping/nodeUpdate";
-import { InputAreaBlock, MarkdownBlock } from "../../src/document";
+import { HintBlock, InputAreaBlock, MarkdownBlock } from "../../src/document";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 import { sanityCheckTree } from "./util";
 
@@ -111,6 +111,69 @@ test("Insert code underneath markdown inside input area", () => {
 
     // TODO: Check new tree structure
 });
+
+test("Unwrap input area", () => {
+    // <input-area># Hello</input-area>
+    const mapping = createMapping([
+        new InputAreaBlock("# Hello", 
+            {from: 0, to: 32},
+            {from: 12, to: 19},
+            PLACEHOLDER_LINENR,
+            [
+                new MarkdownBlock("# Hello", {from: 12, to: 19}, {from: 12, to: 19}, PLACEHOLDER_LINENR)
+            ])]);
+
+    const slice: Slice = new Slice(Fragment.from([ ]), 0, 0);
+    const step = new ReplaceAroundStep(0, 11, 1, 10, slice, 0);
+
+    const nodeUpdate = new NodeUpdate(config, serializer);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping);
+    console.log(JSON.stringify(newTree.root, null, " "))
+    sanityCheckTree(newTree.root);
+    expect(result).toStrictEqual<WrappingDocChange>({
+        firstEdit: {
+            finalText: "",
+            startInFile: 0,
+            endInFile: 12 
+        }, 
+        secondEdit : {
+            finalText: "",
+            startInFile: 19,
+            endInFile: 32
+        }});
+});
+
+test("Unwrap hint area", () => {
+    // <hint title="💡 Hint"># Hello</hint>
+    const mapping = createMapping([
+        new HintBlock("# Hello", "💡 Hint",
+            {from: 0, to: 36},
+            {from: 22, to: 29},
+            PLACEHOLDER_LINENR,
+            [
+                new MarkdownBlock("# Hello", {from: 22, to: 29}, {from: 22, to: 29}, PLACEHOLDER_LINENR)
+            ])]);
+
+    const slice: Slice = new Slice(Fragment.from([ ]), 0, 0);
+    const step = new ReplaceAroundStep(0, 11, 1, 10, slice, 0);
+
+    const nodeUpdate = new NodeUpdate(config, serializer);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping);
+    console.log(JSON.stringify(newTree.root, null, " "))
+    sanityCheckTree(newTree.root);
+    expect(result).toStrictEqual<WrappingDocChange>({
+        firstEdit: {
+            finalText: "",
+            startInFile: 0,
+            endInFile: 22 
+        }, 
+        secondEdit : {
+            finalText: "",
+            startInFile: 29,
+            endInFile: 36
+        }});
+});
+
 
 test("Wrap markdown in hint area", () => {
     const mapping = createMapping([new MarkdownBlock("# Hello", {from: 0, to: 7}, {from: 0, to: 7}, PLACEHOLDER_LINENR)]);
