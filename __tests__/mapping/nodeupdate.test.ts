@@ -4,7 +4,7 @@ import { configuration } from "../../src/markdown-defaults";
 import { ReplaceAroundStep, ReplaceStep } from "prosemirror-transform";
 import { WaterproofSchema } from "../../src/schema";
 import { NodeUpdate } from "../../src/mapping/nodeUpdate";
-import { HintBlock, InputAreaBlock, MarkdownBlock } from "../../src/document";
+import { CodeBlock, HintBlock, InputAreaBlock, MarkdownBlock, NewlineBlock } from "../../src/document";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 import { sanityCheckTree } from "./util";
 
@@ -174,6 +174,39 @@ test("Unwrap hint area", () => {
         }});
 });
 
+test("Unwrap hint area with content after", () => {
+    // <hint title="💡 Hint"># Hello</hint>
+    // # Hellotwo
+    const mapping = createMapping([
+        new HintBlock("# Hello", "💡 Hint",
+            {from: 0, to: 36},
+            {from: 22, to: 29},
+            PLACEHOLDER_LINENR,
+            [
+                new MarkdownBlock("# Hello", {from: 22, to: 29}, {from: 22, to: 29}, PLACEHOLDER_LINENR)
+            ]),
+        new MarkdownBlock("# Hellotwo", {from: 36, to: 43}, {from: 36, to: 43}, PLACEHOLDER_LINENR)]);
+
+    const slice: Slice = new Slice(Fragment.from([ ]), 0, 0);
+    const step = new ReplaceAroundStep(0, 11, 1, 10, slice, 0);
+
+    const nodeUpdate = new NodeUpdate(config, serializer);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping);
+    console.log(JSON.stringify(newTree.root, null, " "))
+    sanityCheckTree(newTree.root);
+    expect(result).toStrictEqual<WrappingDocChange>({
+        firstEdit: {
+            finalText: "",
+            startInFile: 0,
+            endInFile: 22 
+        }, 
+        secondEdit : {
+            finalText: "",
+            startInFile: 29,
+            endInFile: 36
+        }});
+});
+
 
 test("Wrap markdown in hint area", () => {
     const mapping = createMapping([new MarkdownBlock("# Hello", {from: 0, to: 7}, {from: 0, to: 7}, PLACEHOLDER_LINENR)]);
@@ -243,5 +276,43 @@ test("Delete markdown cell", () => {
         finalText: "",
         startInFile: 7,
         endInFile: 14
+    })
+})
+
+
+test("Complex deletion", () => {
+    // # Hello
+    // <hint title="💡 Hint">
+    // Md
+    // <code>
+    // Code
+    // </code>
+    // </hint>
+    const mapping = createMapping([
+        new MarkdownBlock("# Hello", {from: 0, to: 7}, {from: 0, to: 7}, PLACEHOLDER_LINENR),
+        new HintBlock("Md", "💡 Hint",
+            {from: 7, to: 54},
+            {from: 29, to: 47},
+            PLACEHOLDER_LINENR,
+            [
+                new MarkdownBlock("Md", {from: 29, to: 31}, {from: 29, to: 31}, PLACEHOLDER_LINENR),
+                new NewlineBlock({from: 31, to: 32}, {from: 31, to: 32}, PLACEHOLDER_LINENR),
+                new CodeBlock("Code", {from: 32, to: 48}, {from: 39, to: 43}, PLACEHOLDER_LINENR)
+            ])]);
+
+    const slice: Slice = new Slice(Fragment.from([]), 0, 0);
+
+    const step = new ReplaceStep(9, 22, slice);
+
+
+    const nodeUpdate = new NodeUpdate(config, serializer);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping);
+    console.log(JSON.stringify(newTree.root, null, " "));
+    sanityCheckTree(newTree.root);
+
+    expect(result).toStrictEqual<DocChange>({
+        finalText: "",
+        startInFile: 7,
+        endInFile: 54
     })
 })
