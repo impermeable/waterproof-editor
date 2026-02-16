@@ -70,7 +70,7 @@
     "@types/markdown-it": "^14.1.2",
     "jquery": "3.7.1",
     "katex": "^0.16.22",
-    "markdown-it": "13.0.2",
+    "markdown-it": "^14.1.1",
     "prosemirror-commands": "1.6.0",
     "prosemirror-history": "1.4.1",
     "prosemirror-inputrules": "1.4.0",
