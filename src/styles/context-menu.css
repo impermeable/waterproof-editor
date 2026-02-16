@@ -8,8 +8,8 @@
   display: flex;
   flex-direction: column;
 
-  background-color: var(--vscode-menu-background);
-  color: var(--vscode-menu-foreground);
+  background-color: var(--wp-menuBackground);
+  color: var(--wp-menuForeground);
   box-shadow: 0 10px 20px rgb(64 64 64 / 5%);
   padding: 10px 0;
   padding: 0;
@@ -34,7 +34,7 @@
   align-items: center;
   position: relative;
   text-decoration: unset;
-  color: var(--vscode-menu-foreground);
+  color: var(--wp-menuForeground);
   font-weight: 500;
   transition: 0.1s linear;
   -webkit-transition: 0.1s linear;
@@ -44,10 +44,10 @@
 }
 
 .menu>li>a:hover {
-  outline: 1px solid var(--vscode-menu-selectionBorder); 
+  outline: 1px solid var(--wp-menuSelectionBorder); 
   outline-offset: -1px;
-  background: var(--vscode-menu-selectionBackground);
-  color: var(--vscode-menu-selectionForeground);
+  background: var(--wp-menuSelectionBackground);
+  color: var(--wp-menuSelectionForeground);
 }
 
 /* icon */

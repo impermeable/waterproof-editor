@@ -8,12 +8,12 @@
 
 /* Define the spinner animation */
 .spinner {
-  border: 0.3rem solid var(--vscode-quickInput-background);
-  border-top: 0.3rem solid var(--vscode-button-background);
+  border: 0.3rem solid var(--wp-quickInputBackground);
+  border-top: 0.3rem solid var(--wp-buttonBackground);
   border-radius: 100%;
   width: 0.8rem;
   height: 0.8rem;
-  background-color: var(--vscode-quickInput-background);
+  background-color: var(--wp-quickInputBackground);
   animation: spin 1s linear infinite;
 }
 

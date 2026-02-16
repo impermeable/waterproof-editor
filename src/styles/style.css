@@ -3,8 +3,8 @@
 }
 
 .ProseMirror hr {
-  color: var(--vscode-textSeparator-foreground);
-  background-color: var(--vscode-textSeparator-foreground);
+  color: var(--wp-textSeparatorForeground);
+  background-color: var(--wp-textSeparatorForeground);
 }
 
 #editor > .ProseMirror {
@@ -12,16 +12,16 @@
 }
 
 .ProseMirror {
-  font-size: var(--vscode-editor-font-size);
-  font-family: var(--vscode-font-family);
-  font-weight: var(--vscode-editor-font-weight);
+  font-size: var(--wp-editorFontSize);
+  font-family: var(--wp-fontFamily);
+  font-weight: var(--wp-editorFontWeight);
   caret-color: auto !important;
   position: relative; /*needed for the highlighting*/
 }
 
 .ProseMirror ::selection {
-  color: var(--vscode-editor-selectionForeground);
-  background-color: var(--vscode-editor-selectionBackground);
+  color: var(--wp-editorSelectionFackground);
+  background-color: var(--wp-editorSelectionBackground);
 }
 
 .ProseMirror-selectednode {
@@ -40,9 +40,9 @@
   bottom: 0;
   width: var(--width); 
   /* background-color: greenyellow; */
-  background-color: var(--vscode-button-secondaryBackground);
+  background-color: var(--wp-buttonSecondaryBackground);
   /* we add a border for some high contrast themes */
-  outline: 1px solid var(--vscode-button-border); 
+  outline: 1px solid var(--wp-buttonBorder); 
 }
 
 /* Add space around the hr to make clicking it easier */
