@@ -258,6 +258,45 @@ test("Wrap markdown in input area", () => {
     })
 })
 
+test("Delete a code block between markdown blocks", () => {
+    // Assumption: Code block tags are ```coq\n (length 7) and \n``` (length 4),
+    // so tagRange length is content length + 11.
+    // Assumption: Block ranges are contiguous in the document.
+    const blocks: WaterproofDocument = [
+        new MarkdownBlock("Hello", {from: 0, to: 5}, {from: 0, to: 5}, PLACEHOLDER_LINENR),
+        new CodeBlock("Lemma.", {from: 5, to: 22}, {from: 12, to: 18}, PLACEHOLDER_LINENR),
+        new MarkdownBlock("Bye", {from: 22, to: 25}, {from: 22, to: 25}, PLACEHOLDER_LINENR)
+    ];
+
+    const mapping = createMapping(blocks);
+    const tree = mapping.getMapping();
+    const codeNode = tree.root.children.find(node => node.type === "code");
+    if (!codeNode) throw new Error("Test setup failed: missing code node");
+
+    // Delete the entire code node (including its tags) using its ProseMirror range.
+    const step = new ReplaceStep(codeNode.pmRange.from, codeNode.pmRange.to, Slice.empty);
+
+    const nodeUpdate = new NodeUpdate(config, serializer);
+    const { newTree, result } = nodeUpdate.nodeUpdate(step, mapping);
+
+    expect(result).toStrictEqual<DocChange>({
+        finalText: "",
+        startInFile: 5,
+        endInFile: 22
+    });
+
+    sanityCheckTree(newTree.root);
+
+    expect(newTree.root.children.length).toBe(2);
+    expect(newTree.root.children[0].type).toBe("markdown");
+    expect(newTree.root.children[1].type).toBe("markdown");
+
+    // The trailing markdown shifts left by the deleted tagRange length (17).
+    expect(newTree.root.children[1].contentRange).toStrictEqual({from: 5, to: 8});
+    expect(newTree.root.children[1].tagRange).toStrictEqual({from: 5, to: 8});
+    expect(newTree.root.contentRange.to).toBe(8);
+});
+
 test("Delete markdown cell", () => {
     const mapping = createMapping([
         new MarkdownBlock("# Hello", {from: 0, to: 7}, {from: 0, to: 7}, PLACEHOLDER_LINENR),
