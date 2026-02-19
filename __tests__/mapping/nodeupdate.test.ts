@@ -297,6 +297,40 @@ test("Delete a code block between markdown blocks", () => {
     expect(newTree.root.contentRange.to).toBe(8);
 });
 
+test("Delete adjacent code and markdown blocks", () => {
+    // Assumption: Block ranges are contiguous in the document.
+    // Assumption: Deleting a prosemirror range that fully covers nodes removes those nodes entirely.
+    const blocks: WaterproofDocument = [
+        new MarkdownBlock("A", {from: 0, to: 1}, {from: 0, to: 1}, PLACEHOLDER_LINENR),
+        new CodeBlock("X", {from: 1, to: 13}, {from: 8, to: 9}, PLACEHOLDER_LINENR),
+        new MarkdownBlock("B", {from: 13, to: 14}, {from: 13, to: 14}, PLACEHOLDER_LINENR)
+    ];
+
+    const mapping = createMapping(blocks);
+    const tree = mapping.getMapping();
+    const codeNode = tree.root.children.find(node => node.type === "code");
+    const trailingMarkdown = tree.root.children.find(node => node.type === "markdown" && node.contentRange.from === 13);
+    if (!codeNode || !trailingMarkdown) throw new Error("Test setup failed: missing code or trailing markdown node");
+
+    const step = new ReplaceStep(codeNode.pmRange.from, trailingMarkdown.pmRange.to, Slice.empty);
+
+    const nodeUpdate = new NodeUpdate(config, serializer);
+    const { newTree, result } = nodeUpdate.nodeUpdate(step, mapping);
+
+    expect(result).toStrictEqual<DocChange>({
+        finalText: "",
+        startInFile: codeNode.tagRange.from,
+        endInFile: trailingMarkdown.tagRange.to
+    });
+
+    sanityCheckTree(newTree.root);
+
+    expect(newTree.root.children.length).toBe(1);
+    expect(newTree.root.children[0].type).toBe("markdown");
+    expect(newTree.root.children[0].contentRange).toStrictEqual({from: 0, to: 1});
+    expect(newTree.root.contentRange.to).toBe(1);
+});
+
 test("Delete markdown cell", () => {
     const mapping = createMapping([
         new MarkdownBlock("# Hello", {from: 0, to: 7}, {from: 0, to: 7}, PLACEHOLDER_LINENR),
