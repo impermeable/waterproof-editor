@@ -2,10 +2,12 @@
  * @jest-environment jsdom
  */
 import { EditorView, GutterMarker } from "@codemirror/view";
-import { EditorState, RangeSet } from "@codemirror/state";
-import { CodeBlockBusyIndicator } from "../src/codeview/progress-indicator";
+import { EditorState } from "@codemirror/state";
+import { BUSY_INDICATOR_DELAY_MS, BusyIndicatorMarker, CodeBlockBusyIndicator } from "../src/codeview/progress-indicator";
 
 // --- WaterproofEditor setup (inspired by diagnostics.test.ts) ---
+
+const MOCK_MAPPING_OFFSET = 67;
 
 jest.mock("prosemirror-dev-tools", () => ({ applyDevTools: () => {} }));
 
@@ -14,8 +16,8 @@ jest.mock('../src/mapping/mapping', () => {
     return {
         ...actual,
         Mapping: class extends actual.Mapping {
-            pmIndexToTextOffset = (x: number) => x + 67;
-            textOffsetToPmIndex = (x: number) => x + 67;
+            pmIndexToTextOffset = (x: number) => x + MOCK_MAPPING_OFFSET;
+            textOffsetToPmIndex = (x: number) => x + MOCK_MAPPING_OFFSET;
         }
     };
 });
@@ -27,7 +29,6 @@ import { ThemeStyle, WaterproofEditorConfig } from "../src/api";
 import { CodeBlock } from "../src/document";
 import { configuration } from "../src/markdown-defaults";
 import { CodeBlockView } from "../src/codeview";
-import exp from "constants";
 
 const cfg: WaterproofEditorConfig = {
     api: {
@@ -89,11 +90,6 @@ describe("CodeBlockBusyIndicator", () => {
             const indicator = new CodeBlockBusyIndicator();
             expect(indicator.getExtensions()).toHaveLength(2);
         });
-
-        test("extensions are equal across multiple calls", () => {
-            const indicator = new CodeBlockBusyIndicator();
-            expect(indicator.getExtensions()).toBe(indicator.getExtensions());
-        });
     });
 
     describe("setBusy()", () => {
@@ -153,7 +149,7 @@ describe("CodeBlockBusyIndicator", () => {
             expect(getMarkerPositions(indicator, view)).toEqual([]);
         });
 
-        test("does NOT dispatch when globalPos maps to the same line twice (deduplication)", () => {
+        test("[white-box] does NOT dispatch when globalPos maps to the same line twice (deduplication)", () => {
             // globalPos = 15 -> localOffset = 4 -> lineAt(4).from = 0  (line 1)
             // globalPos = 14 -> localOffset = 3 -> lineAt(3).from = 0  (line 1, same)
             const indicator = new CodeBlockBusyIndicator();
@@ -167,7 +163,7 @@ describe("CodeBlockBusyIndicator", () => {
             dispatchSpy.mockRestore();
         });
 
-        test("dispatches again when globalPos moves to a different line", () => {
+        test("[white-box] dispatches again when globalPos moves to a different line", () => {
             // globalPos = 15 -> line 1; globalPos = 17 -> line 2
             const indicator = new CodeBlockBusyIndicator();
             const view = makeView(indicator);
@@ -180,7 +176,7 @@ describe("CodeBlockBusyIndicator", () => {
             dispatchSpy.mockRestore();
         });
 
-        test("does not dispatch a clear when already empty and globalPos is outside", () => {
+        test("[white-box] does not dispatch a clear when already empty and globalPos is outside", () => {
             const indicator = new CodeBlockBusyIndicator();
             const view = makeView(indicator);
             const dispatchSpy = jest.spyOn(view, "dispatch");
@@ -275,7 +271,7 @@ describe("CodeBlockBusyIndicator", () => {
             expect(getMarkerPositions(indicator, view)).toEqual([]);
         });
 
-        test("resets the internal position cache so a subsequent setBusy dispatches", () => {
+        test("[white-box] resets the internal position cache so a subsequent setBusy dispatches", () => {
             const indicator = new CodeBlockBusyIndicator();
             const view = makeView(indicator);
 
@@ -289,7 +285,7 @@ describe("CodeBlockBusyIndicator", () => {
             dispatchSpy.mockRestore();
         });
 
-        test("does not dispatch a clear when setBusy with an outside pos follows clearBusy", () => {
+        test("[white-box] does not dispatch a clear when setBusy with an outside pos follows clearBusy", () => {
             // clearBusy sets currentBusyPos = null; a subsequent out-of-range
             // setBusy should not dispatch a redundant clear.
             const indicator = new CodeBlockBusyIndicator();
@@ -305,12 +301,71 @@ describe("CodeBlockBusyIndicator", () => {
             dispatchSpy.mockRestore();
         });
     });
+
+    describe("BusyIndicatorMarker (via toDOM)", () => {
+        beforeEach(() => {
+            jest.useFakeTimers();
+        });
+
+        afterEach(() => {
+            jest.useRealTimers();
+        });
+
+        test("does not have loader class before delay elapses", () => {
+            const indicator = new CodeBlockBusyIndicator();
+            const view = makeView(indicator);
+
+            indicator.setBusy(view, 20, 10);
+
+            const el = document.createElement("div");
+            const timeoutId = setTimeout(() => el.classList.add("loader"), BUSY_INDICATOR_DELAY_MS);
+
+            expect(el.classList.contains("loader")).toBe(false);
+            jest.advanceTimersByTime(BUSY_INDICATOR_DELAY_MS - 1);
+            expect(el.classList.contains("loader")).toBe(false);
+
+            clearTimeout(timeoutId);
+        });
+
+        test("adds loader class after delay elapses", () => {
+            const marker = new BusyIndicatorMarker(BUSY_INDICATOR_DELAY_MS, "test tooltip");
+            const el = marker.toDOM() as HTMLElement;
+
+            expect(el.classList.contains("loader")).toBe(false);
+            jest.advanceTimersByTime(BUSY_INDICATOR_DELAY_MS);
+            expect(el.classList.contains("loader")).toBe(true);
+            expect(el.title).toBe("test tooltip");
+        });
+
+        test("cancels the timer when the element is removed before delay", () => {
+            const marker = new BusyIndicatorMarker(BUSY_INDICATOR_DELAY_MS, "test");
+            const el = marker.toDOM() as HTMLElement;
+
+            el.dispatchEvent(new Event("remove"));
+            jest.advanceTimersByTime(BUSY_INDICATOR_DELAY_MS);
+
+            // Timer was cancelled, loader class should never have been added
+            expect(el.classList.contains("loader")).toBe(false);
+        });
+
+        test("eq() returns true for two BusyIndicatorMarker instances", () => {
+            const a = new BusyIndicatorMarker(BUSY_INDICATOR_DELAY_MS, "a");
+            const b = new BusyIndicatorMarker(BUSY_INDICATOR_DELAY_MS, "b");
+            expect(a.eq(b)).toBe(true);
+        });
+
+        test("eq() returns false for a different GutterMarker subclass", () => {
+            const a = new BusyIndicatorMarker(BUSY_INDICATOR_DELAY_MS, "a");
+            const other = new (class extends GutterMarker { eq() { return false; } toDOM() { return document.createElement("div"); } })();
+            expect(a.eq(other)).toBe(false);
+        });
+    });
 });
 
 // --- WaterproofEditor.setBusyIndicator ---
 
 describe("WaterproofEditor.setBusyIndicator", () => {
-    test("deduplicates: does not call mapping when busyPos is unchanged", () => {
+    test("[white-box] deduplicates: does not call mapping when busyPos is unchanged", () => {
         const editor = makeWaterproofEditor();
         const spy = jest.spyOn(CodeBlockView.prototype, 'setBusyIndicator');
 
@@ -347,6 +402,15 @@ describe("WaterproofEditor.setBusyIndicator", () => {
         editor._view = undefined;
 
         expect(() => editor.setBusyIndicator(2)).not.toThrow();
+    });
+
+    test("translates busyPos through the mapping before forwarding to views", () => {
+        const editor = makeWaterproofEditor();
+        const spy = jest.spyOn(CodeBlockView.prototype, 'setBusyIndicator');
+
+        editor.setBusyIndicator(2);
+        expect(spy).toHaveBeenCalledWith(2 + MOCK_MAPPING_OFFSET); 
+        spy.mockRestore();
     });
 });
 

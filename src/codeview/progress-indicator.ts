@@ -5,8 +5,9 @@ import { StateField, StateEffect, RangeSet } from "@codemirror/state";
  * Renders an animated "busy" spinner (`.loader` CSS class) in the gutter.
  * The {@link delay} prevents flickering for fast operations that complete
  * before the delay elapses.
+ * Is exported for testing purposes.
  */
-class BusyIndicatorMarker extends GutterMarker {
+export class BusyIndicatorMarker extends GutterMarker {
   /**
    * @param delay Milliseconds to wait before making the spinner visible.
    *   This prevents flickering for sentences that finish checking quickly.
@@ -51,6 +52,10 @@ class BusyIndicatorMarker extends GutterMarker {
 }
 
 // --- Per-block indicator ---
+
+// delay before showing the busy indicator, in milliseconds.
+// This prevents flickering for fast operations.
+export const BUSY_INDICATOR_DELAY_MS = 500;
 
 /**
  * Owns the busy-indicator gutter for a single {@link CodeBlockView}.
@@ -97,16 +102,9 @@ export class CodeBlockBusyIndicator {
    */
   private currentBusyPos: number | null = null;
 
-  /**
-   * Cached extension array returned by {@link getExtensions}.
-   * Initialised at the end of the constructor so the same array instance
-   * is returned on every call for testing.
-   */
-  private _extensions: [StateField<RangeSet<GutterMarker>>, ReturnType<typeof gutter>];
-
   constructor() {
     const busyMarker = new BusyIndicatorMarker(
-      500,
+      BUSY_INDICATOR_DELAY_MS,
       "Waterproof is busy checking the statement(s) on this line...",
     );
 
@@ -116,7 +114,8 @@ export class CodeBlockBusyIndicator {
         set = set.map(tr.changes); // keep marker in sync with edits
         for (const e of tr.effects) {
           if (e.is(this.setBusyEffect))
-            set = RangeSet.of([busyMarker.range(e.value)]); // replace any existing marker with a new one at the specified position
+            set = RangeSet.of([busyMarker.range(e.value)]);
+          // replace any existing marker with a new one at the specified position
           else if (e.is(this.clearBusyEffect)) set = RangeSet.empty; // clear all markers
         }
         return set;
@@ -129,14 +128,12 @@ export class CodeBlockBusyIndicator {
       side: "after", // Display after the editor content (right side)
 
       // The code-mirror docs recommend using initialSpacer, however we are setting the intial space in the CSS,
-      // because this does not take into account the box-shadow. 
-      // This should be fine since we know the width of the gutter and the loader, 
+      // because this does not take into account the box-shadow.
+      // This should be fine since we know the width of the gutter and the loader,
       // so we can set the CSS variable to the correct value.
-      
+
       // initialSpacer: () => busyMarker
     });
-
-    this._extensions = [this.busyState, this.busyGutter];
   }
 
   /**
@@ -169,8 +166,11 @@ export class CodeBlockBusyIndicator {
    *   returned by the ProseMirror `getPos()` callback. undefined means the
    *   node is no longer in the document.
    */
-  public setBusy(view: EditorView, globalPos: number, blockStartPos: number | undefined): void {
-
+  public setBusy(
+    view: EditorView,
+    globalPos: number,
+    blockStartPos: number | undefined,
+  ): void {
     if (blockStartPos === undefined) return;
     const maxPos = view.state.doc.length + blockStartPos + 1;
 
@@ -185,7 +185,7 @@ export class CodeBlockBusyIndicator {
     const localPos = view.state.doc.lineAt(clamped).from;
 
     // Skip if the busy indicator is already at the correct line.
-    // Perhaps redundant because there is a similar check in the editor's setBusyIndicator, 
+    // Perhaps redundant because there is a similar check in the editor's setBusyIndicator,
     // but this prevents unnecessary dispatches and state updates when the offset has moved within the same line.
     if (this.currentBusyPos !== localPos) {
       view.dispatch({
@@ -195,7 +195,7 @@ export class CodeBlockBusyIndicator {
     }
   }
 
-  /** 
+  /**
    * Remove the busy indicator unconditionally.
    *
    * @param view The CodeMirror `EditorView` for this block.
