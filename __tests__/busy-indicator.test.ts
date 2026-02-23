@@ -3,7 +3,7 @@
  */
 import { EditorView, GutterMarker } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
-import { BUSY_INDICATOR_DELAY_MS, BusyIndicatorMarker, CodeBlockBusyIndicator } from "../src/codeview/busy-indicator";
+import { BUSY_INDICATOR_CLASS, BUSY_INDICATOR_DELAY_MS, BusyIndicatorMarker, CodeBlockBusyIndicator } from "../src/codeview/busy-indicator";
 
 // --- WaterproofEditor setup (inspired by diagnostics.test.ts) ---
 
@@ -311,29 +311,22 @@ describe("CodeBlockBusyIndicator", () => {
             jest.useRealTimers();
         });
 
-        test("does not have loader class before delay elapses", () => {
-            const indicator = new CodeBlockBusyIndicator();
-            const view = makeView(indicator);
-
-            indicator.setBusy(view, 20, 10);
-
-            const el = document.createElement("div");
-            const timeoutId = setTimeout(() => el.classList.add("loader"), BUSY_INDICATOR_DELAY_MS);
-
-            expect(el.classList.contains("loader")).toBe(false);
+        test("does not have busy-indicator class before delay elapses", () => {
+            const marker = new BusyIndicatorMarker(BUSY_INDICATOR_DELAY_MS, "test tooltip");
+            const el = marker.toDOM() as HTMLElement;
+                
+            expect(el.classList.contains(BUSY_INDICATOR_CLASS)).toBe(false);
             jest.advanceTimersByTime(BUSY_INDICATOR_DELAY_MS - 1);
-            expect(el.classList.contains("loader")).toBe(false);
-
-            clearTimeout(timeoutId);
+            expect(el.classList.contains(BUSY_INDICATOR_CLASS)).toBe(false);
         });
 
-        test("adds loader class after delay elapses", () => {
+        test("adds busy-indicator class after delay elapses", () => {
             const marker = new BusyIndicatorMarker(BUSY_INDICATOR_DELAY_MS, "test tooltip");
             const el = marker.toDOM() as HTMLElement;
 
-            expect(el.classList.contains("loader")).toBe(false);
+            expect(el.classList.contains(BUSY_INDICATOR_CLASS)).toBe(false);
             jest.advanceTimersByTime(BUSY_INDICATOR_DELAY_MS);
-            expect(el.classList.contains("loader")).toBe(true);
+            expect(el.classList.contains(BUSY_INDICATOR_CLASS)).toBe(true);
             expect(el.title).toBe("test tooltip");
         });
 
@@ -344,8 +337,8 @@ describe("CodeBlockBusyIndicator", () => {
             el.dispatchEvent(new Event("remove"));
             jest.advanceTimersByTime(BUSY_INDICATOR_DELAY_MS);
 
-            // Timer was cancelled, loader class should never have been added
-            expect(el.classList.contains("loader")).toBe(false);
+            // Timer was cancelled, busy-indicator class should never have been added
+            expect(el.classList.contains(BUSY_INDICATOR_CLASS)).toBe(false);
         });
 
         test("eq() returns true for two BusyIndicatorMarker instances", () => {

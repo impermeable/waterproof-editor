@@ -43,4 +43,4 @@ import "./autocomplete.css";
 import "./magic.css";
 
 // For the busy indicator in the gutter:
-import "./loader.css";
+import "./busy-indicator.css";

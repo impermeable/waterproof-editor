@@ -2,7 +2,7 @@ import { EditorView, gutter, GutterMarker } from "@codemirror/view";
 import { StateField, StateEffect, RangeSet } from "@codemirror/state";
 
 /**
- * Renders an animated "busy" spinner (`.loader` CSS class) in the gutter.
+ * Renders an animated "busy" spinner (`.busy-indicator` CSS class) in the gutter.
  * The {@link delay} prevents flickering for fast operations that complete
  * before the delay elapses.
  * Is exported for testing purposes.
@@ -32,17 +32,17 @@ export class BusyIndicatorMarker extends GutterMarker {
 
   /**
    * Creates the DOM element that CodeMirror inserts into the gutter cell.
-   * The element starts invisible; a timer adds the `.loader` class after
+   * The element starts invisible; a timer adds the `.busy-indicator` class after
    * {@link delay} ms. If CodeMirror removes the element before the timer
    * fires (e.g. the sentence finished checking), the timer is cancelled so
-   * the loader never flickers into view.
+   * the busy-indicator never flickers into view.
    *
    * @returns A `<div>` that animates into a busy spinner after the delay.
    */
   toDOM(): Node {
     const el = document.createElement("div");
     const timeoutId = setTimeout(() => {
-      el.classList.add("loader");
+      el.classList.add("busy-indicator");
       el.title = this.title;
     }, this.delay);
     // Cancel the timer if CodeMirror removes the element before it fires.
@@ -56,6 +56,9 @@ export class BusyIndicatorMarker extends GutterMarker {
 // delay before showing the busy indicator, in milliseconds.
 // This prevents flickering for fast operations.
 export const BUSY_INDICATOR_DELAY_MS = 500;
+
+// CSS class added to the gutter cell when the busy indicator is shown.
+export const BUSY_INDICATOR_CLASS = "busy-indicator";
 
 /**
  * Owns the busy-indicator gutter for a single {@link CodeBlockView}.
@@ -129,7 +132,7 @@ export class CodeBlockBusyIndicator {
 
       // The code-mirror docs recommend using initialSpacer, however we are setting the intial space in the CSS,
       // because this does not take into account the box-shadow.
-      // This should be fine since we know the width of the gutter and the loader,
+      // This should be fine since we know the width of the gutter and the busy-indicator,
       // so we can set the CSS variable to the correct value.
 
       // initialSpacer: () => busyMarker
