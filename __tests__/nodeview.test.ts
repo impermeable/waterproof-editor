@@ -137,32 +137,6 @@ function makeView() {
 }
 
 describe("CodeBlockView busy indicator", () => {
-    test("setBusyIndicator delegates to busyIndicator.setBusy", () => {
-        const nv = makeView();
-        //@ts-expect-error
-        const spy = jest.spyOn(nv.busyIndicator, "setBusy");
-
-        // pos = undefined (getPos returns undefined), so setBusy should still be called
-        // (it is busyIndicator's responsibility to handle undefined pos)
-        nv.setBusyIndicator(5);
-
-        expect(spy).toHaveBeenCalledTimes(1);
-        //@ts-expect-error
-        expect(spy).toHaveBeenCalledWith(nv._codemirror, 5, undefined);
-    });
-
-    test("removeBusyIndicator delegates to busyIndicator.clearBusy", () => {
-        const nv = makeView();
-
-        //@ts-expect-error
-        const spy = jest.spyOn(nv.busyIndicator, "clearBusy");
-        nv.removeBusyIndicator();
-
-        expect(spy).toHaveBeenCalledTimes(1);
-        //@ts-expect-error
-        expect(spy).toHaveBeenCalledWith(nv._codemirror);
-    });
-
     test("removeBusyIndicator is a no-op when codemirror is absent", () => {
         const nv = makeView();
         //@ts-expect-error

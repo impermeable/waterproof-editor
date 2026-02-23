@@ -3,7 +3,7 @@
  */
 import { EditorView, GutterMarker } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
-import { BUSY_INDICATOR_DELAY_MS, BusyIndicatorMarker, CodeBlockBusyIndicator } from "../src/codeview/progress-indicator";
+import { BUSY_INDICATOR_DELAY_MS, BusyIndicatorMarker, CodeBlockBusyIndicator } from "../src/codeview/busy-indicator";
 
 // --- WaterproofEditor setup (inspired by diagnostics.test.ts) ---
 

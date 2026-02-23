@@ -17,7 +17,7 @@ import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { ThemeStyle } from "../api";
 import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
-import { CodeBlockBusyIndicator } from "./progress-indicator";
+import { CodeBlockBusyIndicator } from "./busy-indicator";
 
 
 /**
