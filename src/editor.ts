@@ -67,7 +67,7 @@ export class WaterproofEditor {
 
 	private readonly _serializer: DocumentSerializer;
 
-	private oldOffsetChecked: number = -1;
+	private oldOffsetChecked: number | null = null;
 
 	/**
 	 * Create a new WaterproofEditor instance.
@@ -631,7 +631,7 @@ export class WaterproofEditor {
 	public removeBusyIndicators() {
 		if (!this._view) return;
 		CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews.forEach(cv => cv.removeBusyIndicator());
-		this.oldOffsetChecked = -1;
+		this.oldOffsetChecked = null;
 	}
 
 
