@@ -177,3 +177,16 @@ export interface OffsetDiagnostic {
 export enum ThemeStyle {
     Light, Dark
 }
+
+export enum SemanticTokenType { 
+    Keyword = "keyword",
+    Variable = "variable",
+    Property = "property",
+    Function = "function" 
+}
+
+export interface OffsetSemanticToken {
+    startOffset: number;
+    endOffset: number;
+    type: SemanticTokenType;
+}
