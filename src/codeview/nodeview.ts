@@ -1,7 +1,7 @@
 import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, acceptCompletion, completionStatus, hasNextSnippetField, nextSnippetField, snippetKeymap, prevSnippetField, clearSnippet, moveCompletionSelection, closeCompletion } from "@codemirror/autocomplete";
 import { coq, coqSyntaxHighlighting } from "./lang-pack"
-import { verbose, verboseSyntaxHighlighting} from "./lang-pack-verbose"
+import { verbose } from "./lang-pack-verbose"
 import { Compartment, EditorState, Extension } from "@codemirror/state"
 import {
 	EditorView as CodeMirror, Command, keymap as cmKeymap,
@@ -312,12 +312,20 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	 */
 	public updateThemeFromVSCode(theme: ThemeStyle, lang: string): void {
 		this.updateLanguage(lang);
-		const lanSyntaxHighlighting = lang === "lean4" ? verboseSyntaxHighlighting : coqSyntaxHighlighting;
+		// Disables lean grammar
+		/*const lanSyntaxHighlighting = lang === "lean4" ? verboseSyntaxHighlighting : coqSyntaxHighlighting;
 		this._codemirror?.dispatch({
 			effects: this._themeCompartment.reconfigure(
 				lanSyntaxHighlighting(theme)
 			)
-		});
+		}); */
+		if (lang !== "lean4") {
+			this._codemirror?.dispatch({
+				effects: this._themeCompartment.reconfigure(
+					coqSyntaxHighlighting(theme)
+				)
+			})
+		}
 	}
 
 	private updateLanguage(lang: string){
