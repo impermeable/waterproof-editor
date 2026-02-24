@@ -14,9 +14,10 @@ import { renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, lintGutter } from "@codemirror/lint";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
-import { ThemeStyle } from "../api";
+import { OffsetSemanticToken, ThemeStyle } from "../api";
 import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
+import { clearSemanticTokens, semanticHighlighting, semanticTokenTheme, setSemanticTokens } from "./semantic-highlighting";
 
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
@@ -32,7 +33,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _readOnlyCompartment: Compartment;
 	private _themeCompartment: Compartment;
 	private _languageCompartment: Compartment;
-	private _diags : Diagnostic[];
+	private _semanticTokenCompartment: Compartment;
 	private lastUsedDiagnosticsVersion: number = 0;
 
 	constructor(
@@ -55,7 +56,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._readOnlyCompartment = new Compartment;
 		this._themeCompartment = new Compartment;
 		this._languageCompartment = new Compartment;
-		this._diags = [];
+		this._semanticTokenCompartment = new Compartment;
 
 		const tacticCompletionSource: CompletionSource = function(context: CompletionContext) {
 			const completionResult: CompletionResult = {
@@ -228,6 +229,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				customTheme,
 				syntaxHighlighting(defaultHighlightStyle),
 				this._languageCompartment.of(coq()),
+				this._semanticTokenCompartment.of([]), 
                 highlightActiveLine(),
 				CodeMirror.updateListener.of(update => this.forwardUpdate(update)),
 				placeholder(placeholderContent())
@@ -319,12 +321,19 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				lanSyntaxHighlighting(theme)
 			)
 		}); */
-		if (lang !== "lean4") {
+		if (lang === "lean4") {
 			this._codemirror?.dispatch({
-				effects: this._themeCompartment.reconfigure(
-					coqSyntaxHighlighting(theme)
+				effects: this._semanticTokenCompartment.reconfigure(
+					[...semanticHighlighting(), semanticTokenTheme(theme)]
 				)
-			})
+			});	
+		} else {
+			this._codemirror?.dispatch({
+				effects: [
+					this._themeCompartment.reconfigure( coqSyntaxHighlighting(theme) ),
+					this._semanticTokenCompartment.reconfigure([]) 
+				]
+			});
 		}
 	}
 
@@ -335,6 +344,18 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				lan()
 			)
 		});
+	}
+
+	updateSemanticTokens(tokens: OffsetSemanticToken[]) {
+		this._codemirror?.dispatch({ effects: setSemanticTokens.of(tokens) });
+	}
+
+	clearSemanticTokens() {
+		this._codemirror?.dispatch({ effects: clearSemanticTokens.of() });
+	}
+
+	get documentLength(): number {
+		return this._codemirror?.state.doc.length ?? 0;
 	}
 
 	/**
