@@ -15,6 +15,7 @@ export interface BlockRange {
     to: number;
 }
 
+// TODO: Here we still use innerRange and range
 export interface Block {
     type: BLOCK_NAME;
     stringContent: string;

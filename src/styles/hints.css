@@ -1,9 +1,7 @@
 /* Default hint style */
 .hint {
     display: none;
-    outline: var(--wp-hint-outline);
-    border: var(--wp-hint-border);
-    padding: 0.2em;
+    outline: 2px dashed var(--wp-hintOutline);
 }
 
 /* Hint style that is applied when the hint should be shown */

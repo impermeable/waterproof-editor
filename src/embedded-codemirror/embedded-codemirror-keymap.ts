@@ -2,7 +2,7 @@ import { cursorGroupLeft, selectGroupLeft, cursorLineBoundaryLeft, selectLineBou
 import { KeyBinding } from "@codemirror/view";
 import { indentUnit } from "@codemirror/language";
 import { EditorState, StateCommand, SelectionRange, ChangeSpec, Line, EditorSelection } from "@codemirror/state"
-import { acceptCompletion, completionKeymap, completionStatus } from "@codemirror/autocomplete";
+import { acceptCompletion, completionKeymap, completionStatus, currentCompletions } from "@codemirror/autocomplete";
 
 function changeFirstLine(state: EditorState, f: (line: Line, changes: ChangeSpec[], range: SelectionRange) => void) {
     return state.changeByRange(range => {
@@ -72,4 +72,21 @@ export const keybindings: KeyBinding[] = [
             return indentMoreCustom(target);
         }
     },
+    {
+        key: "Space",
+        run: (target) => {
+            const status = completionStatus(target.state);
+            const anyTactic = currentCompletions(target.state).some(c => c.detail === "tactic");
+
+            // Don't complete on space if there is no active completion, 
+            // or if the active completion is a tactic ( tactics can contain spaces :D )
+            if (status === null || anyTactic) { return false; }
+
+            // accept the completion
+            acceptCompletion(target);
+
+            // and fall back to normal space behaviour
+            return false;
+        }
+    }
 ]

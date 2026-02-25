@@ -3,7 +3,7 @@ import { CodeBlock, HintBlock, InputAreaBlock, MarkdownBlock, NewlineBlock } fro
 import { configuration } from "../../src/markdown-defaults";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 
-const config = configuration("coq");
+const config = configuration("lang");
 const serializer = new DefaultTagSerializer(config);
 
 function createTestMapping(blocks: WaterproofDocument) {
@@ -12,8 +12,10 @@ function createTestMapping(blocks: WaterproofDocument) {
     return tree;
 }
 
+const PLACEHOLDER_LINENR = 0;
+
 test("testMapping markdown only", () => {
-    const blocks = [new MarkdownBlock("Hello", {from: 0, to: 5}, {from: 0, to: 5})];
+    const blocks = [new MarkdownBlock("Hello", {from: 0, to: 5}, {from: 0, to: 5}, 0)];
     const nodes = createTestMapping(blocks);
 
     expect(nodes.root.type).toBe("");
@@ -27,33 +29,35 @@ test("testMapping markdown only", () => {
     expect(markdownNode.prosemirrorStart).toBe(1);
     expect(markdownNode.prosemirrorEnd).toBe(6);
     expect(markdownNode.pmRange).toStrictEqual<Range>({from: 0, to: 7});
+    expect(markdownNode.lineStart).toBe(0);
 });
 
-test("testMapping coqblock with code", () => {
-    const blocks = [new CodeBlock("Lemma test", {from: 0, to: 21}, {from: 7, to: 17})];
+test("testMapping code", () => {
+    const blocks = [new CodeBlock("Lemma test", {from: 0, to: 21}, {from: 7, to: 17}, 0)];
     const nodes = createTestMapping(blocks).root.children;
     
     expect(nodes.length).toBe(1);
     
-    // Parent coqblock
-    const coqblockNode = nodes[0];
-    expect(coqblockNode.type).toBe("code");
-    expect(coqblockNode.contentRange).toStrictEqual<Range>({from: 7, to: 17});
-    expect(coqblockNode.tagRange).toStrictEqual<Range>({from: 0, to: 21});
-    expect(coqblockNode.prosemirrorStart).toBe(1);
-    expect(coqblockNode.prosemirrorEnd).toBe(11);
-    expect(coqblockNode.pmRange).toStrictEqual<Range>({from: 0, to: 12});
+    const codeNode = nodes[0];
+    expect(codeNode.type).toBe("code");
+    expect(codeNode.contentRange).toStrictEqual<Range>({from: 7, to: 17});
+    expect(codeNode.tagRange).toStrictEqual<Range>({from: 0, to: 21});
+    expect(codeNode.prosemirrorStart).toBe(1);
+    expect(codeNode.prosemirrorEnd).toBe(11);
+    expect(codeNode.pmRange).toStrictEqual<Range>({from: 0, to: 12});
+    expect(codeNode.lineStart).toBe(0);
 });
 
-test("Input-area with nested coqblock", () => {
-    // <input-area>\n```coq\nTest\n```\n</input-area>Hello
+// TODO: Test for line nrs
+test("Input-area with nested code", () => {
+    // <input-area>\n```lan\nTest\n```\n</input-area>Hello
     const blocks = [
-        new InputAreaBlock("```coq\nTest\n```", {from: 0, to: 42}, {from: 12, to: 29}, [
-            new NewlineBlock({from: 12, to: 13}, {from: 12, to: 13}),
-            new CodeBlock("Test", {from: 13, to: 28}, {from: 20, to: 24}),
-            new NewlineBlock({from: 28, to: 29}, {from: 28, to: 29})
+        new InputAreaBlock("```lan\nTest\n```", {from: 0, to: 42}, {from: 12, to: 29}, PLACEHOLDER_LINENR, [
+            new NewlineBlock({from: 12, to: 13}, {from: 12, to: 13}, PLACEHOLDER_LINENR),
+            new CodeBlock("Test", {from: 13, to: 28}, {from: 20, to: 24}, PLACEHOLDER_LINENR),
+            new NewlineBlock({from: 28, to: 29}, {from: 28, to: 29}, PLACEHOLDER_LINENR)
         ]),
-        new MarkdownBlock("Hello", {from: 42, to: 47}, {from: 42, to: 47})
+        new MarkdownBlock("Hello", {from: 42, to: 47}, {from: 42, to: 47}, PLACEHOLDER_LINENR)
     ];
     const nodes = createTestMapping(blocks).root.children;
 
@@ -101,13 +105,14 @@ test("Input-area with nested coqblock", () => {
     expect(third.pmRange).toStrictEqual<Range>({from: 8, to: 9});
 });
 
-test("Hint block with coqblock and markdown inside", () => {
-    // <hint title=\"Import libraries\">\n```coq\nRequire Import Rbase.\n```\n</hint>
+// TODO: Test for line nrs
+test("Hint block with code and markdown inside", () => {
+    // <hint title=\"Import libraries\">\n```lan\nRequire Import Rbase.\n```\n</hint>
     const blocks = [
-        new HintBlock("\n```coq\nRequire Import Rbase.\n```\n", "Import libraries", {from: 0, to: 72}, {from: 31, to: 65}, [
-            new NewlineBlock({from: 31, to: 32}, {from: 31, to: 32}),
-            new CodeBlock("Require Import Rbase.", {from: 32, to: 64}, {from: 39, to: 60}),
-            new NewlineBlock({from: 60, to: 61}, {from: 60, to: 61})
+        new HintBlock("\n```lan\nRequire Import Rbase.\n```\n", "Import libraries", {from: 0, to: 72}, {from: 31, to: 65}, PLACEHOLDER_LINENR, [
+            new NewlineBlock({from: 31, to: 32}, {from: 31, to: 32}, PLACEHOLDER_LINENR),
+            new CodeBlock("Require Import Rbase.", {from: 32, to: 64}, {from: 39, to: 60}, PLACEHOLDER_LINENR),
+            new NewlineBlock({from: 60, to: 61}, {from: 60, to: 61}, PLACEHOLDER_LINENR)
         ])
     ];
 
@@ -124,7 +129,7 @@ test("Hint block with coqblock and markdown inside", () => {
     expect(hintNode.prosemirrorEnd).toBe(26);
     expect(hintNode.pmRange).toStrictEqual<Range>({from: 0, to: 27});
     
-    // Should be 3 children in the hint: newline, coqblock, newline
+    // Should be 3 children in the hint: newline, code, newline
     expect(hintNode.children.length).toBe(3);
     const [first, second, third] = hintNode.children;
     
@@ -150,17 +155,18 @@ test("Hint block with coqblock and markdown inside", () => {
     expect(third.pmRange).toStrictEqual<Range>({from: 25, to: 26});
 });
 
-test("Mixed content: markdown, coqblock, input-area, markdown", () => {
-    // ### Example:\n```coq\nLemma\nTest\n```\n<input-area>\n```coq\n(* Your solution here *)\n```\n</input-area>
+// TODO: Test for line nrs
+test("Mixed content: markdown, code, input-area, markdown", () => {
+    // ### Example:\n```lan\nLemma\nTest\n```\n<input-area>\n```lan\n(* Your solution here *)\n```\n</input-area>
     const blocks = [
-        new MarkdownBlock("### Example:", {from: 0, to: 12}, {from: 0, to: 12}),
-        new NewlineBlock({from: 12, to: 13}, {from: 12, to: 13}),
-        new CodeBlock("Lemma\nTest", {from: 13, to: 34}, {from: 20, to: 30}),
-        new NewlineBlock({from: 34, to: 35}, {from: 34, to: 35}),
-        new InputAreaBlock("```coq\n(* Your solution here *)\n```", {from: 35, to: 97}, {from: 47, to: 84}, [
-            new NewlineBlock({from: 47, to: 48}, {from: 47, to: 48}),
-            new CodeBlock("(* Your solution here *)", {from: 48, to: 83}, {from: 55, to: 79}),
-            new NewlineBlock({from: 83, to: 84}, {from: 83, to: 84})
+        new MarkdownBlock("### Example:", {from: 0, to: 12}, {from: 0, to: 12}, PLACEHOLDER_LINENR),
+        new NewlineBlock({from: 12, to: 13}, {from: 12, to: 13}, PLACEHOLDER_LINENR),
+        new CodeBlock("Lemma\nTest", {from: 13, to: 34}, {from: 20, to: 30}, PLACEHOLDER_LINENR),
+        new NewlineBlock({from: 34, to: 35}, {from: 34, to: 35}, PLACEHOLDER_LINENR),
+        new InputAreaBlock("```lan\n(* Your solution here *)\n```", {from: 35, to: 97}, {from: 47, to: 84}, PLACEHOLDER_LINENR, [
+            new NewlineBlock({from: 47, to: 48}, {from: 47, to: 48}, PLACEHOLDER_LINENR),
+            new CodeBlock("(* Your solution here *)", {from: 48, to: 83}, {from: 55, to: 79}, PLACEHOLDER_LINENR),
+            new NewlineBlock({from: 83, to: 84}, {from: 83, to: 84}, PLACEHOLDER_LINENR)
         ])
     ];
     const nodes = createTestMapping(blocks).root.children;
@@ -185,7 +191,7 @@ test("Mixed content: markdown, coqblock, input-area, markdown", () => {
     expect(nl1.prosemirrorEnd).toBe(14);
     expect(nl1.pmRange).toStrictEqual<Range>({from: 14, to: 15});
 
-    // Coqblock node
+    // Code node
     expect(code1.type).toBe("code");
     expect(code1.contentRange).toStrictEqual<Range>({from: 20, to: 30});
     expect(code1.tagRange).toStrictEqual<Range>({from: 13, to: 34});
@@ -235,17 +241,18 @@ test("Mixed content: markdown, coqblock, input-area, markdown", () => {
     expect(ia_nl2.pmRange).toStrictEqual<Range>({from: 56, to: 57});
 });
 
-test("Empty coqblock", () => {
-    // ```coq\n\n```
-    const blocks = [new CodeBlock("", {from: 0, to: 11}, {from: 7, to: 7})];
+test("Empty codeblock", () => {
+    // ```lan\n\n```
+    const blocks = [new CodeBlock("", {from: 0, to: 11}, {from: 7, to: 7}, 0)];
     const nodes = createTestMapping(blocks).root.children;
     expect(nodes.length).toBe(1);
     
-    const coq = nodes[0];
-    expect(coq.type).toBe("code");
-    expect(coq.contentRange).toStrictEqual<Range>({from: 7, to: 7});
-    expect(coq.tagRange).toStrictEqual<Range>({from: 0, to: 11});
-    expect(coq.prosemirrorStart).toBe(1);
-    expect(coq.prosemirrorEnd).toBe(1);
-    expect(coq.pmRange).toStrictEqual<Range>({from: 0, to: 2});
+    const code = nodes[0];
+    expect(code.type).toBe("code");
+    expect(code.contentRange).toStrictEqual<Range>({from: 7, to: 7});
+    expect(code.tagRange).toStrictEqual<Range>({from: 0, to: 11});
+    expect(code.prosemirrorStart).toBe(1);
+    expect(code.prosemirrorEnd).toBe(1);
+    expect(code.pmRange).toStrictEqual<Range>({from: 0, to: 2});
+    expect(code.lineStart).toBe(0);
 });

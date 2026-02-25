@@ -1,3 +1,4 @@
+import { syntaxHighlighting } from "@codemirror/language";
 import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, acceptCompletion, completionStatus, hasNextSnippetField, nextSnippetField, snippetKeymap, prevSnippetField, clearSnippet, moveCompletionSelection, closeCompletion } from "@codemirror/autocomplete";
 import { Compartment, EditorState, Extension } from "@codemirror/state"
 import {
@@ -14,7 +15,6 @@ import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { LanguageConfiguration, ThemeStyle } from "../api";
 import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
-import { syntaxHighlighting } from "@codemirror/language";
 
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
@@ -29,6 +29,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _dynamicCompletions: Completion[] = [];
 	private _readOnlyCompartment: Compartment;
 	private _themeCompartment: Compartment;
+	private _languageCompartment: Compartment;
+	private _diags : Diagnostic[];
 	private lastUsedDiagnosticsVersion: number = 0;
 
 	constructor(
@@ -51,6 +53,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._lineNumberCompartment = new Compartment;
 		this._readOnlyCompartment = new Compartment;
 		this._themeCompartment = new Compartment;
+		this._languageCompartment = new Compartment;
+		this._diags = [];
 
 		const tacticCompletionSource: CompletionSource = function(context: CompletionContext) {
 			const completionResult: CompletionResult = {
@@ -83,7 +87,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			const before = context.matchBefore(/\s*\w+(\s[\s\w]*)?/);
 			// The check line.text === before.text makes sure that there is nothing after the cursor.
 			// This prevents the case that we are in the first hole of the snippet
-			// "By ([hole 1]) we conclude that [hole 2].[hole 3]", we hit "i" and tab (with the intention of moving to the second hole) 
+			// "By ([hole 1]) we conclude that [hole 2].[hole 3]", we hit "i" and tab (with the intention of moving to the second hole)
 			// and this autocompletes to "It holds that"
 			if (before !== null && line.text === before.text) {
 				return {
@@ -92,7 +96,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 					validFor: /[^.]*/
 				}
 			}
-		
+
 			// Not in a valid completion context, return null
 			return null;
   		}
@@ -107,7 +111,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				from: before ? before.from : context.pos,
 				options: symbols,
 				validFor: /\\[^ ]*/
-			};	
+			};
 		}
 
 		// Shadow this._outerView for use in the next function.
@@ -155,10 +159,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 					tooltipFilter: inInputArea ? (() => { return []; }) : undefined, // Don't show tooltips inside of input-areas
 					delay: 500,
 				}),
-				...optional, 
+				...optional,
 				this._readOnlyCompartment.of(EditorState.readOnly.of(!this._outerView.editable)),
 				this._lineNumberCompartment.of(this._lineNumbersExtension),
-				// this._themeCompartment.of(waterproofSyntaxHighlighting(initialThemeStyle)),
 				this._themeCompartment.of(
 					(() => {
 						if (languageConfig !== undefined) {
@@ -229,7 +232,6 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 					}
 				]),
 				customTheme,
-				// syntaxHighlighting(defaultHighlightStyle),
 				languageConfig?.languageSupport ?? [],
                 highlightActiveLine(),
 				CodeMirror.updateListener.of(update => this.forwardUpdate(update)),
@@ -287,7 +289,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		// We check whether the parent node is an input area.
 		const parentNodeType = this._outerView.state.doc.resolve(pos).parent.type;
 		if (parentNodeType !== WaterproofSchema.nodes.input) return false;
-		return true; 
+		return true;
 	}
 
 	public handleSnippet(template: string, posFrom: number, posTo: number, completion? : Completion | undefined) {
@@ -400,7 +402,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	 */
 	public preprocessDiagnostic(from: number, to: number, message: string, severity: number): Diagnostic {
 		const severityString = severityToString(severity);
-		
+
 		// By default, there is the copy action
 		let actions = [{
 			name: "📋",
@@ -472,12 +474,12 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private showCopyNotification(from:number) {
 		//coordinates of the the line with the diagnostic
 		const coords = this._codemirror?.coordsAtPos(from);
-	
+
 		if (!coords) {
 			console.warn("Could not determine coordinates for diagnostic line.");
 			return;
 		}
-	
+
 		// Create the notification element
 		const notification = document.createElement("div");
 		notification.textContent = `Copied!`;
@@ -485,7 +487,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		notification.style.left = `${coords.left}px`; // Align with the left edge of the line
 		notification.classList.add("copy-notification");
 		document.body.appendChild(notification);
-	
+
 		// Fade out after 1 second
 		setTimeout(() => {
 			notification.style.opacity = "0";

@@ -323,7 +323,7 @@ export class WaterproofEditor {
 	 * Update the themestyle used inside of the code cells (switch between dark and light)
 	 * @param theme Either `ThemeStyle.Light` or `ThemeStyle.Dark` 
 	 */
-	public updateNodeViewThemes(theme: ThemeStyle) {
+	public updateNodeViewThemes(theme: ThemeStyle, lang: string) {
 		const view = this._view!;
 		const state = view.state;
 
@@ -505,6 +505,15 @@ export class WaterproofEditor {
 
 		return true;
 	}
+
+	public replaceRange(startOffset: number, endOffset: number, text: string): boolean {
+        if (!this._view || !this._mapping) return false;
+        const from = this._mapping.textOffsetToPmIndex(startOffset);
+        const to = this._mapping.textOffsetToPmIndex(endOffset);
+        const tr = this._view.state.tr.insertText(text, from, to);
+        this._view.dispatch(tr);
+        return true;
+    }
 
 	/**
 	 * Toggles line numbers for all codeblocks.

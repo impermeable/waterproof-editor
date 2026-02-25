@@ -11,20 +11,20 @@
   left: 0px;
   height: 100%;
   width: 8px; 
-  background-color: var(--wp-blue);
+  background-color: var(--wp-buttonBackground);
   /* we add a border for some high contrast themes */
-  outline: 1px solid var(--vscode-button-border); 
+  outline: 1px solid var(--wp-buttonBorder); 
 }
 
 .inputarea.correct::before {
   width: 8px;
-  background-color: var(--wp-green);
+  background-color: var(--wp-terminalAnsiGreen);
 }
 
 .inputarea.invalid::before,
 .inputarea.correct.contains-warning::before {
   width: 8px;
-  background-color: var(--wp-yellow);
+  background-color: var(--wp-terminalAnsiYellow);
 }
 
 .inputarea.incorrect::before,
@@ -32,7 +32,7 @@
 .inputarea.incorrect.contains-warning::before, 
 .inputarea.correct-contains-error::before {
   width: 8px;
-  background-color: var(--wp-red);
+  background-color: var(--wp-terminalAnsiRed);
 }
 
 .empty-input-area-placeholder {

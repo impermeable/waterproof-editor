@@ -1,7 +1,7 @@
 .copy-notification {
     position: fixed;
-    background-color: var(--wp-notification-background);
-    color: var(--wp-notification-foreground);
+    background-color: var(--wp-notificationsBackground);
+    color: var(--wp-notificationsForeground);
     padding: 8px;
     border-radius: 5px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
