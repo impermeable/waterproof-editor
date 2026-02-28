@@ -323,7 +323,7 @@ export class WaterproofEditor {
 	 * Update the themestyle used inside of the code cells (switch between dark and light)
 	 * @param theme Either `ThemeStyle.Light` or `ThemeStyle.Dark` 
 	 */
-	public updateNodeViewThemes(theme: ThemeStyle, lang: string) {
+	public updateNodeViewThemes(theme: ThemeStyle) {
 		const view = this._view!;
 		const state = view.state;
 
@@ -385,7 +385,6 @@ export class WaterproofEditor {
 	private updateLineNumbers() {
 		if (!this._view || !this._mapping) return;
 		const nrs = this._mapping.computeLineNumbers();
-		console.log(nrs);
 		const tr = this._view.state.tr.setMeta(CODE_PLUGIN_KEY, nrs);
 		this._view.dispatch(tr);
 	}
