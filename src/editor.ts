@@ -70,6 +70,8 @@ export class WaterproofEditor {
 
 	private readonly _progressBar;
 
+	private oldOffsetChecked: number | null = null;
+
 	/**
 	 * Create a new WaterproofEditor instance.
 	 * @param editorElement The HTML element where the editor will be inserted in the document
@@ -567,6 +569,29 @@ export class WaterproofEditor {
 	public startSpinner(): void { this._progressBar.startSpinner(); }
 	
 	public stopSpinner(): void { this._progressBar.stopSpinner(); }
+
+	public setBusyIndicator(busyPos: number) {
+		if (this.oldOffsetChecked === busyPos) return;
+
+		if (this._mapping === undefined || this._view === undefined) return;
+
+		const pmPos: number = this._mapping.textOffsetToPmIndex(busyPos);
+
+		
+		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
+		if (views === undefined) return;
+
+		for (const view of views) view.setBusyIndicator(pmPos);
+		
+		this.oldOffsetChecked = busyPos;
+	}
+
+	public removeBusyIndicators() {
+		if (!this._view) return;
+		CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews.forEach(cv => cv.removeBusyIndicator());
+		this.oldOffsetChecked = null;
+	}
+
 
 	/**
 	 * Updates the status of the input areas in the editor.

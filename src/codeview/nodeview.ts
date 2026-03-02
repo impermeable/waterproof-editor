@@ -15,6 +15,8 @@ import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { LanguageConfiguration, ThemeStyle } from "../api";
 import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
+import { CodeBlockBusyIndicator } from "./busy-indicator";
+
 
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
@@ -33,6 +35,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _diags : Diagnostic[];
 	private lastUsedDiagnosticsVersion: number = 0;
 
+	private busyIndicator: CodeBlockBusyIndicator;
+
 	constructor(
 		node: Node,
 		view: EditorView,
@@ -48,6 +52,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._node = node;
 		this._outerView = view;
 		this._getPos = getPos;
+		this.busyIndicator = new CodeBlockBusyIndicator();
 		this._lineNumbersExtension = [];
 
 		this._lineNumberCompartment = new Compartment;
@@ -150,6 +155,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._codemirror = new CodeMirror({
 			doc: this._node.textContent,
 			extensions: [
+				...this.busyIndicator.getExtensions(),
 				// Add the linting extension for showing diagnostics (errors, warnings, etc)
 				linter(this.lintingFunction, {
 					// This codemirror instance needs to refresh diagnostics when the version of diagnostics stored in the
@@ -327,6 +333,22 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			)
 		});
 	}
+	
+	/**
+	 * Show the busy spinner on the line currently being checked by coq-lsp.
+	 * {@link busyIndicatorPos} is a ProseMirror document offset.
+	 */
+	public setBusyIndicator(busyIndicatorPos: number): void {
+		if (!this._codemirror) return;
+		this.busyIndicator.setBusy(this._codemirror, busyIndicatorPos, this._getPos());
+	}
+
+	/** Remove the busy spinner from this block. */
+	public removeBusyIndicator(): void {
+		if (!this._codemirror) return;
+		this.busyIndicator.clearBusy(this._codemirror);
+	}
+
 
 	/**
 	 * Update the line numbers extension
