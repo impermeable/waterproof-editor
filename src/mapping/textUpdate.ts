@@ -1,11 +1,29 @@
 import { Mapping } from "./mapping";
 import { ParsedStep, OperationType } from "./types";
-import { TreeNode } from "./Tree";
+import { Tree, TreeNode } from "./Tree";
 import { typeFromStep } from "./helper-functions";
 import { ReplaceStep } from "prosemirror-transform";
 import { TextUpdateError, DocChange } from "../api";
 
 export class TextUpdate {
+    /**
+     * We cache the last node in which a text update happened, as it is likely that the next text update will happen in the same node
+     * Note that this is a *reference* to the node in the tree.
+     */
+    private cachedNode: TreeNode | null = null;
+
+    getNodeFromCacheOrSearch(step: ReplaceStep, tree: Tree): TreeNode | null {
+        // These checks should be okay as the tree is updated after every text update,
+        // therefore we can use the cached node bounds to check if the next text update is happening in the same node
+        if (this.cachedNode !== null &&
+                this.cachedNode.prosemirrorStart <= step.from &&
+                step.to < this.cachedNode.prosemirrorEnd) {
+            return this.cachedNode;
+        }
+        const target = tree.findNodeByProsePos(step.from);
+        this.cachedNode = target;
+        return target;
+    }
 
     /** This function is responsible for handling updates in prosemirror that happen exclusively as text edits and translating them to vscode text doc */
     textUpdate(step: ReplaceStep, mapping: Mapping) : ParsedStep {
@@ -20,7 +38,8 @@ export class TextUpdate {
 
         const tree = mapping.getMapping()
 
-        const targetCell: TreeNode | null = tree.findNodeByProsePos(step.from)
+        const targetCell = this.getNodeFromCacheOrSearch(step, tree);
+
         if (targetCell === null) throw new TextUpdateError(" Target cell is not in mapping!!! ");
 
         if (targetCell === tree.root) throw new TextUpdateError(" Text can not be inserted into the root ");
