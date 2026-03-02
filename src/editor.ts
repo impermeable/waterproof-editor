@@ -220,6 +220,13 @@ export class WaterproofEditor {
 					event.preventDefault();
 				},
 				"mousedown": (view, event) => {
+					const domTarget = event.target as Node | null;
+					if (domTarget === null) { event.preventDefault(); return; }
+					
+					const posAtDomTarget = view.posAtDOM(domTarget, 0);
+					const nodeAtDomTarget = view.state.doc.resolve(posAtDomTarget).node();
+					if (nodeAtDomTarget.type === WaterproofSchema.nodes.math_display) return;
+
 					event.preventDefault();
 				}
 			}
