@@ -5,7 +5,7 @@ import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { InsertionPlace, wrapInHint, wrapInInput, deleteSelection, wpLift } from "../commands";
 import { OS } from "../osType";
 import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "../commands/insert-command";
-import { TagConfiguration } from "../api";
+import { MenuBarEntry, TagConfiguration } from "../api";
 
 /** MenuEntry type contains the DOM, whether to only show it in teacher mode and the command to execute on click */
 type MenuEntry = {
@@ -13,6 +13,7 @@ type MenuEntry = {
     teacherModeOnly: boolean;
     showByDefault: boolean;
     cmd: Command;
+    customEntry: boolean;
 };
 
 /**
@@ -24,7 +25,7 @@ type MenuEntry = {
  * @param teacherModeOnly [`false` by default] Whether this button should only be available in teacher mode.
  * @returns A new `MenuButton` object.
  */
-function createMenuItem(displayedText: string, tooltipText: string, cmd: Command, buttonSettings?: {teacherModeOnly?: boolean, showByDefault?: boolean}): MenuEntry {
+function createMenuItem(displayedText: string, tooltipText: string, cmd: Command, buttonSettings?: {teacherModeOnly?: boolean, showByDefault?: boolean}, customEntry?: boolean): MenuEntry {
     // Create the DOM element.
     const menuItem = document.createElement("div");
     // Set the displayed text and the tooltip.
@@ -33,7 +34,7 @@ function createMenuItem(displayedText: string, tooltipText: string, cmd: Command
     // Add the class for styling this menubar item
     menuItem.classList.add("menubar-item");
     // Return the new item.
-    return {cmd, dom: menuItem, teacherModeOnly: buttonSettings?.teacherModeOnly ?? false, showByDefault: buttonSettings?.showByDefault ?? false};
+    return {cmd, dom: menuItem, teacherModeOnly: buttonSettings?.teacherModeOnly ?? false, showByDefault: buttonSettings?.showByDefault ?? false, customEntry: customEntry ?? false};
 }
 
 /**
@@ -99,16 +100,17 @@ class MenuView implements PluginView {
                 item.dom.style.display = "flex";
             }
 
-            const active = item.cmd(this.view.state, undefined, this.view);
-            /* From https://prosemirror.net/examples/menu/
-            "To update the menu for a new state, all commands are run without dispatch function,
-            and the items for those that return false are hidden."
-            */
-            // Instead of hiding the item we set the opacity to something low
-            item.dom.style.opacity = active ? "1" : "0.4";
-            // And make it unclickable.
-            item.dom.setAttribute("disabled", (!active).toString());
-
+            if (!item.customEntry) {
+                const active = item.cmd(this.view.state, undefined, this.view);
+                /* From https://prosemirror.net/examples/menu/
+                "To update the menu for a new state, all commands are run without dispatch function,
+                and the items for those that return false are hidden."
+                */
+                // Instead of hiding the item we set the opacity to something low
+                item.dom.style.opacity = active ? "1" : "0.4";
+                // And make it unclickable.
+                item.dom.setAttribute("disabled", (!active).toString());
+            }
         }
     }
 
@@ -147,10 +149,12 @@ function teacherOnlyWrapper(cmd: Command): Command {
 /**
  * Creates the default menu bar.
  * @param outerView The outer (prosemirror)editor.
- * @param filef The file format of the current file. Some commands will behave differently in `.mv` vs `.v` context.
+ * @param os The operating system of the user. Determines what modifier keys to show in the tooltips.
+ * @param tagConf The current tag configuration.
+ * @param customEntries Array of custom menubar entries that should be added to the menubar
  * @returns A new `MenuView` filled with default menu items.
  */
-function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfiguration): MenuView {
+function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfiguration, customEntries: Array<MenuBarEntry> | undefined): MenuView {
 
     // Platform specific keybinding string:
     const cmdOrCtrl = os == OS.MacOS ? "Cmd" : "Ctrl";
@@ -160,7 +164,10 @@ function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfigurat
 
     // Create the list of menu entries.
     const items: MenuEntry[] = [];
-    
+
+    const customMenuItems = customEntries?.map(entry => createMenuItem(entry.title, entry.hoverText, () => { entry.callback(); return true; }, entry.buttonVisibility, true));
+    if (customMenuItems !== undefined)
+        items.push(...customMenuItems);
 
     // The DEBUG label will be dropped in case we are *not* in debug mode.
     // eslint-disable-next-line no-unused-labels
@@ -220,12 +227,12 @@ export const MENU_PLUGIN_KEY = new PluginKey<IMenuPluginState>("prosemirror-menu
  * @param filef The file format of the currently opened file.
  * @returns A prosemirror `Plugin` type containing the menubar.
  */
-export function menuPlugin(os: OS, tagConf: TagConfiguration) {
+export function menuPlugin(os: OS, tagConf: TagConfiguration, customEntries: Array<MenuBarEntry> | undefined) {
     return new Plugin({
         // This plugin has an associated `view`. This allows it to add DOM elements.
         view(outerView: EditorView) {
             // Create the default menu.
-            const menuView = createDefaultMenu(outerView, os, tagConf);
+            const menuView = createDefaultMenu(outerView, os, tagConf, customEntries);
             // Get the parent node (the parent node of the outer prosemirror dom)
             const parentNode = outerView.dom.parentNode;
             if (parentNode == null) {

@@ -8,7 +8,7 @@ import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { constructDocument } from "./document/construct-document";
 
-import { DocChange, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ServerStatus, ThemeStyle, WaterproofEditorConfig } from "./api";
+import { DocChange, InputAreaStatus, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ThemeStyle, WaterproofEditorConfig, TextContentOfSpecifier } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
@@ -16,8 +16,7 @@ import { WaterproofSchema } from "./schema";
 import { SWITCHABLE_VIEW_PLUGIN_KEY, switchableViewPlugin } from "./markup-views";
 import { menuPlugin } from "./menubar";
 import { MENU_PLUGIN_KEY } from "./menubar/menubar";
-import { PROGRESS_PLUGIN_KEY, progressBarPlugin } from "./progressBar";
-import { DOCUMENT_PROGRESS_DECORATOR_KEY, documentProgressDecoratorPlugin } from "./documentProgressDecorator";
+import { documentProgressDecoratorPlugin } from "./documentProgressDecorator";
 import { createContextMenuHTML } from "./context-menu";
 import { DefaultTagSerializer } from "./serialization/DocumentSerializer";
 
@@ -33,6 +32,7 @@ import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "./com
 import { InsertionPlace } from "./commands";
 import { deleteSelection } from "./commands/commands";
 import { Mapping } from "./mapping";
+import { ProgressBar } from "./progressBar";
 
 /** Type that contains a coq diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {message: string, start: number, end: number, severity: Severity};
@@ -58,6 +58,7 @@ export class WaterproofEditor {
 
 	private currentProseDiagnostics: Array<DiagnosticObjectProse>;
 	
+	// @internal
 	public get diagnosticsVersion() {
 		return this.diagnosticsUpdateCounter;
 	}
@@ -66,6 +67,8 @@ export class WaterproofEditor {
 	private _lineNumbersShown: boolean = false;
 
 	private readonly _serializer: DocumentSerializer;
+
+	private readonly _progressBar;
 
 	private oldOffsetChecked: number | null = null;
 
@@ -89,6 +92,7 @@ export class WaterproofEditor {
 
 		const theContextMenu = createContextMenuHTML(this);
 
+		this._progressBar = new ProgressBar(editorElement);
 
 		document.body.appendChild(theContextMenu);
 
@@ -118,9 +122,7 @@ export class WaterproofEditor {
 		if(this._view) {
 			if (this._mapping && this._mapping.version == version) return;
 			// Hack to forcefully remove the 'old' menubar
-			document.querySelector(".menubar")?.remove();
 			document.querySelector(".progress-bar")?.remove();
-			document.querySelector(".spinner-container")?.remove();
 			this._view.dom.remove();
 		}
 
@@ -139,11 +141,11 @@ export class WaterproofEditor {
 		this._editorConfig.api.editorReady();
 	}
 
-	get state(): EditorState | undefined {
+	private get state(): EditorState | undefined {
 		return this._view?.state;
 	}
 
-	createProseMirrorEditor(proseDoc: ProseNode) {
+	private createProseMirrorEditor(proseDoc: ProseNode) {
 		// Shadow this variable _userOS.
 		const userOS = this._userOS;
 		const view = new EditorView(this._editorElem, {
@@ -244,7 +246,7 @@ export class WaterproofEditor {
 	}
 
 	/** Create initial prosemirror state */
-	createState(proseDoc: ProseNode): EditorState {
+	private createState(proseDoc: ProseNode): EditorState {
 		return EditorState.create({
 			schema: WaterproofSchema,
 			doc: proseDoc,
@@ -253,7 +255,7 @@ export class WaterproofEditor {
 	}
 
 	/** Create the array of plugins used by the prosemirror editor */
-	createPluginsArray(): Plugin[] {
+	private createPluginsArray(): Plugin[] {
 		return [
 			history(),
 			createHintPlugin(),
@@ -261,10 +263,9 @@ export class WaterproofEditor {
 			updateStatusPlugin(this),
 			mathPlugin,
 			switchableViewPlugin(this._editorConfig),
-			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this, this.initialThemeStyle),
-			progressBarPlugin,
+			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this, this.initialThemeStyle, this._editorConfig.languageConfig),
 			documentProgressDecoratorPlugin,
-			menuPlugin(this._userOS, this._editorConfig.tagConfiguration),
+			menuPlugin(this._userOS, this._editorConfig.tagConfiguration, this._editorConfig.menubarEntries),
 			keymap({
 				"Mod-h": () => {
 					this.executeCommand("Help.");
@@ -293,7 +294,45 @@ export class WaterproofEditor {
 		return this._serializer.serializeDocument(this._view.state.doc);
 	}
 
-	public updateNodeViewThemes(theme: ThemeStyle, lang: string) {
+	/**
+	 * Returns the text content of specified parts of the document as well as the positions where the text starts.
+	 * 
+	 * Does not use the serializer, but extracts the text content directly from the nodes.
+	 * @param include Types of content to include.
+	 */
+	public textContentOfInputAreas(include: number = 0): Array<[string, {start: number, end: number}]> {		
+		if (!this._view || this._mapping === undefined) return [];
+		const mapping = this._mapping;
+		const contents: Array<[string, {start: number, end: number}]> = [];
+
+		const includeMarkdown = include & TextContentOfSpecifier.MARKDOWN;
+		const includeCode = include & TextContentOfSpecifier.CODE;
+		const includeMath = include & TextContentOfSpecifier.MATH_DISPLAY;
+
+		this._view.state.doc.descendants((node, _pos, parent) => {
+			// node type should be in include
+			if (parent !== null && parent.type === WaterproofSchema.nodes.input && (include === undefined ||
+				(node.type === WaterproofSchema.nodes.markdown && includeMarkdown) ||
+				(node.type === WaterproofSchema.nodes.code && includeCode) ||
+				(node.type === WaterproofSchema.nodes.math_display && includeMath))) {
+				// TODO: This is a bit strange since we are converting the positions using the mapping.
+				// Should we *always* do this, even in cases where we are not necessarily dealing with the raw text file? 
+				
+				// The +1 gives us the prose position inside the text node
+				contents.push([node.textContent, {start: mapping.pmIndexToTextOffset(_pos + 1), end: mapping.pmIndexToTextOffset(_pos + 1 + node.nodeSize)}]);
+				return false;
+			}
+			const shouldDescend = parent !== null && node.type === WaterproofSchema.nodes.input;
+			return shouldDescend;
+		});
+		return contents;
+	}
+
+	/**
+	 * Update the themestyle used inside of the code cells (switch between dark and light)
+	 * @param theme Either `ThemeStyle.Light` or `ThemeStyle.Dark` 
+	 */
+	public updateNodeViewThemes(theme: ThemeStyle) {
 		const view = this._view!;
 		const state = view.state;
 
@@ -302,7 +341,7 @@ export class WaterproofEditor {
 
 		for (const nodeView of nodeViews ?? []) {
 			// Update the theme of the nodeView
-			nodeView.updateThemeFromVSCode(theme, lang);
+			nodeView.updateThemeFromVSCode(theme);
 		}
 	}
 
@@ -344,7 +383,7 @@ export class WaterproofEditor {
 	}
 
 	/** Called on every selection update. */
-	public updateCursor(pos: Selection) : void {
+	private updateCursor(pos: Selection) : void {
 		// If this is not a cursor update return
 		if (!(pos instanceof TextSelection)) return;
 		if (this._mapping === undefined) throw new Error(" Mapping is undefined, cannot synchronize with vscode");
@@ -355,82 +394,7 @@ export class WaterproofEditor {
 	private updateLineNumbers() {
 		if (!this._view || !this._mapping) return;
 		const nrs = this._mapping.computeLineNumbers();
-		console.log(nrs);
 		const tr = this._view.state.tr.setMeta(CODE_PLUGIN_KEY, nrs);
-		this._view.dispatch(tr);
-		this.updateDocumentProgress();
-	}
-
-	private updateDocumentProgress() {
-		// Use getState with the CODE_PLUGIN_KEY to obtain linenumbers
-		if (!this._view) return;
-		const lineNumbers = CODE_PLUGIN_KEY.getState(this._view.state)?.lines;
-		// Use getState with the CODE_PLUGIN_KEY to obtain progress activeNodeViews
-		const activeNodeViews = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
-		// Use getState with the PROGRESS_PLUGIN_KEY to obtain progress status
-		const progressParams = PROGRESS_PLUGIN_KEY.getState(this._view.state)?.progressParams;
-		if (progressParams === undefined || lineNumbers === undefined || activeNodeViews === undefined) return;
-		// Compute currentLine from progressParams
-		if (progressParams.progress.length == 0) return;
-		const currentLine = progressParams?.progress[0].range.start.line + 1;
-		const endLine = progressParams?.progress[0].range.end.line + 1;
-	
-		if (currentLine == endLine) {
-			// Done checking, remove bar
-			const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, 
-				{progressHeightLow: 0, progressHeightHigh: 0, total: 0});
-			this._view.dispatch(tr);
-			return;
-		}
-
-		// Compute current nodeView using lineNumbers and activeNodeViews
-		let currentNodeView = undefined;
-		let viewLineNumber = undefined;
-		let nextLineNumber = undefined;
-		let nextNodeView = undefined;
-		
-		let i = 0;
-		for (const nodeView of activeNodeViews) {
-			if (currentNodeView != undefined) {
-				nextNodeView = nodeView;
-				break;
-			}
-			if (currentLine >= lineNumbers[i] && currentLine < lineNumbers[i + 1]) {
-				currentNodeView = nodeView; 
-				viewLineNumber = lineNumbers[i];
-				nextLineNumber = lineNumbers[i + 1];
-			}
-			i++;
-		}
-		if (currentNodeView === undefined || viewLineNumber === undefined || nextLineNumber === undefined) return;
-		let startPos = currentNodeView._getPos();
-		let nextPos = nextNodeView?._getPos();
-		if (startPos === undefined || nextPos === undefined) return;
-		const startDocCoords = this._view.coordsAtPos(0);
-		let startCoords = this._view.coordsAtPos(startPos, -1);
-		// If we don't find a good position, this is likely a hidden codeblock
-		// Go back until we find a position in the document or the top
-		while (startCoords == null || startCoords.top == 0) {
-			startPos--;
-			if (startPos < 0) break;
-			startCoords = this._view.coordsAtPos(startPos, -1);
-		}
-
-		// If we don't find a good position, this is likely a hidden codeblock
-		// Go forward until we find a position in the document or the bottom
-		let nextCoords = this._view.coordsAtPos(nextPos);
-		while (nextCoords == null || nextCoords.top == 0) {
-			nextPos++;
-			if (nextPos >= this._view.state.doc.content.size) break;
-			nextCoords = this._view.coordsAtPos(nextPos);
-		}
-		const endDocCoords = this._view.coordsAtPos(this._view.state.doc.content.size);
-		const height = startCoords.top - startDocCoords.top;
-
-		// Communicate the total size of the document, the low estimate where processing is happening
-		// and the high estimate, unit is pixels for each
-		const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, {
-			total: endDocCoords.top - startDocCoords.top, progressHeightLow: height, progressHeightHigh: nextCoords.top - startDocCoords.top});
 		this._view.dispatch(tr);
 	}
 
@@ -604,20 +568,14 @@ export class WaterproofEditor {
 		trans.setMeta(INPUT_AREA_PLUGIN_KEY, {teacher: isTeacher});
 		this._view.dispatch(trans);
 	}
-    
-	/**
-	 * Updates the state of the progress bar in the editor.
-	 * 
-	 * @param progressParams The type used to store information on the status of the checking of the current file
-	 */
-	public updateProgressBar(progressParams: SimpleProgressParams): void {
-		if (!this._view) return;
-		const state = this._view.state;
-		const tr = state.tr;
-		tr.setMeta(PROGRESS_PLUGIN_KEY, {progressParams});
-		this._view.dispatch(tr);
-		this.updateDocumentProgress();
+
+	public reportProgress(current: number, total: number, text?: string): void {
+		this._progressBar.reportProgress(current, total, text);
 	}
+
+	public startSpinner(): void { this._progressBar.startSpinner(); }
+	
+	public stopSpinner(): void { this._progressBar.stopSpinner(); }
 
 	public setBusyIndicator(busyPos: number) {
 		if (this.oldOffsetChecked === busyPos) return;
@@ -642,20 +600,13 @@ export class WaterproofEditor {
 	}
 
 
-	public updateServerStatus(status: ServerStatus) : void {
-		if (!this._view) return;
-		const state = this._view.state;
-		const tr = state.tr;
-		tr.setMeta(PROGRESS_PLUGIN_KEY, {serverStatus: status});
-		this._view.dispatch(tr);
-	}
-
 	/**
 	 * Updates the status of the input areas in the editor.
 	 * 
-	 * @param status Array containing the status of the input areas within the current document, where `status[i]` corresponds to the i-th input area (starting at zero for the first input area). 
+	 * @param status Array containing the status of the input areas within the current document, where `status[i]`
+	 * corresponds to the i-th input area (starting at zero for the first input area). 
 	 */
-	public updateQedStatus(status: InputAreaStatus[]) : void {
+	public setInputAreaStatus(status: InputAreaStatus[]) : void {
 		if (!this._view) return;
 		const state = this._view.state;
 		const tr = state.tr;
@@ -723,6 +674,12 @@ export class WaterproofEditor {
 		this.diagnosticsUpdateCounter++;
 		this.informCodemirrorViews();
 		return oldLength > newLength;
+	}
+
+	public clearDiagnostics() {
+		this.currentProseDiagnostics = [];
+		this.diagnosticsUpdateCounter++;
+		this.informCodemirrorViews();
 	}
 
 	/**
@@ -802,10 +759,12 @@ export class WaterproofEditor {
 	}
 
 	// Editor API
+	// @internal
 	public executeCommand(command: string) {
 		this._editorConfig.api.executeCommand(command, (new Date()).getTime());
 	}
 
+	// @internal
 	public executeHelp() {
 		this._editorConfig.api.executeHelp();
 	}

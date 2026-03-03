@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import process from "process";
 import * as esbuild from "esbuild";
+import pkgJson from "./package.json" with {type: "json"};
 
 const watch = process.argv.includes("--watch");
 const minify = process.argv.includes("--minify");
@@ -14,7 +15,7 @@ const sharedConfig = {
   entryPoints: ["src/index.ts", "src/styles/waterproof-defaults.css"],
   outdir: "dist",
   bundle: true,
-  format: "cjs",
+  format: "esm",
   ...genSourcemap,
   platform: "browser",
   loader: {
@@ -23,6 +24,11 @@ const sharedConfig = {
     ".ttf": fontLoader,
     ".grammar": "file"
   },
+  external: [
+    // We mark all the peerDependencies as external, that way they won't be included in the bundle
+    // but remain of the form `import ... from ...`
+    ...Object.keys(pkgJson.peerDependencies)
+  ],
   dropLabels: debugBuild ? [] : ["DEBUG"],
   minify,
   plugins: [

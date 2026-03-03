@@ -47,6 +47,7 @@ export class TreeNode {
     }
 
     removeChild(child: TreeNode): void {
+        // Preserves order
         this.children = this.children.filter(c => c != child);
     }
 
@@ -115,7 +116,9 @@ export class Tree {
         }
     }
 
-    // Finds the highest (closest to root) node that contains the given prosemirror position
+    /**
+     * Finds the highest (closest to root) node that contains the given prosemirror position
+     */
     findHighestContainingNode(pos: number, node: TreeNode = this.root): TreeNode {
         if (pos < node.prosemirrorStart || pos > node.prosemirrorEnd) {
             throw new Error("Position out of bounds");

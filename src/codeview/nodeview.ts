@@ -1,7 +1,5 @@
-import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { syntaxHighlighting } from "@codemirror/language";
 import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, acceptCompletion, completionStatus, hasNextSnippetField, nextSnippetField, snippetKeymap, prevSnippetField, clearSnippet, moveCompletionSelection, closeCompletion } from "@codemirror/autocomplete";
-import { coq, coqSyntaxHighlighting } from "./lang-pack"
-import { verbose, verboseSyntaxHighlighting} from "./lang-pack-verbose"
 import { Compartment, EditorState, Extension } from "@codemirror/state"
 import {
 	EditorView as CodeMirror, Command, keymap as cmKeymap,
@@ -14,7 +12,7 @@ import { renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, lintGutter } from "@codemirror/lint";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
-import { ThemeStyle } from "../api";
+import { LanguageConfiguration, ThemeStyle } from "../api";
 import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
 import { CodeBlockBusyIndicator } from "./busy-indicator";
@@ -47,7 +45,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		schema: Schema,
 		completions: Array<Completion>,
 		symbols: Array<Completion>,
-		initialThemeStyle: ThemeStyle
+		initialThemeStyle: ThemeStyle,
+		private readonly languageConfig?: LanguageConfiguration
 	) {
 		super(node, view, getPos, schema);
 		this._node = node;
@@ -136,10 +135,10 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				// This codemirror cell is part of an input area, we change
 				// the placeholder to `(* Type your proof here *)` and apply
 				// the appropriate styling.
-				div.innerText = "(* Type your proof here *)";
+				//div.innerText = "(* Type your proof here *)";
 				// The styling of this class is
 				// defined in `editor/src/kroqed-editor/styles/input-area.css`.
-				div.classList.add("empty-proof-placeholder");
+				div.classList.add("empty-input-area-placeholder");
 			} else {
 				// This codemirror cell is not part of an input area, use the
 				// `Empty code cell` placeholder.
@@ -169,8 +168,15 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				...optional,
 				this._readOnlyCompartment.of(EditorState.readOnly.of(!this._outerView.editable)),
 				this._lineNumberCompartment.of(this._lineNumbersExtension),
-				this._themeCompartment.of(coqSyntaxHighlighting(initialThemeStyle)),
-
+				this._themeCompartment.of(
+					(() => {
+						if (languageConfig !== undefined) {
+							return syntaxHighlighting(initialThemeStyle === ThemeStyle.Light ? languageConfig.highlightLight : languageConfig.highlightDark);
+						}
+						return [];
+					})()
+				),
+				languageConfig?.languageSupport ?? [],
 				autocompletion({
 					override: [
 						tacticCompletionSource,
@@ -232,8 +238,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 					}
 				]),
 				customTheme,
-				syntaxHighlighting(defaultHighlightStyle),
-				this._languageCompartment.of(coq()),
+				languageConfig?.languageSupport ?? [],
                 highlightActiveLine(),
 				CodeMirror.updateListener.of(update => this.forwardUpdate(update)),
 				placeholder(placeholderContent())
@@ -316,21 +321,15 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	/**
 	 * Update the theme of the editor.
 	 */
-	public updateThemeFromVSCode(theme: ThemeStyle, lang: string): void {
-		this.updateLanguage(lang);
-		const lanSyntaxHighlighting = lang === "lean4" ? verboseSyntaxHighlighting : coqSyntaxHighlighting;
+	public updateThemeFromVSCode(theme: ThemeStyle): void {
 		this._codemirror?.dispatch({
 			effects: this._themeCompartment.reconfigure(
-				lanSyntaxHighlighting(theme)
-			)
-		});
-	}
-
-	private updateLanguage(lang: string){
-		const lan = lang === "lean4" ? verbose : coq;
-		this._codemirror?.dispatch({
-			effects: this._languageCompartment.reconfigure(
-				lan()
+				(() => {
+					if (this.languageConfig !== undefined) {
+						return syntaxHighlighting(theme === ThemeStyle.Light ? this.languageConfig.highlightLight : this.languageConfig.highlightDark);
+					}
+					return [];
+				})()
 			)
 		});
 	}

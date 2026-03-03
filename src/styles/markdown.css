@@ -8,10 +8,6 @@
     display: none;
 }
 
-/* .markdown-view-editor {
-
-} */
-
 .markdown-view-editor::before {
     --border-color: var(--wp-inputBorder);
     border-right: 1px solid var(--border-color);
@@ -30,10 +26,3 @@
 code {
     font-family: var(--wp-editorFontFamily);
 }
-
-
-/* 
-.markdown-view-editor::after {
-    border-top: 1px solid black;
-    content: "</markdown>"
-} */

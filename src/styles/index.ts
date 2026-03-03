@@ -21,17 +21,11 @@ import "./markdown.css";
 // for popover notifications
 import "./notifications.css";
 
-// for the progressBar
-import "./progressBar.css";
+// for the progress bar and spinner
+import "./progress.css";
 
 // for the document progress decorator
 import "./documentProgressDecorator.css";
-
-// for the spinner
-import "./spinner.css";
-
-// for the freeze effect skull
-import "./freeze.css";
 
 // for the custom context menu
 import "./context-menu.css";
