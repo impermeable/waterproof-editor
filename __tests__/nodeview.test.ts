@@ -128,3 +128,23 @@ test("Hint Delete", () => {
     //@ts-expect-error private
     expect(nodeview._codemirror?.state.doc.toString()).toStrictEqual("");
 });
+
+
+/** Construct a minimal CodeBlockView for testing. */
+function makeView() {
+    //@ts-expect-error supply only the minimal needed to get a working CodeBlockView
+    return new CodeBlockView(node, {editable: true}, null, () => undefined, null, [], [], ThemeStyle.Light);
+}
+
+describe("CodeBlockView busy indicator", () => {
+    test("removeBusyIndicator is a no-op when codemirror is absent", () => {
+        const nv = makeView();
+        //@ts-expect-error
+        nv._codemirror = undefined;
+        //@ts-expect-error
+        const spy = jest.spyOn(nv.busyIndicator, "clearBusy");
+
+        expect(() => nv.removeBusyIndicator()).not.toThrow();
+        expect(spy).not.toHaveBeenCalled();
+    });
+});

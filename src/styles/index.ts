@@ -35,3 +35,6 @@ import "./autocomplete.css";
 
 // Highlighting for the magic keyword:
 import "./magic.css";
+
+// For the busy indicator in the gutter:
+import "./busy-indicator.css";
