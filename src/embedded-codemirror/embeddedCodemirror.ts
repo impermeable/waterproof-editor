@@ -145,8 +145,11 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 				}
 				else {
 					tr.delete(offset + fromA, offset + toA);
-					offset += (toB - fromB) - (toA - fromA);
 				}
+
+				// Keep mapping from old positions (A) to the transaction's current document.
+				// Some edits (e.g. toggle comment) are represented as multiple inserts/replaces.
+				offset += (toB - fromB) - (toA - fromA);
 			});
 			if (lineDelta !== 0) tr.setMeta("lineDelta", lineDelta);
 		  	tr.setSelection(TextSelection.create(tr.doc, selFrom, selTo));
