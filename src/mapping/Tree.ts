@@ -131,6 +131,18 @@ export class Tree {
         return null;
     }
 
+    findNodeByOriginalPosition(pos: number, node: TreeNode | null = this.root): TreeNode | null {
+        if (!node) return null;
+        if (pos >= node.contentRange.from && pos <= node.contentRange.to) {
+            for (const child of node.children) {
+                const result = this.findNodeByOriginalPosition(pos, child);
+                if (result) return result;
+            }
+            return node;
+        }
+        return null;
+    }
+
     /**
      * Find the most specific node that contains the given ProseMirror position, this function is biased to find the
      * first node (in terms of position) containing the position. I.e. in a tree with a code cell that ends at 28 and a newline that
