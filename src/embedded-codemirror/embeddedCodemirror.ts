@@ -97,8 +97,17 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 		return true;
 	}
 
-    selectNode?: (() => void) | undefined;
-    deselectNode?: (() => void) | undefined;
+    selectNode() {
+        if (this.dom instanceof HTMLElement) {
+            this.dom.classList.add("ProseMirror-selectednode");
+        }
+    }
+
+    deselectNode() {
+        if (this.dom instanceof HTMLElement) {
+            this.dom.classList.remove("ProseMirror-selectednode");
+        }
+    }
     
     setSelection(anchor: number, head: number, _root: Document | ShadowRoot) {
 		// Focus on the internal codemirror instance.

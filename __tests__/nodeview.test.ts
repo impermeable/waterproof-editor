@@ -136,6 +136,36 @@ function makeView() {
     return new CodeBlockView(node, {editable: true}, null, () => undefined, null, [], [], ThemeStyle.Light);
 }
 
+/** This functionality ensures that the selection is displayed (in particular when using the ctrl+. shortcut to select) */
+describe("CodeBlockView selectNode / deselectNode", () => {
+    test("selectNode adds ProseMirror-selectednode class", () => {
+        const nv = makeView();
+        expect(nv.dom).toBeInstanceOf(HTMLElement);
+        expect((nv.dom as HTMLElement).classList.contains("ProseMirror-selectednode")).toBe(false);
+
+        nv.selectNode();
+        expect((nv.dom as HTMLElement).classList.contains("ProseMirror-selectednode")).toBe(true);
+    });
+
+    test("deselectNode removes ProseMirror-selectednode class", () => {
+        const nv = makeView();
+        (nv.dom as HTMLElement).classList.add("ProseMirror-selectednode");
+
+        nv.deselectNode();
+        expect((nv.dom as HTMLElement).classList.contains("ProseMirror-selectednode")).toBe(false);
+    });
+
+    test("selectNode then deselectNode round-trips correctly", () => {
+        const nv = makeView();
+
+        nv.selectNode();
+        expect((nv.dom as HTMLElement).classList.contains("ProseMirror-selectednode")).toBe(true);
+
+        nv.deselectNode();
+        expect((nv.dom as HTMLElement).classList.contains("ProseMirror-selectednode")).toBe(false);
+    });
+});
+
 describe("CodeBlockView busy indicator", () => {
     test("removeBusyIndicator is a no-op when codemirror is absent", () => {
         const nv = makeView();
