@@ -77,4 +77,11 @@ test("Mapping.update text insert inside input shifts wrapper and later blocks", 
     expect(updatedInput.contentRange.to).toBe(inputContentEnd + 1);
     expect(updatedAfter.contentRange.from).toBe(afterContentStart + 1);
     expect(updatedAfter.tagRange.from).toBe(afterTagStart + 1);
+
+    // Inserting "X" (no newlines) should preserve the code block's lineStart
+    // The parser sets the code block lineStart to 2 for this document structure
+    const updatedCode = findFirstCodeNode(updatedTree.root);
+    expect(updatedCode).not.toBeNull();
+    expect(updatedCode!.lineStart).toBe(2);
+    expect(updatedTree.computeLineNumbers()).toStrictEqual([2]);
 });

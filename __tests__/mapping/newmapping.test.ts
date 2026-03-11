@@ -12,8 +12,6 @@ function createTestMapping(blocks: WaterproofDocument) {
     return tree;
 }
 
-const PLACEHOLDER_LINENR = 0;
-
 test("testMapping markdown only", () => {
     const blocks = [new MarkdownBlock("Hello", {from: 0, to: 5}, {from: 0, to: 5}, 0)];
     const nodes = createTestMapping(blocks);
@@ -30,11 +28,15 @@ test("testMapping markdown only", () => {
     expect(markdownNode.prosemirrorEnd).toBe(6);
     expect(markdownNode.pmRange).toStrictEqual<Range>({from: 0, to: 7});
     expect(markdownNode.lineStart).toBe(0);
+
+    // No code blocks → no line numbers
+    expect(nodes.computeLineNumbers()).toStrictEqual([]);
 });
 
 test("testMapping code", () => {
     const blocks = [new CodeBlock("Lemma test", {from: 0, to: 21}, {from: 7, to: 17}, 0)];
-    const nodes = createTestMapping(blocks).root.children;
+    const tree = createTestMapping(blocks);
+    const nodes = tree.root.children;
     
     expect(nodes.length).toBe(1);
     
@@ -46,20 +48,23 @@ test("testMapping code", () => {
     expect(codeNode.prosemirrorEnd).toBe(11);
     expect(codeNode.pmRange).toStrictEqual<Range>({from: 0, to: 12});
     expect(codeNode.lineStart).toBe(0);
+
+    expect(tree.computeLineNumbers()).toStrictEqual([0]);
 });
 
-// TODO: Test for line nrs
 test("Input-area with nested code", () => {
     // <input-area>\n```lan\nTest\n```\n</input-area>Hello
+    // Line counting: \n at pos 12 (line 1), \n at pos 19 in ```lan\n (line 2) → code starts at line 2
     const blocks = [
-        new InputAreaBlock("```lan\nTest\n```", {from: 0, to: 42}, {from: 12, to: 29}, PLACEHOLDER_LINENR, [
-            new NewlineBlock({from: 12, to: 13}, {from: 12, to: 13}, PLACEHOLDER_LINENR),
-            new CodeBlock("Test", {from: 13, to: 28}, {from: 20, to: 24}, PLACEHOLDER_LINENR),
-            new NewlineBlock({from: 28, to: 29}, {from: 28, to: 29}, PLACEHOLDER_LINENR)
+        new InputAreaBlock("```lan\nTest\n```", {from: 0, to: 42}, {from: 12, to: 29}, 0, [
+            new NewlineBlock({from: 12, to: 13}, {from: 12, to: 13}, 0),
+            new CodeBlock("Test", {from: 13, to: 28}, {from: 20, to: 24}, 2),
+            new NewlineBlock({from: 28, to: 29}, {from: 28, to: 29}, 0)
         ]),
-        new MarkdownBlock("Hello", {from: 42, to: 47}, {from: 42, to: 47}, PLACEHOLDER_LINENR)
+        new MarkdownBlock("Hello", {from: 42, to: 47}, {from: 42, to: 47}, 0)
     ];
-    const nodes = createTestMapping(blocks).root.children;
+    const tree = createTestMapping(blocks);
+    const nodes = tree.root.children;
 
     expect(nodes.length).toBe(2);
     
@@ -96,6 +101,7 @@ test("Input-area with nested code", () => {
     expect(second.prosemirrorStart).toBe(3);
     expect(second.prosemirrorEnd).toBe(7);
     expect(second.pmRange).toStrictEqual<Range>({from: 2, to: 8});
+    expect(second.lineStart).toBe(2);
     
     expect(third.type).toBe("newline");
     expect(third.contentRange).toStrictEqual<Range>({from: 28, to: 29});
@@ -103,20 +109,24 @@ test("Input-area with nested code", () => {
     expect(third.prosemirrorStart).toBe(8);
     expect(third.prosemirrorEnd).toBe(8);
     expect(third.pmRange).toStrictEqual<Range>({from: 8, to: 9});
+
+    // One code block at line 2
+    expect(tree.computeLineNumbers()).toStrictEqual([2]);
 });
 
-// TODO: Test for line nrs
 test("Hint block with code and markdown inside", () => {
     // <hint title=\"Import libraries\">\n```lan\nRequire Import Rbase.\n```\n</hint>
+    // Line counting: \n at pos 31 (line 1), \n at pos 38 in ```lan\n (line 2) → code starts at line 2
     const blocks = [
-        new HintBlock("\n```lan\nRequire Import Rbase.\n```\n", "Import libraries", {from: 0, to: 72}, {from: 31, to: 65}, PLACEHOLDER_LINENR, [
-            new NewlineBlock({from: 31, to: 32}, {from: 31, to: 32}, PLACEHOLDER_LINENR),
-            new CodeBlock("Require Import Rbase.", {from: 32, to: 64}, {from: 39, to: 60}, PLACEHOLDER_LINENR),
-            new NewlineBlock({from: 60, to: 61}, {from: 60, to: 61}, PLACEHOLDER_LINENR)
+        new HintBlock("\n```lan\nRequire Import Rbase.\n```\n", "Import libraries", {from: 0, to: 72}, {from: 31, to: 65}, 0, [
+            new NewlineBlock({from: 31, to: 32}, {from: 31, to: 32}, 0),
+            new CodeBlock("Require Import Rbase.", {from: 32, to: 64}, {from: 39, to: 60}, 2),
+            new NewlineBlock({from: 60, to: 61}, {from: 60, to: 61}, 0)
         ])
     ];
 
-    const nodes = createTestMapping(blocks).root.children;
+    const tree = createTestMapping(blocks);
+    const nodes = tree.root.children;
     
     expect(nodes.length).toBe(1);
 
@@ -146,6 +156,7 @@ test("Hint block with code and markdown inside", () => {
     expect(second.prosemirrorStart).toBe(3);
     expect(second.prosemirrorEnd).toBe(24);
     expect(second.pmRange).toStrictEqual<Range>({from: 2, to: 25});
+    expect(second.lineStart).toBe(2);
     
     expect(third.type).toBe("newline");
     expect(third.contentRange).toStrictEqual<Range>({from: 60, to: 61});
@@ -153,23 +164,31 @@ test("Hint block with code and markdown inside", () => {
     expect(third.prosemirrorStart).toBe(25);
     expect(third.prosemirrorEnd).toBe(25);
     expect(third.pmRange).toStrictEqual<Range>({from: 25, to: 26});
+
+    // One code block at line 2
+    expect(tree.computeLineNumbers()).toStrictEqual([2]);
 });
 
-// TODO: Test for line nrs
 test("Mixed content: markdown, code, input-area, markdown", () => {
     // ### Example:\n```lan\nLemma\nTest\n```\n<input-area>\n```lan\n(* Your solution here *)\n```\n</input-area>
+    // Line counting:
+    //   \n at pos 12 (line 1), \n at pos 19 in ```lan\n (line 2) → first code starts at line 2
+    //   Content "Lemma\nTest" has \n at pos 25 (line 3), then \n``` at pos 30 (line 4), trailing \n at pos 34 (line 5)
+    //   <input-area> at pos 35 has no newlines, \n at pos 47 (line 6), \n at pos 54 in ```lan\n (line 7)
+    //   → second code starts at line 7
     const blocks = [
-        new MarkdownBlock("### Example:", {from: 0, to: 12}, {from: 0, to: 12}, PLACEHOLDER_LINENR),
-        new NewlineBlock({from: 12, to: 13}, {from: 12, to: 13}, PLACEHOLDER_LINENR),
-        new CodeBlock("Lemma\nTest", {from: 13, to: 34}, {from: 20, to: 30}, PLACEHOLDER_LINENR),
-        new NewlineBlock({from: 34, to: 35}, {from: 34, to: 35}, PLACEHOLDER_LINENR),
-        new InputAreaBlock("```lan\n(* Your solution here *)\n```", {from: 35, to: 97}, {from: 47, to: 84}, PLACEHOLDER_LINENR, [
-            new NewlineBlock({from: 47, to: 48}, {from: 47, to: 48}, PLACEHOLDER_LINENR),
-            new CodeBlock("(* Your solution here *)", {from: 48, to: 83}, {from: 55, to: 79}, PLACEHOLDER_LINENR),
-            new NewlineBlock({from: 83, to: 84}, {from: 83, to: 84}, PLACEHOLDER_LINENR)
+        new MarkdownBlock("### Example:", {from: 0, to: 12}, {from: 0, to: 12}, 0),
+        new NewlineBlock({from: 12, to: 13}, {from: 12, to: 13}, 0),
+        new CodeBlock("Lemma\nTest", {from: 13, to: 34}, {from: 20, to: 30}, 2),
+        new NewlineBlock({from: 34, to: 35}, {from: 34, to: 35}, 0),
+        new InputAreaBlock("```lan\n(* Your solution here *)\n```", {from: 35, to: 97}, {from: 47, to: 84}, 0, [
+            new NewlineBlock({from: 47, to: 48}, {from: 47, to: 48}, 0),
+            new CodeBlock("(* Your solution here *)", {from: 48, to: 83}, {from: 55, to: 79}, 7),
+            new NewlineBlock({from: 83, to: 84}, {from: 83, to: 84}, 0)
         ])
     ];
-    const nodes = createTestMapping(blocks).root.children;
+    const tree = createTestMapping(blocks);
+    const nodes = tree.root.children;
 
     expect(nodes.length).toBe(5);
 
@@ -198,6 +217,7 @@ test("Mixed content: markdown, code, input-area, markdown", () => {
     expect(code1.prosemirrorStart).toBe(16);
     expect(code1.prosemirrorEnd).toBe(26);
     expect(code1.pmRange).toStrictEqual<Range>({from: 15, to: 27});
+    expect(code1.lineStart).toBe(2);
 
     // Newline node
     expect(nl2.type).toBe("newline");
@@ -232,6 +252,7 @@ test("Mixed content: markdown, code, input-area, markdown", () => {
     expect(ia_code.prosemirrorStart).toBe(31);
     expect(ia_code.prosemirrorEnd).toBe(55);
     expect(ia_code.pmRange).toStrictEqual<Range>({from: 30, to: 56});
+    expect(ia_code.lineStart).toBe(7);
     
     expect(ia_nl2.type).toBe("newline");
     expect(ia_nl2.contentRange).toStrictEqual<Range>({from: 83, to: 84});
@@ -239,12 +260,16 @@ test("Mixed content: markdown, code, input-area, markdown", () => {
     expect(ia_nl2.prosemirrorStart).toBe(56);
     expect(ia_nl2.prosemirrorEnd).toBe(56);
     expect(ia_nl2.pmRange).toStrictEqual<Range>({from: 56, to: 57});
+
+    // Two code blocks: first at line 2, second at line 7
+    expect(tree.computeLineNumbers()).toStrictEqual([2, 7]);
 });
 
 test("Empty codeblock", () => {
     // ```lan\n\n```
     const blocks = [new CodeBlock("", {from: 0, to: 11}, {from: 7, to: 7}, 0)];
-    const nodes = createTestMapping(blocks).root.children;
+    const tree = createTestMapping(blocks);
+    const nodes = tree.root.children;
     expect(nodes.length).toBe(1);
     
     const code = nodes[0];
@@ -255,4 +280,6 @@ test("Empty codeblock", () => {
     expect(code.prosemirrorEnd).toBe(1);
     expect(code.pmRange).toStrictEqual<Range>({from: 0, to: 2});
     expect(code.lineStart).toBe(0);
+
+    expect(tree.computeLineNumbers()).toStrictEqual([0]);
 });
