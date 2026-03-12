@@ -16,8 +16,8 @@ import { WaterproofEditor } from "../editor";
 
 export interface ICodePluginState {
 	macros: { [cmd:string] : string };
-	/** A list of currently active `NodeView`s, in insertion order. */
-	activeNodeViews: Set<CodeBlockView>; // I suspect this will break;
+	/** A set of currently active `NodeView`s in insertion order. Note that insertion order does not necessarily match document order */
+	activeNodeViews: Set<CodeBlockView>;
     /** The schema of the outer editor */
     schema: Schema;
     /** Should the codemirror cells show line numbers */
@@ -46,6 +46,7 @@ export function createCoqCodeView(completions: Array<Completion>, symbols: Array
 		const nodeView = new CodeBlockView(node, view, editorInstance, getPos, pluginState.schema, completions, symbols, initialThemeStyle, languageConfig);
 
 		nodeViews.add(nodeView);
+
 		return nodeView;
 	}
 }
@@ -72,9 +73,11 @@ const CoqCodePluginSpec = (completions: Array<Completion>, symbols: Array<Comple
 				for (const step of tr.steps) {
 					if (step instanceof ReplaceStep && step.slice.content.firstChild === null) {
 						for (const view of value.activeNodeViews) {
-							// @ts-expect-error FIXME: Handle possible undefined view._getPos()
-							if (view._getPos() === undefined || (view._getPos() >= step.from && view._getPos() < step.to)) value.activeNodeViews.delete(view);
-						} 
+							const pos = view._getPos();
+							if (pos === undefined || (pos >= step.from && pos < step.to)) {
+								value.activeNodeViews.delete(view);
+							}
+						}
 					}
 				}
 			}
@@ -88,10 +91,10 @@ const CoqCodePluginSpec = (completions: Array<Completion>, symbols: Array<Comple
 					newlines = meta;
 				
 				if (value.activeNodeViews.size == newlines.length) {
-					let i = 0;
-					for (const view of value.activeNodeViews) {
-						view.updateLineNumbers(newlines[i] + 1, lineState);
-						i++;
+					// Sort by document position so line numbers align with computeLineNumbers() order
+					const sorted = [...value.activeNodeViews].sort((a, b) => (a._getPos() ?? 0) - (b._getPos() ?? 0));
+					for (let i = 0; i < sorted.length; i++) {
+						sorted[i].updateLineNumbers(newlines[i] + 1, lineState);
 					}
 				}
 			}

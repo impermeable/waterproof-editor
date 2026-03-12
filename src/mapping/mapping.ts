@@ -121,8 +121,11 @@ export class Mapping {
         let result: ParsedStep;
 
         // Parse the step into a text document change
-        if (step instanceof ReplaceStep && isText) result = this.textUpdate.textUpdate(step, this);
-        else result = this.nodeUpdate.nodeUpdate(step, this);
+        if (step instanceof ReplaceStep && isText) {
+            result = this.textUpdate.textUpdate(step, this);
+        } else {
+            result = this.nodeUpdate.nodeUpdate(step, this);
+        }
 
         this.tree = result.newTree
 

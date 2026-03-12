@@ -7,6 +7,14 @@ import { WaterproofSchema } from "../schema";
 import { Node } from "prosemirror-model";
 import { ReplaceAroundStep, ReplaceStep } from "prosemirror-transform";
 
+function countNewlines(s: string): number {
+    let count = 0;
+    for (let i = 0; i < s.length; i++) {
+        if (s[i] === '\n') count++;
+    }
+    return count;
+}
+
 export class NodeUpdate {
     // Store the tag configuration and serializer
     constructor (private readonly tagConf: TagConfiguration, private readonly serializer: DocumentSerializer) {} 
@@ -42,7 +50,7 @@ export class NodeUpdate {
             parsedStep = this.doReplaceAroundStep(step, mapping);
         }
 
-        console.log("TREEEE", JSON.stringify(parsedStep.newTree));
+        console.log("TREEEE", JSON.stringify(parsedStep.newTree, null, 2));
         return parsedStep;
     }
 
@@ -102,6 +110,8 @@ export class NodeUpdate {
         
         const nodes: TreeNode[] = [];
         let serialized = "";
+        // Strictly speaking this is expensive for long documents, but not doing it requires tracking linenumbers on all nodes
+        let lineCounter = tree.countNewlinesBeforeOffset(documentPos);
         step.slice.content.forEach((node, _, idx) => {
             const parentContent = step.slice.content;
 
@@ -123,10 +133,11 @@ export class NodeUpdate {
             };
             const output = this.serializer.serializeNode(node, parent.type, func);
             serialized += output;
-            const builtNode = this.buildTreeFromNode(node, offsetOriginal, offsetProse);
+            const builtNode = this.buildTreeFromNode(node, offsetOriginal, offsetProse, lineCounter);
             nodes.push(builtNode);
             offsetOriginal += output.length;
             offsetProse += node.nodeSize;
+            lineCounter += countNewlines(output);
         });
 
         const docChange: DocChange = {
@@ -138,29 +149,33 @@ export class NodeUpdate {
         const proseOffset = step.slice.content.size;
         const textOffset = serialized.length;
 
+        const lineDelta = countNewlines(serialized);
+
         // now we need to update the tree
         tree.traverseDepthFirst((thisNode: TreeNode) => {
-            // Update all nodes that come fully after the insertion position
-            if (thisNode.pmRange.from >= step.to) {
-                thisNode.shiftOffsets(textOffset, proseOffset);
-            }
+            // Skip the root node — it's handled separately below
+            if (thisNode === tree.root) return;
 
-            // The inserted nodes could be children of nodes already in the tree (at least of the root node,
-            // but possibly also of hint or input nodes)
-            if (thisNode.pmRange.from < step.from && thisNode.pmRange.to > step.to) {
+            if (thisNode.pmRange.from < step.from && thisNode.pmRange.to > step.from) {
+                // This node strictly contains the insertion point (parent/ancestor)
+                // Only shift closing offsets
                 thisNode.shiftCloseOffsets(textOffset, proseOffset);
+            } else if (thisNode.pmRange.from >= step.to) {
+                // This node starts at or after the insertion position (sibling)
+                thisNode.shiftOffsets(textOffset, proseOffset);
+                thisNode.shiftLineStart(lineDelta);
             }
         });
+        // The root always contains the insertion
+        tree.root.shiftCloseOffsets(textOffset, proseOffset);
 
         // Add the nodes to the parent node. We do this later so that updating in the step 
         // before does not affect the positions of the nodes we are adding
         nodes.forEach(n => parent.addChild(n));
-        
-        return { result: docChange, newTree: tree };
+        return { result: docChange, newTree: tree, lineDelta: lineDelta };
     }
 
-    buildTreeFromNode(node: Node, startOrig: number, startProse: number): TreeNode {
-
+    buildTreeFromNode(node: Node, startOrig: number, startProse: number, currentLine: number = 0): TreeNode {
         // Shortcut for newline nodes
         if (node.type == WaterproofSchema.nodes.newline) {
             return new TreeNode(
@@ -188,6 +203,9 @@ export class NodeUpdate {
 
         const [openTagForNode, closeTagForNode] = this.nodeNameToTagPair(node.type.name, node.attrs.title ? node.attrs.title : "");
 
+        const contentLineStart = currentLine + countNewlines(openTagForNode);
+        const lineStart = (node.type.name === "code" || node.type.name === "math_display") ? contentLineStart : 0;
+
         const treeNode = new TreeNode(
             node.type.name, // node type
             {from: startOrig + openTagForNode.length, to: 0}, // inner range
@@ -195,15 +213,16 @@ export class NodeUpdate {
             node.attrs.title ? node.attrs.title : "", // title
             startProse + 1, 0, // prosemirror start, end
             {from: startProse, to: 0},
-            0
+            lineStart
         );
 
 
         let childOffsetOriginal = startOrig + openTagForNode.length;
         let childOffsetProse = startProse + 1; // +1 for the opening tag
+        let childLine = contentLineStart;
 
         node.forEach((child, _, idx) => {
-            const childTreeNode = this.buildTreeFromNode(child, childOffsetOriginal, childOffsetProse);
+            const childTreeNode = this.buildTreeFromNode(child, childOffsetOriginal, childOffsetProse, childLine);
             treeNode.children.push(childTreeNode);
 
             // Above
@@ -228,6 +247,7 @@ export class NodeUpdate {
             const serializedChild = this.serializer.serializeNode(child, node.type.name, func);
             childOffsetOriginal += serializedChild.length;
             childOffsetProse += child.nodeSize;
+            childLine += countNewlines(serializedChild);
         });
 
         // Now fill in the to positions for innerRange and range
@@ -249,6 +269,9 @@ export class NodeUpdate {
         const nodesToDelete: TreeNode[] = [];
         let from = Number.POSITIVE_INFINITY;
         let to = Number.NEGATIVE_INFINITY;
+
+        // First pass: identify nodes to delete and compute line delta before modifying the tree
+        let deletedNewlines = 0;
         tree.traverseDepthFirst((node: TreeNode) => {
             if (node.prosemirrorStart >= step.from && node.prosemirrorEnd <= step.to) {
                 nodesToDelete.push(node);
@@ -256,13 +279,23 @@ export class NodeUpdate {
                 if (node.tagRange.from < from) from = node.tagRange.from;
                 if (node.tagRange.to > to) to = node.tagRange.to;
 
-                // Remove from the tree immediately (saves an O(n) traversal over nodesToDelete later)
-                const parent = tree.findParent(node);
-                if (parent) {
-                    parent.removeChild(node);
+                // Count newlines contributed by this node
+                if (node.type === "newline") {
+                    deletedNewlines++;
+                } else if (node.type === "code" || node.type === "math_display") {
+                    // open tag \n and close tag \n
+                    deletedNewlines += 2;
                 }
             }
         });
+
+        // Second pass: remove from tree
+        for (const node of nodesToDelete) {
+            const parent = tree.findParent(node);
+            if (parent) {
+                parent.removeChild(node);
+            }
+        }
 
         if (nodesToDelete.length == 0) {
             throw new NodeUpdateError("Could not find any nodes to delete in the given step.");
@@ -285,11 +318,12 @@ export class NodeUpdate {
             // only shift nodes that come after the deleted nodes
             if (thisNode.prosemirrorStart >= step.to) {
                 thisNode.shiftOffsets(-originalRemovedLength, -proseRemovedLength);
+                thisNode.shiftLineStart(-deletedNewlines);
             }
         });
         tree.root.shiftCloseOffsets(-originalRemovedLength, -proseRemovedLength);
 
-        return { result: docChange, newTree: tree };
+        return { result: docChange, newTree: tree, lineDelta: -deletedNewlines };
     }
 
     // ReplaceAroundDelete is used when we unwrap nodes (remove the hint or input tags)
@@ -350,7 +384,7 @@ export class NodeUpdate {
             wrapperParent.addChild(n);
         });
         
-        return { result: docChange, newTree: tree };
+        return { result: docChange, newTree: tree, lineDelta: 0 };
     }
     
     replaceAroundReplace(step: ReplaceAroundStep, tree: Tree): ParsedStep {        
@@ -453,7 +487,7 @@ export class NodeUpdate {
 
         tree.root.shiftCloseOffsets(openTag.length + closeTag.length, 2);
 
-        return {result: docChange, newTree: tree};
+        return {result: docChange, newTree: tree, lineDelta: 0};
     }
 
 }

@@ -58,7 +58,7 @@ export class TextUpdate {
             }
         });
 
-        return {result, newTree: tree};
+        return {result, newTree: tree, lineDelta: 0};
     }
 }
 

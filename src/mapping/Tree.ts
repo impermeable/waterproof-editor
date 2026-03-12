@@ -231,4 +231,27 @@ export class Tree {
         });
         return arr;
     }
+
+    /**
+     * Counts the number of newline characters in the document before the given offset.
+     * This counts newline separator nodes and the \n characters in code/math_display open and close tags.
+     * Note: newlines within markdown content and code content are not tracked by the tree.
+     */
+    countNewlinesBeforeOffset(offset: number): number {
+        let count = 0;
+        this.traverseDepthFirst((node) => {
+            if (node === this.root) return;
+            if (node.tagRange.from >= offset) return;
+
+            if (node.type === "newline" && node.tagRange.to <= offset) {
+                count++;
+            } else if (node.type === "code" || node.type === "math_display") {
+                // Open tag \n is at contentRange.from - 1
+                if (node.contentRange.from <= offset) count++;
+                // Close tag \n is at contentRange.to
+                if (node.contentRange.to < offset) count++;
+            }
+        });
+        return count;
+    }
 }

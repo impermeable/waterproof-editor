@@ -85,3 +85,102 @@ test("Mapping.update text insert inside input shifts wrapper and later blocks", 
     expect(updatedCode!.lineStart).toBe(2);
     expect(updatedTree.computeLineNumbers()).toStrictEqual([2]);
 });
+
+test("Mapping.update node insert shifts lineStart of subsequent code blocks", () => {
+    // Document: ```coq\nFirst\n```\n```coq\nSecond\n```
+    // Two code blocks: first at line 1, second at line 4
+    const doc = "```coq\nFirst\n```\n```coq\nSecond\n```";
+
+    const blocks = parse(doc, {language: "coq"});
+    const mapping = new Mapping(blocks, 0, config, serializer);
+    const proseDoc = constructDocument(blocks);
+
+    const tree = mapping.getMapping();
+    const codeNodes = tree.root.children.filter(node => node.type === "code");
+    expect(codeNodes.length).toBe(2);
+    const firstLineStart = codeNodes[0].lineStart;
+    const secondLineStart = codeNodes[1].lineStart;
+    expect(firstLineStart).toBe(1);
+    expect(secondLineStart).toBe(4);
+
+    // Insert a new code block before the first code block (at position 0)
+    const slice = new Slice(Fragment.from([
+        WaterproofSchema.nodes.code.create(null, Fragment.from(WaterproofSchema.text("New"))),
+        WaterproofSchema.nodes.newline.create()
+    ]), 0, 0);
+    const step = new ReplaceStep(0, 0, slice);
+
+    mapping.update(step, proseDoc);
+
+    const updatedTree = mapping.getMapping();
+    sanityCheckTree(updatedTree.root);
+
+    const updatedCodeNodes: TreeNode[] = [];
+    updatedTree.traverseDepthFirst(node => {
+        if (node.type === "code") updatedCodeNodes.push(node);
+    });
+
+    expect(updatedCodeNodes.length).toBe(3);
+
+    // The newly inserted code block should have a computed lineStart
+    // ```coq\nNew\n``` starts at the beginning, so lineStart = 1
+    expect(updatedCodeNodes[0].lineStart).toBe(1);
+
+    // The original first code block should now be shifted by the newlines in the inserted content
+    // Inserted text: "```coq\nNew\n```\n" = 3 newlines, so original first shifts from 1 to 1+3 = 4
+    expect(updatedCodeNodes[1].lineStart).toBe(firstLineStart + 3);
+
+    // The original second code block should also shift by the same amount
+    expect(updatedCodeNodes[2].lineStart).toBe(secondLineStart + 3);
+
+    expect(updatedTree.computeLineNumbers()).toStrictEqual([1, 4, 7]);
+});
+
+test("Mapping.update node insert in the middle shifts lineStart of later code blocks", () => {
+    // Document: ```coq\nFirst\n```\n```coq\nSecond\n```
+    // Two code blocks: first at line 1, second at line 4
+    const doc = "```coq\nFirst\n```\n```coq\nSecond\n```";
+
+    const blocks = parse(doc, {language: "coq"});
+    const mapping = new Mapping(blocks, 0, config, serializer);
+    const proseDoc = constructDocument(blocks);
+
+    const tree = mapping.getMapping();
+    const codeNodes = tree.root.children.filter(node => node.type === "code");
+    expect(codeNodes.length).toBe(2);
+    expect(codeNodes[0].lineStart).toBe(1);
+    expect(codeNodes[1].lineStart).toBe(4);
+
+    // Insert a new code block between the two existing ones
+    // The newline between them is at pmRange {7, 8}, so inserting at position 8
+    // places the new node right before the second code block
+    const slice = new Slice(Fragment.from([
+        WaterproofSchema.nodes.code.create(null, Fragment.from(WaterproofSchema.text("Middle"))),
+        WaterproofSchema.nodes.newline.create()
+    ]), 0, 0);
+    const step = new ReplaceStep(8, 8, slice);
+
+    mapping.update(step, proseDoc);
+
+    const updatedTree = mapping.getMapping();
+    sanityCheckTree(updatedTree.root);
+
+    const updatedCodeNodes: TreeNode[] = [];
+    updatedTree.traverseDepthFirst(node => {
+        if (node.type === "code") updatedCodeNodes.push(node);
+    });
+
+    expect(updatedCodeNodes.length).toBe(3);
+
+    // First code block is unchanged
+    expect(updatedCodeNodes[0].lineStart).toBe(1);
+
+    // Inserted code block: after "```coq\nFirst\n```\n" (3 newlines), so lineStart = 4
+    // The open tag ```coq\n adds 1 more, content starts at line 5
+    expect(updatedCodeNodes[1].lineStart).toBe(4);
+
+    // Second code block shifted by 3 newlines (```coq\nMiddle\n```\n)
+    expect(updatedCodeNodes[2].lineStart).toBe(4 + 3);
+
+    expect(updatedTree.computeLineNumbers()).toStrictEqual([1, 4, 7]);
+});
