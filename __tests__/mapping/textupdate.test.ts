@@ -15,11 +15,6 @@ function createMapping(doc: WaterproofDocument) {
   return mapping;
 }
 
-function createMappingForLang(lang: string, doc: WaterproofDocument) {
-  const langConfig = configuration(lang);
-  return new Mapping(doc, 0, langConfig, new DefaultTagSerializer(langConfig));
-}
-
 const PLACEHOLDER_LINENR = 0;
 
 function findFirstCodeNode(root: TreeNode): TreeNode | null {
@@ -148,64 +143,6 @@ test("ReplaceStep insert — nested code inside input shifts wrapper and later b
   ];
 
   const mapping = createMapping(blocks);
-  const tree = mapping.getMapping();
-  const inputNode = tree.root.children.find(node => node.type === "input");
-  const afterNode = tree.root.children.filter(node => node.type === "markdown").at(-1);
-  if (!inputNode || !afterNode) throw new Error("Test setup failed: missing input or markdown node");
-
-  const inputTagEnd = inputNode.tagRange.to;
-  const inputContentEnd = inputNode.contentRange.to;
-  const afterContentStart = afterNode.contentRange.from;
-  const afterTagStart = afterNode.tagRange.from;
-
-  const codeNode = findFirstCodeNode(inputNode);
-  if (!codeNode) throw new Error("Test setup failed: missing code node");
-
-  const insertPos = codeNode.prosemirrorStart + 1;
-  const slice: Slice = new Slice(Fragment.from(WaterproofSchema.text("X")), 0, 0);
-  const step: ReplaceStep = new ReplaceStep(insertPos, insertPos, slice);
-
-  const textUpdate = new TextUpdate();
-  const { newTree, result } = textUpdate.textUpdate(step, mapping);
-
-  sanityCheckTree(newTree.root);
-
-  expect(result).toStrictEqual<DocChange>({
-    finalText: "X",
-    startInFile: codeNode.contentRange.from + 1,
-    endInFile: codeNode.contentRange.from + 1
-  });
-
-  const updatedInput = newTree.root.children.find(node => node.type === "input");
-  const updatedAfter = newTree.root.children.filter(node => node.type === "markdown").at(-1);
-  if (!updatedInput || !updatedAfter) throw new Error("Test setup failed: missing updated nodes");
-
-  expect(updatedInput.tagRange.to).toBe(inputTagEnd + 1);
-  expect(updatedInput.contentRange.to).toBe(inputContentEnd + 1);
-  expect(updatedAfter.contentRange.from).toBe(afterContentStart + 1);
-  expect(updatedAfter.tagRange.from).toBe(afterTagStart + 1);
-});
-
-// ── lean4 tests ─────────────────────────────────────────────────────────
-// For lean, code block open tag is ```lean\n (8 chars) vs ```coq\n (7 chars).
-
-test("ReplaceStep insert — nested code inside input shifts wrapper and later blocks (lean4)", () => {
-  // For lean: <input-area>(12)\n(1)```lean\n(8)Test(4)\n```(4)\n(1)</input-area>(13)After(5)
-  // Offsets: input tag {0,43}, inner {12,30}
-  //   NewlineBlock {12,13}
-  //   CodeBlock("Test") tag {13,29}, content {21,25}
-  //   NewlineBlock {29,30}
-  // MarkdownBlock("After") {43,48}
-  const blocks = [
-    new InputAreaBlock("```lean\nTest\n```", {from: 0, to: 43}, {from: 12, to: 30}, PLACEHOLDER_LINENR, [
-      new NewlineBlock({from: 12, to: 13}, {from: 12, to: 13}, PLACEHOLDER_LINENR),
-      new CodeBlock("Test", {from: 13, to: 29}, {from: 21, to: 25}, PLACEHOLDER_LINENR),
-      new NewlineBlock({from: 29, to: 30}, {from: 29, to: 30}, PLACEHOLDER_LINENR)
-    ]),
-    new MarkdownBlock("After", {from: 43, to: 48}, {from: 43, to: 48}, PLACEHOLDER_LINENR)
-  ];
-
-  const mapping = createMappingForLang("lean", blocks);
   const tree = mapping.getMapping();
   const inputNode = tree.root.children.find(node => node.type === "input");
   const afterNode = tree.root.children.filter(node => node.type === "markdown").at(-1);

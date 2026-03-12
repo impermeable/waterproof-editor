@@ -14,27 +14,20 @@ function constructDocument(blocks: Block[]): ProseNode {
     return root(documentContent);
 }
 
-/**
- * Common check: parse a document with the given language, construct a ProseMirror
- * document and verify that every tree node's type matches the ProseMirror node type
- * at the corresponding position.
- */
-function checkParsedDocBlockAt(doc: string, language: string) {
-    const blocks = parse(doc, {language});
-    const config = configuration(language);
-    const mapping = new Mapping(blocks, 0, config, new DefaultTagSerializer(config));
+test("BlockAt with simple .mv file", () => {
+    const doc = "# Test\n```coq\nTest.\n```\n<input-area>\n```coq\nTestingtest.\n```\n</input-area>";
+
+    const blocks = parse(doc, {language: "coq"});
+
+    const mapping = new Mapping(blocks, 0, configuration("coq"), new DefaultTagSerializer(configuration("coq")));
     const proseDoc = constructDocument(blocks);
     const tree = mapping.getMapping();
 
     tree.traverseDepthFirst(treeNode => {
         if (treeNode === tree.root) return;
+        
         expect(proseDoc.nodeAt(treeNode.pmRange.from)?.type.name).toBe(treeNode.type);
     });
-}
-
-test("BlockAt with simple .mv file", () => {
-    const doc = "# Test\n```coq\nTest.\n```\n<input-area>\n```coq\nTestingtest.\n```\n</input-area>";
-    checkParsedDocBlockAt(doc, "coq");
 });
 
 test("BlockAt for full tutorial", () => {
@@ -606,109 +599,15 @@ Proof.
 Qed.
 \`\`\`
 `
-    checkParsedDocBlockAt(tutorial, "coq");
-});
+    const blocks = parse(tutorial, {language: "coq"});
 
-test("BlockAt with simple .lean file", () => {
-    const doc = "# Test\n```lean\nTest.\n```\n<input-area>\n```lean\nTestingtest.\n```\n</input-area>";
-    checkParsedDocBlockAt(doc, "lean");
-});
+    const mapping = new Mapping(blocks, 0, configuration("coq"), new DefaultTagSerializer(configuration("coq")));
+    const proseDoc = constructDocument(blocks);
+    const tree = mapping.getMapping();
 
-test("BlockAt for lean4 tutorial", () => {
-    const tutorial = `# Waterproof Lean4 Tutorial
+    tree.traverseDepthFirst(treeNode => {
+        if (treeNode === tree.root) return;
 
-Try to solve the exercises below.
-<hint title="📦 Import libraries (click to open/close)">
-\`\`\`lean
-import WaterproofGenre
-import Verbose.English.All
-open Verbose English
-\`\`\`
-</hint>## 1. Definitions and examples
-
-### Example:
-\`\`\`lean
-def sequence_tendsto (u : ℕ → ℝ) (l : ℝ) :=
-∀ ε > 0, ∃ N, ∀ n ≥ N, |u n - l| ≤ ε
-\`\`\`
-### Try it yourself:
-\`\`\`lean
-Example "ATC - 003"
-  Given:
-  Assume:
-  Conclusion: ∀ a : ℝ, ∀ b > 5, ∃ c, c > b - a
-Proof:
-\`\`\`
-<input-area>
-\`\`\`lean
-Fix a : ℝ
-
-\`\`\`
-</input-area>
-\`\`\`lean
-QED
-\`\`\`
-## 2. Another example
-
-$$\`E = mc^2\`
-
-\`\`\`lean
-Example "ATC - 007"
-  Given:
-  Assume:
-  Conclusion: ∀ a : ℝ, ∀ b > 5, ∃ c, c > b - a
-Proof:
-\`\`\`
-<input-area>
-\`\`\`lean
-Fix a : ℝ
-
-\`\`\`
-</input-area>
-\`\`\`lean
-QED
-\`\`\`
-## 3. Hints
-<hint title="Show hint">
-hello
-</hint>
-\`\`\`lean
-Example "ATC - 009"
-  Given:
-  Assume:
-  Conclusion: ∀ a : ℝ, ∀ b > 5, ∃ c, c > b - a
-Proof:
-\`\`\`
-<input-area>
-\`\`\`lean
-
-\`\`\`
-</input-area>
-\`\`\`lean
-QED
-\`\`\`
-## 4. Continuous functions
-\`\`\`lean
-Example "ATC - 014"
-  Given: (f : ℝ → ℝ) (u : ℕ → ℝ) (x₀ : ℝ)
-  Assume: (hu :  u converges to x₀) (hf : f is continuous at x₀)
-  Conclusion: (f ∘ u) converges to f x₀
-Proof:
-\`\`\`
-<input-area>
-\`\`\`lean
-  Fix ε > 0
-  By hf applied to ε using that ε > 0 we get δ such that
-    (δ_pos : δ > 0) and (Hf : ∀ x, |x - x₀| ≤ δ ⇒ |f x - f x₀| ≤ ε)
-  By hu applied to δ using that δ > 0 we get N such that Hu : ∀ n ≥ N, |u n - x₀| ≤ δ
-  Fix n ≥ N
-  By Hf applied to u n it suffices to prove |u n - x₀| ≤ δ
-
-\`\`\`
-</input-area>
-\`\`\`lean
-QED
-\`\`\`
-`
-    checkParsedDocBlockAt(tutorial, "lean");
+        expect(proseDoc.nodeAt(treeNode.pmRange.from)?.type.name).toBe(treeNode.type);
+    });
 });

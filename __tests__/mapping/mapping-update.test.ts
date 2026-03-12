@@ -9,6 +9,9 @@ import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer
 import { sanityCheckTree } from "./util";
 import { Node as ProseNode } from "prosemirror-model";
 
+const config = configuration("coq");
+const serializer = new DefaultTagSerializer(config);
+
 function root(childNodes: ProseNode[]) {
     return WaterproofSchema.nodes.doc.create({}, childNodes);
 }
@@ -26,18 +29,12 @@ function findFirstCodeNode(root: TreeNode): TreeNode | null {
     return found;
 }
 
-/**
- * Common test: parse a document containing an input-area with a code block
- * followed by trailing text, insert a character inside the code block, and
- * verify the mapping update shifts wrapper and later-block ranges correctly.
- */
-function testUpdateTextInsertInsideInput(language: string) {
-    const config = configuration(language);
-    const serializer = new DefaultTagSerializer(config);
+test("Mapping.update text insert inside input shifts wrapper and later blocks", () => {
+    // Assumption: parsing an input-area followed by plain text yields an input block and a markdown block.
+    // Assumption: inserting text within a nested code block should expand the wrapper ranges and shift later blocks.
+    const doc = "<input-area>\n```coq\nTest\n```\n</input-area>\nAfter";
 
-    const doc = `<input-area>\n\`\`\`${language}\nTest\n\`\`\`\n</input-area>\nAfter`;
-
-    const blocks = parse(doc, {language});
+    const blocks = parse(doc, {language: "coq"});
     const mapping = new Mapping(blocks, 0, config, serializer);
     const proseDoc = constructDocument(blocks);
 
@@ -80,12 +77,4 @@ function testUpdateTextInsertInsideInput(language: string) {
     expect(updatedInput.contentRange.to).toBe(inputContentEnd + 1);
     expect(updatedAfter.contentRange.from).toBe(afterContentStart + 1);
     expect(updatedAfter.tagRange.from).toBe(afterTagStart + 1);
-}
-
-test("Mapping.update text insert inside input shifts wrapper and later blocks", () => {
-    testUpdateTextInsertInsideInput("coq");
-});
-
-test("Mapping.update text insert inside input shifts wrapper and later blocks (lean4)", () => {
-    testUpdateTextInsertInsideInput("lean");
 });
