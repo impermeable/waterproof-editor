@@ -5,7 +5,7 @@
 import { EditorState, TextSelection } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { WaterproofSchema } from "../../src/schema";
-import { getCmdInsertCode } from "../../src/commands/insert-command";
+import { getCmdInsertCode, getCmdInsertMarkdown, getCmdInsertLatex } from "../../src/commands/insert-command";
 import { InsertionPlace } from "../../src/commands";
 import { configuration } from "../../src/markdown-defaults";
 
@@ -53,7 +53,78 @@ test("Insert code below twice (selection static)", () => {
     expect(view.state.toJSON()).toStrictEqual(newState2);
 });
 
+// States for testing insertion adjacent to code blocks using the real configuration
+// (code has openRequiresNewline: true, closeRequiresNewline: true)
+//
+// doc: [code("Content.")][newline][math_display("Content.")]
+// Positions: code size=10 (pos 0-10), newline size=1 (pos 10), math_display starts at pos 11
+const stateCodeNewlineMath_mathSelected = {"doc":{"type":"doc","content":[{"type":"code","content":[{"type":"text","text":"Content."}]},{"type":"newline"},{"type":"math_display","content":[{"type":"text","text":"Content."}]}]},"selection":{"type":"node","anchor":11}};
+
+// doc: [math_display("Content.")][newline][code("Content.")]
+// math_display size=10 (pos 0-10), newline size=1 (pos 10), code starts at pos 11
+const stateMathNewlineCode_mathSelected = {"doc":{"type":"doc","content":[{"type":"math_display","content":[{"type":"text","text":"Content."}]},{"type":"newline"},{"type":"code","content":[{"type":"text","text":"Content."}]}]},"selection":{"type":"node","anchor":0}};
+
+test("Insert markdown above math_display when code is before the newline adds extra newline", () => {
+    const view = new EditorView(null, {state: EditorState.fromJSON({schema: WaterproofSchema}, stateCodeNewlineMath_mathSelected)});
+    const cmd = getCmdInsertMarkdown(InsertionPlace.Above, tagConf);
+    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+    const content = view.state.toJSON().doc.content;
+    expect(content).toStrictEqual([
+        {"type":"code","content":[{"type":"text","text":"Content."}]},
+        {"type":"newline"},
+        {"type":"markdown"},
+        {"type":"newline"},
+        {"type":"math_display","content":[{"type":"text","text":"Content."}]}
+    ]);
+});
+
+test("Insert math above math_display when code is before the newline adds extra newline", () => {
+    const view = new EditorView(null, {state: EditorState.fromJSON({schema: WaterproofSchema}, stateCodeNewlineMath_mathSelected)});
+    const cmd = getCmdInsertLatex(InsertionPlace.Above, tagConf);
+    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+    const content = view.state.toJSON().doc.content;
+    expect(content).toStrictEqual([
+        {"type":"code","content":[{"type":"text","text":"Content."}]},
+        {"type":"newline"},
+        {"type":"math_display"},
+        {"type":"newline"},
+        {"type":"math_display","content":[{"type":"text","text":"Content."}]}
+    ]);
+});
+
+test("Insert markdown below math_display when code is after the newline adds extra newline", () => {
+    const view = new EditorView(null, {state: EditorState.fromJSON({schema: WaterproofSchema}, stateMathNewlineCode_mathSelected)});
+    const cmd = getCmdInsertMarkdown(InsertionPlace.Below, tagConf);
+    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+    const content = view.state.toJSON().doc.content;
+    expect(content).toStrictEqual([
+        {"type":"math_display","content":[{"type":"text","text":"Content."}]},
+        {"type":"newline"},
+        {"type":"markdown"},
+        {"type":"newline"},
+        {"type":"code","content":[{"type":"text","text":"Content."}]}
+    ]);
+});
+
+test("Insert math below math_display when code is after the newline adds extra newline", () => {
+    const view = new EditorView(null, {state: EditorState.fromJSON({schema: WaterproofSchema}, stateMathNewlineCode_mathSelected)});
+    const cmd = getCmdInsertLatex(InsertionPlace.Below, tagConf);
+    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+    const content = view.state.toJSON().doc.content;
+    expect(content).toStrictEqual([
+        {"type":"math_display","content":[{"type":"text","text":"Content."}]},
+        {"type":"newline"},
+        {"type":"math_display"},
+        {"type":"newline"},
+        {"type":"code","content":[{"type":"text","text":"Content."}]}
+    ]);
+});
 test("Insert code below twice (selection moves down)", () => {
+
     const view = new EditorView(null, {state: EditorState.fromJSON({schema: WaterproofSchema}, state)});
 
     const cmd = getCmdInsertCode(InsertionPlace.Below, tagConf);

@@ -16,7 +16,7 @@ export function getCmdInsertMarkdown(place: InsertionPlace, tagConf: TagConfigur
 
         const f = place === InsertionPlace.Above ? insertAbove : insertBelow;
 
-        const trans = f(state, state.tr, WaterproofSchema.nodes.markdown, tagConf.markdown.openRequiresNewline, tagConf.markdown.closeRequiresNewline);
+        const trans = f(state, state.tr, WaterproofSchema.nodes.markdown, tagConf.markdown.openRequiresNewline, tagConf.markdown.closeRequiresNewline, tagConf);
 
         if (trans === undefined) { return false; }
         
@@ -34,7 +34,7 @@ export function getCmdInsertLatex(place: InsertionPlace, tagConf: TagConfigurati
         if (!allowedToInsert(state)) return false;
         
         const f = place  === InsertionPlace.Above ? insertAbove : insertBelow; 
-        const trans = f(state, state.tr, WaterproofSchema.nodes.math_display, tagConf.math.openRequiresNewline, tagConf.math.closeRequiresNewline);
+        const trans = f(state, state.tr, WaterproofSchema.nodes.math_display, tagConf.math.openRequiresNewline, tagConf.math.closeRequiresNewline, tagConf);
 
         if (trans === undefined) { return false; }
         
@@ -52,7 +52,7 @@ export function getCmdInsertCode(place: InsertionPlace, tagConf: TagConfiguratio
         if (!allowedToInsert(state)) return false;
         
         const f = place === InsertionPlace.Above ? insertAbove : insertBelow;
-        const trans = f(state, state.tr, WaterproofSchema.nodes.code, tagConf.code.openRequiresNewline, tagConf.code.closeRequiresNewline);
+        const trans = f(state, state.tr, WaterproofSchema.nodes.code, tagConf.code.openRequiresNewline, tagConf.code.closeRequiresNewline, tagConf);
 
         if (trans === undefined) { return false; }
         
