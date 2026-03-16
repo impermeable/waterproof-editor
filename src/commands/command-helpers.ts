@@ -156,8 +156,9 @@ export function allowedToInsert(state: EditorState): boolean {
 export function checkInputArea(sel: Selection): boolean {
     const from = sel.$from;
     const depth = from.depth;
-    // An input area can only ever have depth = 1, since it is a 
-    // top level node (see WaterproofSchema in `schema.ts`)
+    // An input area can be at depth = 1 (top level) or depth = 2 (inside a code_group)
     if (depth < 1) return false;
-    return from.node(1).type === WaterproofSchema.nodes.input;
+    if (from.node(1).type === WaterproofSchema.nodes.input) return true;
+    if (depth >= 2 && from.node(1).type === WaterproofSchema.nodes.code_group && from.node(2).type === WaterproofSchema.nodes.input) return true;
+    return false;
 }

@@ -28,6 +28,10 @@ export function configuration(languageId: string): TagConfiguration {
         math: {
             openTag: "$$", closeTag: "$$",
             openRequiresNewline: false, closeRequiresNewline: false
+        },
+        codeGroup: {
+            openTag: "", closeTag: "",
+            openRequiresNewline: false, closeRequiresNewline: false
         }
     }
 };

@@ -1,7 +1,7 @@
 import { Node } from "prosemirror-model";
 import { WaterproofSchema } from "../../schema";
 import { BLOCK_NAME, Block, BlockRange } from "./block";
-import { code, hint, inputArea, markdown, mathDisplay, newline } from "./schema";
+import { code, codeGroup, hint, inputArea, markdown, mathDisplay, newline } from "./schema";
 
 const indentation = (level: number): string => "  ".repeat(level);
 const debugInfo = (block: Block): string => `{range=${block.range.from}-${block.range.to}}`;
@@ -167,5 +167,40 @@ export class NewlineBlock implements Block {
     // Debug print function.
     debugPrint(level: number): void {
         console.log(`${indentation(level)}Newline`);
+    }
+}
+
+/**
+ * CodeGroupBlocks are container blocks that group multiple blocks together.
+ * In Lean context, they are delimited by ::::multilean and ::::.
+ * They can contain both top-level blocks (input, hint) and leaf blocks (math, code, markdown).
+ */
+export class CodeGroupBlock implements Block {
+    public type = BLOCK_NAME.CODE_GROUP;
+    public innerBlocks: Block[];
+
+    constructor(
+        public stringContent: string,
+        public range: BlockRange,
+        public innerRange: BlockRange,
+        public lineStart: number,
+        childBlocks: Block[] | ((innerContent: string, innerRange: BlockRange, lineStartOffset: number) => Block[])
+    ) {
+        if (typeof childBlocks === "function") {
+            this.innerBlocks = childBlocks(stringContent, innerRange, lineStart);
+        } else {
+            this.innerBlocks = childBlocks;
+        }
+    }
+
+    toProseMirror() {
+        const childNodes = this.innerBlocks.map(block => block.toProseMirror());
+        return codeGroup(childNodes);
+    }
+
+    debugPrint(level: number): void {
+        console.log(`${indentation(level)}CodeGroupBlock {${debugInfo(this)}} [`);
+        this.innerBlocks.forEach(block => block.debugPrint(level + 1));
+        console.log(`${indentation(level)}]`);
     }
 }

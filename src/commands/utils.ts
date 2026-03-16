@@ -38,6 +38,8 @@ export function needsNewlineBefore(nodeType: NodeType, tagConf: TagConfiguration
             return tagConf.markdown.openRequiresNewline;
         case WaterproofSchema.nodes.math_display:
             return tagConf.math.openRequiresNewline;
+        case WaterproofSchema.nodes.code_group:
+            return tagConf.codeGroup.openRequiresNewline;
         default:
             return false;
     }
@@ -55,6 +57,8 @@ export function needsNewlineAfter(nodeType: NodeType, tagConf: TagConfiguration)
             return tagConf.markdown.closeRequiresNewline;
         case WaterproofSchema.nodes.math_display:
             return tagConf.math.closeRequiresNewline;
+        case WaterproofSchema.nodes.code_group:
+            return tagConf.codeGroup.closeRequiresNewline;
         default:
             return false;
     }
