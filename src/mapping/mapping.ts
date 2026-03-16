@@ -18,6 +18,7 @@ export class Mapping {
     /** The version of the underlying textDocument */
     private _version: number;
 
+    private readonly serializer: DocumentSerializer;
     private readonly nodeUpdate: NodeUpdate;
     private readonly textUpdate: TextUpdate;
 
@@ -26,6 +27,7 @@ export class Mapping {
      * @param inputBlocks Array containing the blocks that make up this document.
      */
     constructor(inputBlocks: Block[], versionNum: number, tMap: TagConfiguration, serializer: DocumentSerializer) {
+        this.serializer = serializer;
         this.textUpdate = new TextUpdate();
         this.nodeUpdate = new NodeUpdate(tMap, serializer);
         this._version = versionNum;
@@ -124,7 +126,9 @@ export class Mapping {
         if (step instanceof ReplaceStep && isText) {
             result = this.textUpdate.textUpdate(step, this);
         } else {
-            result = this.nodeUpdate.nodeUpdate(step, this);
+            // The entire document is serialized here. This is done to be able to produce an accurate linecount
+            // If this leads to performance issues, this could likely be resolved by being smarter about this.
+            result = this.nodeUpdate.nodeUpdate(step, this, this.serializer.serializeDocument(doc));
         }
 
         this.tree = result.newTree
