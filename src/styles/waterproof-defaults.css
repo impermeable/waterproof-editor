@@ -42,6 +42,9 @@
   --wp-notificationsForeground: #ffffff;
   --wp-quickInputBackground:#ffffff;
   --wp-quickInputForeground: #787c99;
+  /* TODO: remove after using the actual theme */
+  --wp-terminalAnsiBlue: #7aa2f7;
+  --wp-terminalAnsiCyan: #2ac3de;
   --wp-terminalAnsiGreen: #73daca;
   --wp-terminalAnsiRed: #f7768e;
   --wp-terminalAnsiYellow: #e0af68;

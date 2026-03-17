@@ -51,17 +51,55 @@ function buildDecorations(state: EditorState): DecorationSet {
             continue; // skip invalid tokens
         }
 
-        builder.add(token.startOffset, token.endOffset, Decoration.mark({ class: `tok-${token.type}` }));
+        try {
+            builder.add(token.startOffset, token.endOffset, Decoration.mark({ class: `tok-${token.type}` }));
+        } catch {
+            continue; // skip tokens that are out of order or otherwise invalid
+        }
     }
 
     return builder.finish();
 }
 
+// TODO checkout how to wire in the actual theme.
 const semanticTheme = EditorView.theme({
-    ".tok-keyword":  { color: "var(--wp-listHighlightForeground)" },
-    ".tok-variable": { color: "var(--wp-quickInputForeground)" },
-    ".tok-property": { color: "var(--wp-editorInlayHintForeground)" },
-    ".tok-function": { color: "var(--wp-terminalAnsiYellow)" },
+    // Keywords / control flow
+    ".tok-keyword":       { color: "var(--wp-terminalAnsiBlue)" },
+    ".tok-macro":         { color: "var(--wp-terminalAnsiBlue)" },
+    ".tok-modifier":      { color: "var(--wp-terminalAnsiBlue)" },
+    ".tok-operator":      { color: "var(--wp-terminalAnsiBlue)" },
+
+    // Functions / callables
+    ".tok-function":      { color: "var(--wp-terminalAnsiYellow)" },
+    ".tok-method":        { color: "var(--wp-terminalAnsiYellow)" },
+    ".tok-event":         { color: "var(--wp-terminalAnsiYellow)" },
+
+    // Types / shapes
+    ".tok-type":          { color: "var(--wp-editorHintForeground)" },
+    ".tok-class":         { color: "var(--wp-editorHintForeground)" },
+    ".tok-struct":        { color: "var(--wp-editorHintForeground)" },
+    ".tok-enum":          { color: "var(--wp-editorHintForeground)" },
+    ".tok-interface":     { color: "var(--wp-editorHintForeground)" },
+    ".tok-typeParameter": { color: "var(--wp-editorHintForeground)" },
+    ".tok-namespace":     { color: "var(--wp-editorHintForeground)" },
+
+    // Variables / bindings
+    ".tok-variable":      { color: "var(--wp-terminalAnsiCyan)" },
+    ".tok-parameter":     { color: "var(--wp-terminalAnsiCyan)" },
+
+    // Properties / members
+    ".tok-property":      { color: "var(--wp-editorInlayHintForeground)" },
+    ".tok-enumMember":    { color: "var(--wp-editorInlayHintForeground)" },
+    ".tok-decorator":     { color: "var(--wp-editorInlayHintForeground)" },
+
+    // Literals / comments
+    ".tok-string":        { color: "var(--wp-terminalAnsiGreen)" },
+    ".tok-number":        { color: "var(--wp-terminalAnsiGreen)" },
+    ".tok-regexp":        { color: "var(--wp-terminalAnsiGreen)" },
+    ".tok-comment":       { color: "var(--wp-terminalAnsiGreen)" },
+
+    // Lean-specific: sorry and sorry-like terms — highlighted in red to be conspicuous
+    ".tok-leanSorryLike": { color: "var(--wp-terminalAnsiRed)" },
 });
 
 export function semanticTokenTheme() {

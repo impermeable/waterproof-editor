@@ -78,6 +78,7 @@ export class Mapping {
     public textOffsetToPmIndex(offset: number) {
         const correctNode: TreeNode | null = this.tree.findNodeByOriginalPosition(offset);
         if (correctNode === null) throw new MappingError(` [findInvPosition] The prosemirror index for offset (${offset}) could not be found `);
+        if (correctNode === this.tree.root) throw new MappingError(` [findInvPosition] Offset (${offset}) is not within any content region `);
         return (offset - correctNode.contentRange.from) + correctNode.prosemirrorStart;
     }
 
