@@ -1,7 +1,8 @@
-import { NodeType } from "prosemirror-model";
+import { Fragment, NodeType } from "prosemirror-model";
 import { Command, EditorState, NodeSelection, TextSelection, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
-import { liftTarget } from "prosemirror-transform";
+import { liftTarget, ReplaceAroundStep } from "prosemirror-transform";
+import { Slice } from "prosemirror-model";
 import { WaterproofSchema } from "../schema";
 import { getParentAndIndex, needsNewlineAfter, needsNewlineBefore } from "./utils";
 import { TagConfiguration } from "../api";
@@ -139,8 +140,38 @@ export function wrapInInput(tagConf: TagConfiguration): Command {
     return wpWrapIn(WaterproofSchema.nodes.input, tagConf);
 }
 
-export function wrapInContainer(tagConf: TagConfiguration): Command {
-    return wpWrapIn(WaterproofSchema.nodes.container, tagConf);
+export function wrapInContainer(tagConf: TagConfiguration, name: string = "multilean"): Command {
+    return (state, dispatch) => {
+        const sel = state.selection;
+        if (!(sel instanceof NodeSelection)) return false;
+
+        // Don't wrap a container inside another container
+        if (sel.node.type === WaterproofSchema.nodes.container) return false;
+
+        const before = sel.$from.nodeBefore;
+        const after = sel.$to.nodeAfter;
+        const beforeIsNewline = before?.type === WaterproofSchema.nodes.newline;
+        const afterIsNewline = after?.type === WaterproofSchema.nodes.newline;
+
+        if (needsNewlineBefore(WaterproofSchema.nodes.container, tagConf) && !beforeIsNewline) return false;
+
+        const blockRange = sel.$from.blockRange(sel.$to);
+        if (blockRange === null) return false;
+
+        if (dispatch) {
+            const tr = state.tr;
+            // Use ReplaceAroundStep directly: for a top-level NodeSelection,
+            // blockRange computes range.start = -1 (boundary position math),
+            // which causes tr.wrap to include the preceding newline inside the container.
+            const containerNode = WaterproofSchema.nodes.container.create({name});
+            const slice = new Slice(Fragment.from(containerNode), 0, 0);
+            tr.step(new ReplaceAroundStep(sel.from, sel.to, sel.from, sel.to, slice, 1, true));
+            tr.setSelection(NodeSelection.create(tr.doc, tr.mapping.map(sel.from)));
+            tr.scrollIntoView();
+            dispatch(tr);
+        }
+        return true;
+    };
 }
 
 function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration): Command {

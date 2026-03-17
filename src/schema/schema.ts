@@ -114,7 +114,7 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 				name: {default: ""}
 			},
 			toDOM: (node) => {
-				return ["WaterproofContainer", {class: "container", name: node.attrs.name}, 0];
+				return ["div", {class: "container", "data-name": node.attrs.name}, 0];
 			}
 		},
 		//#endregion

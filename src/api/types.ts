@@ -1,4 +1,5 @@
 import { HighlightStyle, LanguageSupport } from "@codemirror/language";
+import { EditorState } from "prosemirror-state";
 import { Block } from "../document";
 import { DocumentSerializer } from "../serialization/DocumentSerializer";
 import { WaterproofCompletion, WaterproofSymbol } from "./Completions";
@@ -106,6 +107,8 @@ export type MenuBarEntry = {
     hoverText: string;
     /** The function to execute when the button is clicked */
     callback: () => void;
+    /** Optional predicate called with the current editor state to determine if the button should be active (enabled). When omitted the button is always active. */
+    isActive?: (state: EditorState) => boolean;
     /** Control the visibility of the entry */
     buttonVisibility?: {
         /** When set to true the entry will only be visible in teacher mode */

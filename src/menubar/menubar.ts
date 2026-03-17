@@ -14,6 +14,7 @@ type MenuEntry = {
     showByDefault: boolean;
     cmd: Command;
     customEntry: boolean;
+    isActive?: (state: import("prosemirror-state").EditorState) => boolean;
 };
 
 /**
@@ -110,6 +111,10 @@ class MenuView implements PluginView {
                 item.dom.style.opacity = active ? "1" : "0.4";
                 // And make it unclickable.
                 item.dom.setAttribute("disabled", (!active).toString());
+            } else if (item.isActive) {
+                const active = item.isActive(this.view.state);
+                item.dom.style.opacity = active ? "1" : "0.4";
+                item.dom.setAttribute("disabled", (!active).toString());
             }
         }
     }
@@ -165,14 +170,15 @@ function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfigurat
     // Create the list of menu entries.
     const items: MenuEntry[] = [];
 
-    const customMenuItems = customEntries?.map(entry => createMenuItem(entry.title, entry.hoverText, () => { entry.callback(); return true; }, entry.buttonVisibility, true));
+    const customMenuItems = customEntries?.map(entry => {
+        const item = createMenuItem(entry.title, entry.hoverText, () => { entry.callback(); return true; }, entry.buttonVisibility, true);
+        item.isActive = entry.isActive;
+        return item;
+    });
     if (customMenuItems !== undefined)
         items.push(...customMenuItems);
 
-    // The DEBUG label will be dropped in case we are *not* in debug mode.
-    // eslint-disable-next-line no-unused-labels
-    DEBUG: {
-        items.push(
+    items.push(
             ...[
                 // Insert Coq command
                 createMenuItem("Math↓", `Insert new verified math block underneath (${keyBinding("q")})`, getCmdInsertCode(InsertionPlace.Below, tagConf)),
@@ -190,7 +196,13 @@ function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfigurat
                 createMenuItem("<strong>?</strong>", "Make selection a hint element", teacherOnlyWrapper(wrapInHint(tagConf)), teacherOnly),
                 createMenuItem("↑", "Lift selected node (Reverts the effect of making a 'hint' or 'input area')", teacherOnlyWrapper(wpLift(tagConf)), teacherOnly),
                 createMenuItem("🗑️", "Delete selection", teacherOnlyWrapper(deleteSelection(tagConf)), teacherOnly),
-            ],
+            ])
+
+
+    // The DEBUG label will be dropped in case we are *not* in debug mode.
+    // eslint-disable-next-line no-unused-labels
+    DEBUG: {
+        items.push(
             createMenuItem("DUMP DOC", "", (state, dispatch) => {
                 if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m dumped doc", JSON.stringify(state.doc.toJSON()));
                 return true;

@@ -155,7 +155,9 @@ export class Mapping {
         function buildSubtree(blocks: Block[]): TreeNode[] {
             return blocks.map(block => {
 
-                const title = typeguards.isHintBlock(block) ? block.title : "";
+                const title = typeguards.isHintBlock(block) ? block.title
+                    : typeguards.isContainerBlock(block) ? block.name
+                    : "";
 
                 const node = new TreeNode(
                     block.type,
