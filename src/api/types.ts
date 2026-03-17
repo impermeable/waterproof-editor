@@ -1,3 +1,4 @@
+import { HighlightStyle, LanguageSupport } from "@codemirror/language";
 import { Block } from "../document";
 import { DocumentSerializer } from "../serialization/DocumentSerializer";
 import { WaterproofCompletion, WaterproofSymbol } from "./Completions";
@@ -48,6 +49,12 @@ export type OpenCloseTag = {
     closeTag: string 
 }
 
+export const enum TextContentOfSpecifier {
+    CODE = 1, // = 001
+    MARKDOWN = 2, // = 010
+    MATH_DISPLAY = 4 // = 100
+}
+
 /**
  * Type describing whether the open tag requires a newline before and whether the closing tag requires a newline after.
  * 
@@ -89,6 +96,28 @@ export class TextUpdateError extends Error {
 
 export class MappingError extends Error {
     constructor(message: string) { super("[MappingError] " + message); }
+}
+
+export type MenuBarEntry = {
+    /** The text to show in the menubar */
+    title: string;
+    /** The text to show on hover over the menubar entry */
+    hoverText: string;
+    /** The function to execute when the button is clicked */
+    callback: () => void;
+    /** Control the visibility of the entry */
+    buttonVisibility?: {
+        /** When set to true the entry will only be visible in teacher mode */
+        teacherModeOnly?: boolean;
+        /** When set to true the button will be displayed regardless of whether the menubar entries are hidden via the setting */
+        showByDefault?: boolean;
+    }
+}
+
+export type LanguageConfiguration = {
+    languageSupport: LanguageSupport;
+    highlightLight: HighlightStyle;
+    highlightDark: HighlightStyle;
 }
 
 /**
@@ -139,32 +168,19 @@ export type WaterproofEditorConfig = {
     /**
      * Disables MarkdownIt features. Will likely be removed in the future once there is a nice way to support non markdown markup languages.
      */
-    disableMarkdownFeatures?: Array<string>
+    disableMarkdownFeatures?: Array<string>,
+
+    /**
+     * Specify custom entries that should be added to the menubar
+     */
+    menubarEntries?: Array<MenuBarEntry>;
+
+    languageConfig?: LanguageConfiguration;
 }
 
 export enum HistoryChange {
     Undo,
     Redo
-}
-
-export type SimpleProgressInfo = {
-    /** Range for which the processing info was reported. */
-    range: {
-        start: { line: number, character: number },
-        end: { line: number, character: number },
-    };
-    /** Kind of progress that was reported. */
-    kind?: CoqFileProgressKind;
-}
-
-export type SimpleProgressParams = {
-    numberOfLines: number;
-    progress: SimpleProgressInfo[];
-}
-
-export enum CoqFileProgressKind {
-    Processing = 1,
-    FatalError
 }
 
 export interface OffsetDiagnostic {

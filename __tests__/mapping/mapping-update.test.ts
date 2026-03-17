@@ -34,7 +34,7 @@ test("Mapping.update text insert inside input shifts wrapper and later blocks", 
     // Assumption: inserting text within a nested code block should expand the wrapper ranges and shift later blocks.
     const doc = "<input-area>\n```coq\nTest\n```\n</input-area>\nAfter";
 
-    const blocks = parse(doc, "coq");
+    const blocks = parse(doc, {language: "coq"});
     const mapping = new Mapping(blocks, 0, config, serializer);
     const proseDoc = constructDocument(blocks);
 

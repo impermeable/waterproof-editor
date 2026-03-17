@@ -23,7 +23,7 @@ E = mc^2
 $$</input-area>`;
 
 test("test", () => {
-    const blocks = parse(exampleDocument, "python");
+    const blocks = parse(exampleDocument, {language: "python"});
 
     expect(blocks.length).toBe(6);
     const [b1, nl1, b2, nl2, b3, b4] = blocks;

@@ -15,7 +15,7 @@ This is a hint block with some **markdown** content.
 </hint>`;
 
 test("test", () => {
-    const blocks = parse(doc, "python");
+    const blocks = parse(doc, {language: "python"});
 
     expect(blocks.length).toBe(9);
     const [md1, nl1, py1, nl2, md2, nl3, py2, nl4, hint] = blocks;

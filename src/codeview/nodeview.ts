@@ -1,7 +1,5 @@
-import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { syntaxHighlighting } from "@codemirror/language";
 import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, acceptCompletion, completionStatus, hasNextSnippetField, nextSnippetField, snippetKeymap, prevSnippetField, clearSnippet, moveCompletionSelection, closeCompletion } from "@codemirror/autocomplete";
-import { coq, coqSyntaxHighlighting } from "./lang-pack"
-import { verbose } from "./lang-pack-verbose"
 import { Compartment, EditorState, Extension } from "@codemirror/state"
 import {
 	EditorView as CodeMirror, Command, keymap as cmKeymap,
@@ -14,9 +12,10 @@ import { renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, lintGutter } from "@codemirror/lint";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
-import { OffsetSemanticToken, ThemeStyle } from "../api";
+import { OffsetSemanticToken, LanguageConfiguration, ThemeStyle } from "../api";
 import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
+import { CodeBlockBusyIndicator } from "./busy-indicator";
 import { clearSemanticTokens, semanticHighlighting, semanticTokenTheme, setSemanticTokens } from "./semantic-highlighting";
 
 /**
@@ -36,6 +35,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _semanticTokenCompartment: Compartment;
 	private lastUsedDiagnosticsVersion: number = 0;
 
+	private busyIndicator: CodeBlockBusyIndicator;
+
 	constructor(
 		node: Node,
 		view: EditorView,
@@ -44,12 +45,14 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		schema: Schema,
 		completions: Array<Completion>,
 		symbols: Array<Completion>,
-		initialThemeStyle: ThemeStyle
+		initialThemeStyle: ThemeStyle,
+		private readonly languageConfig?: LanguageConfiguration
 	) {
 		super(node, view, getPos, schema);
 		this._node = node;
 		this._outerView = view;
 		this._getPos = getPos;
+		this.busyIndicator = new CodeBlockBusyIndicator();
 		this._lineNumbersExtension = [];
 
 		this._lineNumberCompartment = new Compartment;
@@ -132,10 +135,10 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				// This codemirror cell is part of an input area, we change
 				// the placeholder to `(* Type your proof here *)` and apply
 				// the appropriate styling.
-				div.innerText = "(* Type your proof here *)";
+				//div.innerText = "(* Type your proof here *)";
 				// The styling of this class is
 				// defined in `editor/src/kroqed-editor/styles/input-area.css`.
-				div.classList.add("empty-proof-placeholder");
+				div.classList.add("empty-input-area-placeholder");
 			} else {
 				// This codemirror cell is not part of an input area, use the
 				// `Empty code cell` placeholder.
@@ -152,6 +155,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._codemirror = new CodeMirror({
 			doc: this._node.textContent,
 			extensions: [
+				...this.busyIndicator.getExtensions(),
 				// Add the linting extension for showing diagnostics (errors, warnings, etc)
 				linter(this.lintingFunction, {
 					// This codemirror instance needs to refresh diagnostics when the version of diagnostics stored in the
@@ -164,8 +168,15 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				...optional,
 				this._readOnlyCompartment.of(EditorState.readOnly.of(!this._outerView.editable)),
 				this._lineNumberCompartment.of(this._lineNumbersExtension),
-				this._themeCompartment.of(coqSyntaxHighlighting(initialThemeStyle)),
-
+				this._themeCompartment.of(
+					(() => {
+						if (languageConfig !== undefined) {
+							return syntaxHighlighting(initialThemeStyle === ThemeStyle.Light ? languageConfig.highlightLight : languageConfig.highlightDark);
+						}
+						return [];
+					})()
+				),
+				languageConfig?.languageSupport ?? [],
 				autocompletion({
 					override: [
 						tacticCompletionSource,
@@ -227,10 +238,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 					}
 				]),
 				customTheme,
-				syntaxHighlighting(defaultHighlightStyle),
-				this._languageCompartment.of(coq()),
+				languageConfig?.languageSupport ?? [],
 				this._semanticTokenCompartment.of([]), 
-                highlightActiveLine(),
+        		highlightActiveLine(),
 				CodeMirror.updateListener.of(update => this.forwardUpdate(update)),
 				placeholder(placeholderContent())
 			],
@@ -312,36 +322,15 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	/**
 	 * Update the theme of the editor.
 	 */
-	public updateThemeFromVSCode(theme: ThemeStyle, lang: string): void {
-		this.updateLanguage(lang);
-		// Disables lean grammar
-		/*const lanSyntaxHighlighting = lang === "lean4" ? verboseSyntaxHighlighting : coqSyntaxHighlighting;
+	public updateThemeFromVSCode(theme: ThemeStyle): void {
 		this._codemirror?.dispatch({
 			effects: this._themeCompartment.reconfigure(
-				lanSyntaxHighlighting(theme)
-			)
-		}); */
-		if (lang === "lean4") {
-			this._codemirror?.dispatch({
-				effects: this._semanticTokenCompartment.reconfigure(
-					[...semanticHighlighting(), semanticTokenTheme(theme)]
-				)
-			});	
-		} else {
-			this._codemirror?.dispatch({
-				effects: [
-					this._themeCompartment.reconfigure( coqSyntaxHighlighting(theme) ),
-					this._semanticTokenCompartment.reconfigure([]) 
-				]
-			});
-		}
-	}
-
-	private updateLanguage(lang: string){
-		const lan = lang === "lean4" ? verbose : coq;
-		this._codemirror?.dispatch({
-			effects: this._languageCompartment.reconfigure(
-				lan()
+				(() => {
+					if (this.languageConfig !== undefined) {
+						return syntaxHighlighting(theme === ThemeStyle.Light ? this.languageConfig.highlightLight : this.languageConfig.highlightDark);
+					}
+					return [];
+				})()
 			)
 		});
 	}
@@ -357,6 +346,22 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	get documentLength(): number {
 		return this._codemirror?.state.doc.length ?? 0;
 	}
+	
+	/**
+	 * Show the busy spinner on the line currently being checked by coq-lsp.
+	 * {@link busyIndicatorPos} is a ProseMirror document offset.
+	 */
+	public setBusyIndicator(busyIndicatorPos: number): void {
+		if (!this._codemirror) return;
+		this.busyIndicator.setBusy(this._codemirror, busyIndicatorPos, this._getPos());
+	}
+
+	/** Remove the busy spinner from this block. */
+	public removeBusyIndicator(): void {
+		if (!this._codemirror) return;
+		this.busyIndicator.clearBusy(this._codemirror);
+	}
+
 
 	/**
 	 * Update the line numbers extension

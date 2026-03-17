@@ -9,11 +9,9 @@ export { Severity, SeverityLabel, SeverityLabelMap } from "./Severity";
 
 export * from "./types";
 
-export { WaterproofCompletion, WaterproofSymbol } from "./Completions";
+export type { WaterproofCompletion, WaterproofSymbol } from "./Completions";
 
-export { Completion } from "@codemirror/autocomplete";
-
-export { ServerStatus, Idle, Busy } from "./ServerStatus";
+export type { Completion } from "@codemirror/autocomplete";
 
 export { DocumentSerializer } from "../serialization/DocumentSerializer";
 

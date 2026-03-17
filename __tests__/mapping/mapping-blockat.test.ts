@@ -17,7 +17,7 @@ function constructDocument(blocks: Block[]): ProseNode {
 test("BlockAt with simple .mv file", () => {
     const doc = "# Test\n```coq\nTest.\n```\n<input-area>\n```coq\nTestingtest.\n```\n</input-area>";
 
-    const blocks = parse(doc, "coq");
+    const blocks = parse(doc, {language: "coq"});
 
     const mapping = new Mapping(blocks, 0, configuration("coq"), new DefaultTagSerializer(configuration("coq")));
     const proseDoc = constructDocument(blocks);
@@ -599,7 +599,7 @@ Proof.
 Qed.
 \`\`\`
 `
-    const blocks = parse(tutorial, "coq");
+    const blocks = parse(tutorial, {language: "coq"});
 
     const mapping = new Mapping(blocks, 0, configuration("coq"), new DefaultTagSerializer(configuration("coq")));
     const proseDoc = constructDocument(blocks);
