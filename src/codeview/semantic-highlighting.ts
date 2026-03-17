@@ -1,5 +1,5 @@
 import { EditorState, RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
-import { OffsetSemanticToken, ThemeStyle } from "../api";
+import { OffsetSemanticToken } from "../api";
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
 
 /** Dispatch this effect to replace the current set of semantic tokens. The tokens have to be sorted in document order. */
@@ -57,23 +57,15 @@ function buildDecorations(state: EditorState): DecorationSet {
     return builder.finish();
 }
 
-// TODO: use the themes defined elsewhere and provide them here + adapt them to the expected class names.
-const darkSemanticTheme = EditorView.theme({
-    ".tok-keyword":        { color: "#56b3ff" },  // matches grammar tactic blue
-    ".tok-variable":       { color: "#a0c4e8" },  // light steel blue
-    ".tok-property":       { color: "#8ab8d8" },  // softer blue
-    ".tok-function":       { color: "#e0c070" },  // warm gold
-}, { dark: true });
+const semanticTheme = EditorView.theme({
+    ".tok-keyword":  { color: "var(--wp-listHighlightForeground)" },
+    ".tok-variable": { color: "var(--wp-quickInputForeground)" },
+    ".tok-property": { color: "var(--wp-editorInlayHintForeground)" },
+    ".tok-function": { color: "var(--wp-terminalAnsiYellow)" },
+});
 
-const lightSemanticTheme = EditorView.theme({
-    ".tok-keyword":        { color: "#004cf0" },  // matches grammar tactic blue
-    ".tok-variable":       { color: "#2060a0" },  // medium blue
-    ".tok-property":       { color: "#406090" },  // slate blue
-    ".tok-function":       { color: "#8a5e20" },  // rich brown
-}, { dark: false });
-
-export function semanticTokenTheme(theme: ThemeStyle) {
-    return theme === ThemeStyle.Dark ? darkSemanticTheme : lightSemanticTheme;
+export function semanticTokenTheme() {
+    return semanticTheme;
 }
 
 export function semanticHighlighting() {

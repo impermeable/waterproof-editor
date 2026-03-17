@@ -7,7 +7,7 @@ import {
 	lineNumbers, placeholder} from "@codemirror/view"
 import { Node, Schema } from "prosemirror-model"
 import { EditorView } from "prosemirror-view"
-import { customTheme } from "./color-scheme"
+import { getCustomTheme } from "./color-scheme"
 import { renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, lintGutter } from "@codemirror/lint";
@@ -33,6 +33,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _themeCompartment: Compartment;
 	private _languageCompartment: Compartment;
 	private _semanticTokenCompartment: Compartment;
+	private _baseThemeCompartment: Compartment;
 	private lastUsedDiagnosticsVersion: number = 0;
 
 	private busyIndicator: CodeBlockBusyIndicator;
@@ -60,6 +61,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._themeCompartment = new Compartment;
 		this._languageCompartment = new Compartment;
 		this._semanticTokenCompartment = new Compartment;
+		this._baseThemeCompartment = new Compartment;
 
 		const tacticCompletionSource: CompletionSource = function(context: CompletionContext) {
 			const completionResult: CompletionResult = {
@@ -237,10 +239,10 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 						run: clearSnippet
 					}
 				]),
-				customTheme,
-				languageConfig?.languageSupport ?? [],
-				this._semanticTokenCompartment.of([]), 
-        		highlightActiveLine(),
+			this._baseThemeCompartment.of(getCustomTheme(initialThemeStyle === ThemeStyle.Dark)),
+        ...semanticHighlighting(),
+				this._semanticTokenCompartment.of(semanticTokenTheme()),
+        highlightActiveLine(),
 				CodeMirror.updateListener.of(update => this.forwardUpdate(update)),
 				placeholder(placeholderContent())
 			],
@@ -324,14 +326,23 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	 */
 	public updateThemeFromVSCode(theme: ThemeStyle): void {
 		this._codemirror?.dispatch({
-			effects: this._themeCompartment.reconfigure(
-				(() => {
-					if (this.languageConfig !== undefined) {
-						return syntaxHighlighting(theme === ThemeStyle.Light ? this.languageConfig.highlightLight : this.languageConfig.highlightDark);
-					}
-					return [];
-				})()
-			)
+			effects: [
+				this._themeCompartment.reconfigure(
+					(() => {
+						if (this.languageConfig !== undefined) {
+							// TODO: Temporary workaround - disable static syntax highlighting for Lean since
+							// semantic highlighting is used instead. Remove once a proper solution is in place.
+							if (this.languageConfig.languageSupport.language.name === "lean") {
+								return [];
+							}
+							return syntaxHighlighting(theme === ThemeStyle.Light ? this.languageConfig.highlightLight : this.languageConfig.highlightDark);
+						}
+						return [];
+					})()
+				),
+				this._semanticTokenCompartment.reconfigure(semanticTokenTheme()),
+				this._baseThemeCompartment.reconfigure(getCustomTheme(theme === ThemeStyle.Dark)),
+			]
 		});
 	}
 
