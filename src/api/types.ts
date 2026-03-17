@@ -84,7 +84,7 @@ export type TagConfiguration = {
     hint:  { openTag: ((title: string) => string), closeTag: string } & RequiresNewline,
     input: OpenCloseTag & RequiresNewline,
     math: OpenCloseTag & RequiresNewline,
-    codeGroup: OpenCloseTag & RequiresNewline,
+    container: { openTag: (name: string) => string, closeTag: (name: string) => string } & RequiresNewline,
 }
 
 export class NodeUpdateError extends Error {

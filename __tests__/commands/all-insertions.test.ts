@@ -34,8 +34,9 @@ const tagConf: TagConfiguration = {
         openTag: "$$", closeTag: "$$",
         openRequiresNewline: false, closeRequiresNewline: false
     },
-    codeGroup: {
-        openTag: "::::multilean\n", closeTag: "\n::::",
+    container: {
+        openTag: (name: string) => `::::${name}\n`,
+        closeTag: (_name: string) => "\n::::",
         openRequiresNewline: false, closeRequiresNewline: false,
     }
 }

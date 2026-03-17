@@ -7,7 +7,7 @@ export const SchemaCell = {
 	MathDisplay: "math_display",
 	Code: "code",
 	Newline: "newline",
-	CodeGroup: "code_group"
+	Container: "container"
 } as const;
 
 export type SchemaKeys = keyof typeof SchemaCell;
@@ -38,7 +38,7 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		markdown: {
 			block: true,
 			content: "text*",
-			group: "cell containercontent codegroupcontent",
+			group: "cell containercontent containercell",
 			parseDOM: [{tag: "markdown", preserveWhitespace: "full"}],
 			atom: true,
 			toDOM: () => {
@@ -51,7 +51,7 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		//#region Hint
 		hint: {
 			content: "containercontent+",
-			group: "cell codegroupcontent",
+			group: "cell containercell",
 			attrs: {
 				title: {default: "💡 Hint"},
 				shown: {default: false}
@@ -66,7 +66,7 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		//#region input
 		input: {
 			content: "containercontent+",
-			group: "cell codegroupcontent",
+			group: "cell containercell",
 			attrs: {
 				status: {default: null}
 			},
@@ -80,7 +80,7 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		//#region Code
 		code: {
 			content: "text*",// content is of type text
-			group: "cell containercontent codegroupcontent",
+			group: "cell containercontent containercell",
 			code: true,
 			atom: true, // doesn't have directly editable content (content is edited through codemirror)
 			toDOM(node) { return ["WaterproofCode", node.attrs, 0] } // <WaterproofCode></WaterproofCode> cells
@@ -91,7 +91,7 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		/////// MATH DISPLAY //////
 		//#region math-display
 		math_display: {
-			group: "math cell containercontent codegroupcontent",
+			group: "math cell containercontent containercell",
 			content: "text*",
 			atom: true,
 			code: true,
@@ -100,18 +100,21 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		//#endregion
 
 		newline: {
-			group: "cell containercontent codegroupcontent",
+			group: "cell containercontent containercell",
 			toDOM(node) { return ["WaterproofNewline", node.attrs]},
 			selectable: false,
 		},
 
-		/////// CODE GROUP //////
-		//#region code_group
-		code_group: {
-			content: "codegroupcontent+",
+		/////// CONTAINER //////
+		//#region container
+		container: {
+			content: "containercell+",
 			group: "cell",
-			toDOM: () => {
-				return ["WaterproofCodeGroup", {class: "codegroup"}, 0];
+			attrs: {
+				name: {default: ""}
+			},
+			toDOM: (node) => {
+				return ["WaterproofContainer", {class: "container", name: node.attrs.name}, 0];
 			}
 		},
 		//#endregion

@@ -17,8 +17,8 @@ export function wpLift(_tagConf: TagConfiguration): Command {
         const after = $to.nodeAfter;
         
         const {type} = node;
-        if (type !== WaterproofSchema.nodes.hint && type !== WaterproofSchema.nodes.input && type !== WaterproofSchema.nodes.code_group) {
-            // We can only lift hint, input area, or code_group nodes.
+        if (type !== WaterproofSchema.nodes.hint && type !== WaterproofSchema.nodes.input && type !== WaterproofSchema.nodes.container) {
+            // We can only lift hint, input area, or container nodes.
             return false;
         }
 
@@ -139,8 +139,8 @@ export function wrapInInput(tagConf: TagConfiguration): Command {
     return wpWrapIn(WaterproofSchema.nodes.input, tagConf);
 }
 
-export function wrapInCodeGroup(tagConf: TagConfiguration): Command {
-    return wpWrapIn(WaterproofSchema.nodes.code_group, tagConf);
+export function wrapInContainer(tagConf: TagConfiguration): Command {
+    return wpWrapIn(WaterproofSchema.nodes.container, tagConf);
 }
 
 function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration): Command {

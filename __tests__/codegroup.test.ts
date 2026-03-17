@@ -1,9 +1,9 @@
 import { parse } from "../src/markdown-defaults";
 import {
     isMarkdownBlock, isCodeBlock, isHintBlock, isInputAreaBlock,
-    isMathDisplayBlock, isNewlineBlock, isCodeGroupBlock
+    isMathDisplayBlock, isNewlineBlock, isContainerBlock
 } from "../src/document/blocks";
-import { HintBlock, CodeGroupBlock } from "../src/document";
+import { HintBlock, ContainerBlock } from "../src/document";
 import { Mapping, Range, WaterproofDocument } from "../src/api";
 import { CodeBlock, InputAreaBlock, MarkdownBlock, MathDisplayBlock, NewlineBlock } from "../src/document";
 import { configuration } from "../src/markdown-defaults";
@@ -11,7 +11,8 @@ import { DefaultTagSerializer } from "../src/serialization/DocumentSerializer";
 import { constructDocument } from "../src/document";
 import { sanityCheckTree } from "./mapping/util";
 import { TagConfiguration } from "../src/api";
-import { wrapInCodeGroup, wpLift } from "../src/commands";
+import { wrapInContainer, wpLift } from "../src/commands";
+
 import { EditorState, NodeSelection } from "prosemirror-state";
 import { WaterproofSchema } from "../src/schema";
 import { checkInputArea } from "../src/commands/command-helpers";
@@ -21,8 +22,9 @@ const serializer = new DefaultTagSerializer(config);
 
 const multileanConfig: TagConfiguration = {
     ...config,
-    codeGroup: {
-        openTag: "::::multilean\n", closeTag: "\n::::",
+    container: {
+        openTag: (name: string) => `::::${name}\n`,
+        closeTag: (_name: string) => "\n::::",
         openRequiresNewline: false, closeRequiresNewline: false,
     }
 };
@@ -35,33 +37,33 @@ function createTestMapping(blocks: WaterproofDocument) {
 
 // ============================================================
 // Parsing tests — the .mv parser (statemachine.ts) does not
-// handle code_group; parsing is handled in waterproof-vscode.
+// handle container; parsing is handled in waterproof-vscode.
 // ============================================================
 
-describe("code_group parsing (not supported by .mv parser)", () => {
-    test("parser does not recognize code_group syntax", () => {
+describe("container parsing (not supported by .mv parser)", () => {
+    test("parser does not recognize container syntax", () => {
         const doc = `::::multilean
 Some markdown content
 ::::`;
         const blocks = parse(doc, { language: "lean4" });
-        // Should be parsed as plain markdown, not as a code_group
-        expect(blocks.every(b => !isCodeGroupBlock(b))).toBe(true);
+        // Should be parsed as plain markdown, not as a container
+        expect(blocks.every(b => !isContainerBlock(b))).toBe(true);
         expect(isMarkdownBlock(blocks[0])).toBe(true);
     });
 });
 
 // ============================================================
-// Serialization tests — with empty tags, code_group serializes
+// Serialization tests — with empty tags, container serializes
 // transparently (just the inner content, no wrapper).
 // ============================================================
 
-describe("code_group serialization", () => {
-    test("serialize code_group with markdown", () => {
+describe("container serialization", () => {
+    test("serialize container with markdown", () => {
         const innerBlocks = [
             new MarkdownBlock("Some text", { from: 14, to: 23 }, { from: 14, to: 23 }, 0)
         ];
-        const cg = new CodeGroupBlock(
-            "Some text",
+        const cg = new ContainerBlock(
+            "Some text", "test",
             { from: 0, to: 28 }, { from: 14, to: 23 }, 0,
             innerBlocks
         );
@@ -70,12 +72,12 @@ describe("code_group serialization", () => {
         expect(result).toBe("Some text");
     });
 
-    test("serialize code_group with code block", () => {
+    test("serialize container with code block", () => {
         const innerBlocks = [
             new CodeBlock("def x := 1", { from: 14, to: 37 }, { from: 21, to: 31 }, 0)
         ];
-        const cg = new CodeGroupBlock(
-            "```lean4\ndef x := 1\n```",
+        const cg = new ContainerBlock(
+            "```lean4\ndef x := 1\n```", "test",
             { from: 0, to: 42 }, { from: 14, to: 37 }, 0,
             innerBlocks
         );
@@ -84,7 +86,7 @@ describe("code_group serialization", () => {
         expect(result).toBe("```lean4\ndef x := 1\n```");
     });
 
-    test("serialize code_group with input area", () => {
+    test("serialize container with input area", () => {
         const inputInnerBlocks = [
             new MarkdownBlock("input text", { from: 26, to: 36 }, { from: 26, to: 36 }, 0)
         ];
@@ -95,8 +97,8 @@ describe("code_group serialization", () => {
                 inputInnerBlocks
             )
         ];
-        const cg = new CodeGroupBlock(
-            "<input-area>input text</input-area>",
+        const cg = new ContainerBlock(
+            "<input-area>input text</input-area>", "test",
             { from: 0, to: 54 }, { from: 14, to: 49 }, 0,
             innerBlocks
         );
@@ -105,7 +107,7 @@ describe("code_group serialization", () => {
         expect(result).toBe("<input-area>input text</input-area>");
     });
 
-    test("serialize code_group with hint", () => {
+    test("serialize container with hint", () => {
         const hintInnerBlocks = [
             new MarkdownBlock("hint text", { from: 40, to: 49 }, { from: 40, to: 49 }, 0)
         ];
@@ -117,8 +119,8 @@ describe("code_group serialization", () => {
                 hintInnerBlocks
             )
         ];
-        const cg = new CodeGroupBlock(
-            '<hint title="My Hint">hint text</hint>',
+        const cg = new ContainerBlock(
+            '<hint title="My Hint">hint text</hint>', "test",
             { from: 0, to: 61 }, { from: 14, to: 52 }, 0,
             innerBlocks
         );
@@ -127,12 +129,12 @@ describe("code_group serialization", () => {
         expect(result).toBe('<hint title="My Hint">hint text</hint>');
     });
 
-    test("serialize code_group with math_display", () => {
+    test("serialize container with math_display", () => {
         const innerBlocks = [
             new MathDisplayBlock("x^2", { from: 14, to: 21 }, { from: 16, to: 19 }, 0)
         ];
-        const cg = new CodeGroupBlock(
-            "$$x^2$$",
+        const cg = new ContainerBlock(
+            "$$x^2$$", "test",
             { from: 0, to: 26 }, { from: 14, to: 21 }, 0,
             innerBlocks
         );
@@ -141,12 +143,12 @@ describe("code_group serialization", () => {
         expect(result).toBe("$$x^2$$");
     });
 
-    test("serialize code_group with non-empty tags (multilean)", () => {
+    test("serialize container with non-empty tags (multilean)", () => {
         const innerBlocks = [
             new MarkdownBlock("Some content", { from: 14, to: 26 }, { from: 14, to: 26 }, 0)
         ];
-        const cg = new CodeGroupBlock(
-            "Some content",
+        const cg = new ContainerBlock(
+            "Some content", "multilean",
             { from: 0, to: 31 }, { from: 14, to: 26 }, 0,
             innerBlocks
         );
@@ -155,13 +157,13 @@ describe("code_group serialization", () => {
         expect(result).toBe("::::multilean\nSome content\n::::");
     });
 
-    test("serialize code_group with multiple children", () => {
+    test("serialize container with multiple children", () => {
         const innerBlocks = [
             new MarkdownBlock("intro", { from: 14, to: 19 }, { from: 14, to: 19 }, 0),
             new CodeBlock("def x := 1", { from: 19, to: 42 }, { from: 26, to: 36 }, 0),
         ];
-        const cg = new CodeGroupBlock(
-            "intro```lean4\ndef x := 1\n```",
+        const cg = new ContainerBlock(
+            "intro```lean4\ndef x := 1\n```", "test",
             { from: 0, to: 47 }, { from: 14, to: 42 }, 0,
             innerBlocks
         );
@@ -175,10 +177,10 @@ describe("code_group serialization", () => {
 // Mapping tests
 // ============================================================
 
-describe("code_group mapping", () => {
-    test("mapping with code_group containing markdown", () => {
-        const cg = new CodeGroupBlock(
-            "Hello",
+describe("container mapping", () => {
+    test("mapping with container containing markdown", () => {
+        const cg = new ContainerBlock(
+            "Hello", "test",
             { from: 0, to: 24 },
             { from: 14, to: 19 },
             0,
@@ -188,22 +190,22 @@ describe("code_group mapping", () => {
 
         expect(tree.root.children.length).toBe(1);
         const cgNode = tree.root.children[0];
-        expect(cgNode.type).toBe("code_group");
+        expect(cgNode.type).toBe("container");
         expect(cgNode.children.length).toBe(1);
         expect(cgNode.children[0].type).toBe("markdown");
 
         sanityCheckTree(tree.root);
     });
 
-    test("mapping with code_group containing input area with code", () => {
+    test("mapping with container containing input area with code", () => {
         const codeInner = new CodeBlock("code", { from: 12, to: 25 }, { from: 19, to: 23 }, 0);
         const inputInner = new InputAreaBlock(
             "```lean4\ncode\n```",
             { from: 0, to: 38 }, { from: 12, to: 25 }, 0,
             [codeInner]
         );
-        const cg = new CodeGroupBlock(
-            "<input-area>```lean4\ncode\n```</input-area>",
+        const cg = new ContainerBlock(
+            "<input-area>```lean4\ncode\n```</input-area>", "test",
             { from: 0, to: 43 }, { from: 0, to: 38 }, 0,
             [inputInner]
         );
@@ -212,7 +214,7 @@ describe("code_group mapping", () => {
 
         expect(tree.root.children.length).toBe(1);
         const cgNode = tree.root.children[0];
-        expect(cgNode.type).toBe("code_group");
+        expect(cgNode.type).toBe("container");
         expect(cgNode.children.length).toBe(1);
 
         const inputNode = cgNode.children[0];
@@ -221,7 +223,7 @@ describe("code_group mapping", () => {
         sanityCheckTree(tree.root);
     });
 
-    test("mapping with code_group containing hint", () => {
+    test("mapping with container containing hint", () => {
         const hintInnerBlocks = [
             new MarkdownBlock("hint body", { from: 36, to: 45 }, { from: 36, to: 45 }, 0)
         ];
@@ -233,8 +235,8 @@ describe("code_group mapping", () => {
             0,
             hintInnerBlocks
         );
-        const cg = new CodeGroupBlock(
-            '<hint title="Test">hint body</hint>',
+        const cg = new ContainerBlock(
+            '<hint title="Test">hint body</hint>', "test",
             { from: 0, to: 57 },
             { from: 14, to: 52 },
             0,
@@ -243,7 +245,7 @@ describe("code_group mapping", () => {
         const tree = createTestMapping([cg]);
 
         const cgNode = tree.root.children[0];
-        expect(cgNode.type).toBe("code_group");
+        expect(cgNode.type).toBe("container");
         expect(cgNode.children.length).toBe(1);
 
         const hintNode = cgNode.children[0];
@@ -260,38 +262,38 @@ describe("code_group mapping", () => {
 // ProseMirror document construction tests
 // ============================================================
 
-describe("code_group ProseMirror construction", () => {
-    test("constructDocument with code_group", () => {
+describe("container ProseMirror construction", () => {
+    test("constructDocument with container", () => {
         const innerBlocks = [
             new MarkdownBlock("text", { from: 14, to: 18 }, { from: 14, to: 18 }, 0)
         ];
-        const cg = new CodeGroupBlock(
-            "text", { from: 0, to: 23 }, { from: 14, to: 18 }, 0, innerBlocks
+        const cg = new ContainerBlock(
+            "text", "test", { from: 0, to: 23 }, { from: 14, to: 18 }, 0, innerBlocks
         );
         const doc = constructDocument([cg]);
         expect(doc.type.name).toBe("doc");
         expect(doc.content.childCount).toBe(1);
-        expect(doc.content.firstChild!.type.name).toBe("code_group");
+        expect(doc.content.firstChild!.type.name).toBe("container");
         expect(doc.content.firstChild!.content.childCount).toBe(1);
         expect(doc.content.firstChild!.content.firstChild!.type.name).toBe("markdown");
     });
 
-    test("constructDocument with code_group containing input", () => {
+    test("constructDocument with container containing input", () => {
         const inputInner = [
             new MarkdownBlock("answer", { from: 26, to: 32 }, { from: 26, to: 32 }, 0)
         ];
         const input = new InputAreaBlock(
             "answer", { from: 14, to: 45 }, { from: 26, to: 32 }, 0, inputInner
         );
-        const cg = new CodeGroupBlock(
-            "<input-area>answer</input-area>",
+        const cg = new ContainerBlock(
+            "<input-area>answer</input-area>", "test",
             { from: 0, to: 50 }, { from: 14, to: 45 }, 0,
             [input]
         );
         const doc = constructDocument([cg]);
 
         const cgNode = doc.content.firstChild!;
-        expect(cgNode.type.name).toBe("code_group");
+        expect(cgNode.type.name).toBe("container");
         expect(cgNode.content.childCount).toBe(1);
 
         const inputNode = cgNode.content.firstChild!;
@@ -305,10 +307,10 @@ describe("code_group ProseMirror construction", () => {
 // Typeguard tests
 // ============================================================
 
-describe("code_group typeguard", () => {
-    test("isCodeGroupBlock identifies correctly", () => {
-        const cg = new CodeGroupBlock("", { from: 0, to: 0 }, { from: 0, to: 0 }, 0, []);
-        expect(isCodeGroupBlock(cg)).toBe(true);
+describe("container typeguard", () => {
+    test("isContainerBlock identifies correctly", () => {
+        const cg = new ContainerBlock("", "test", { from: 0, to: 0 }, { from: 0, to: 0 }, 0, []);
+        expect(isContainerBlock(cg)).toBe(true);
         expect(isInputAreaBlock(cg)).toBe(false);
         expect(isHintBlock(cg)).toBe(false);
         expect(isCodeBlock(cg)).toBe(false);
@@ -319,19 +321,19 @@ describe("code_group typeguard", () => {
 });
 
 // ============================================================
-// Rocq context tests (code_group serializes transparently)
+// Rocq context tests (container serializes transparently)
 // ============================================================
 
-describe("code_group Rocq context", () => {
-    test("serializer serializes code_group transparently in Rocq config", () => {
+describe("container Rocq context", () => {
+    test("serializer serializes container transparently in Rocq config", () => {
         const rocqConfig = configuration("coq");
         const rocqSerializer = new DefaultTagSerializer(rocqConfig);
 
         const innerBlocks = [
             new MarkdownBlock("text", { from: 14, to: 18 }, { from: 14, to: 18 }, 0)
         ];
-        const cg = new CodeGroupBlock(
-            "text", { from: 0, to: 23 }, { from: 14, to: 18 }, 0, innerBlocks
+        const cg = new ContainerBlock(
+            "text", "test", { from: 0, to: 23 }, { from: 14, to: 18 }, 0, innerBlocks
         );
         const doc = constructDocument([cg]);
         const result = rocqSerializer.serializeDocument(doc);
@@ -346,7 +348,7 @@ describe("code_group Rocq context", () => {
 /**
  * @jest-environment jsdom
  */
-describe("wrapInCodeGroup command", () => {
+describe("wrapInContainer command", () => {
     function makeStateWithMarkdown(): EditorState {
         const mdNode = WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text("hello"));
         const doc = WaterproofSchema.nodes.doc.create({}, mdNode);
@@ -355,33 +357,33 @@ describe("wrapInCodeGroup command", () => {
         return state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 0)));
     }
 
-    test("wrapInCodeGroup wraps selected node in a code_group", () => {
+    test("wrapInContainer wraps selected node in a container", () => {
         const state = makeStateWithMarkdown();
         let newState: EditorState | null = null;
-        const cmd = wrapInCodeGroup(config);
+        const cmd = wrapInContainer(config);
         cmd(state, (tr) => { newState = state.apply(tr); });
 
         expect(newState).not.toBeNull();
         const doc = newState!.doc;
-        expect(doc.firstChild!.type.name).toBe("code_group");
+        expect(doc.firstChild!.type.name).toBe("container");
         expect(doc.firstChild!.firstChild!.type.name).toBe("markdown");
     });
 
-    test("wrapInCodeGroup dry-run (no dispatch) returns true when node is selected", () => {
+    test("wrapInContainer dry-run (no dispatch) returns true when node is selected", () => {
         // Per ProseMirror convention, returning true without dispatch means "I can execute".
         const state = makeStateWithMarkdown();
-        const cmd = wrapInCodeGroup(config);
+        const cmd = wrapInContainer(config);
         const result = cmd(state, undefined);
         expect(result).toBe(true);
     });
 });
 
-describe("wpLift from code_group", () => {
-    test("wpLift lifts child out of code_group", () => {
+describe("wpLift from container", () => {
+    test("wpLift lifts child out of container", () => {
         const mdNode = WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text("hello"));
-        const cgNode = WaterproofSchema.nodes.code_group.create({}, mdNode);
+        const cgNode = WaterproofSchema.nodes.container.create({name: "test"}, mdNode);
         const doc = WaterproofSchema.nodes.doc.create({}, cgNode);
-        // Select the code_group node
+        // Select the container node
         const state = EditorState.create({ doc });
         const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 0)));
 
@@ -390,19 +392,19 @@ describe("wpLift from code_group", () => {
         cmd(stateWithSel, (tr) => { newState = stateWithSel.apply(tr); });
 
         expect(newState).not.toBeNull();
-        // After lifting, the markdown should be at doc level (no code_group wrapper)
+        // After lifting, the markdown should be at doc level (no container wrapper)
         expect(newState!.doc.firstChild!.type.name).toBe("markdown");
     });
 });
 
-describe("checkInputArea with code_group nesting", () => {
-    test("returns true when selection is inside input nested in code_group", () => {
+describe("checkInputArea with container nesting", () => {
+    test("returns true when selection is inside input nested in container", () => {
         const mdNode = WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text("ans"));
         const inputNode = WaterproofSchema.nodes.input.create({}, mdNode);
-        const cgNode = WaterproofSchema.nodes.code_group.create({}, inputNode);
+        const cgNode = WaterproofSchema.nodes.container.create({name: "test"}, inputNode);
         const doc = WaterproofSchema.nodes.doc.create({}, cgNode);
         const state = EditorState.create({ doc });
-        // Position 3 is inside the markdown text inside input inside code_group
+        // Position 3 is inside the markdown text inside input inside container
         const resolvedPos = doc.resolve(3);
         const sel = state.tr.setSelection(
             // Text selection inside the markdown node
@@ -411,17 +413,17 @@ describe("checkInputArea with code_group nesting", () => {
                 : state.tr.selection
         ).selection;
         // Manually test checkInputArea with the resolved position inside the input
-        // depth: doc(0) > code_group(1) > input(2) > markdown(3) > text
-        // from.node(1) = code_group, from.node(2) = input → should return true
+        // depth: doc(0) > container(1) > input(2) > markdown(3) > text
+        // from.node(1) = container, from.node(2) = input → should return true
         const innerSel = { $from: doc.resolve(3) } as any;
         expect(checkInputArea(innerSel)).toBe(true);
     });
 
-    test("returns false when selection is in markdown directly inside code_group (no input)", () => {
+    test("returns false when selection is in markdown directly inside container (no input)", () => {
         const mdNode = WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text("ans"));
-        const cgNode = WaterproofSchema.nodes.code_group.create({}, mdNode);
+        const cgNode = WaterproofSchema.nodes.container.create({name: "test"}, mdNode);
         const doc = WaterproofSchema.nodes.doc.create({}, cgNode);
-        // Position 2 is inside the markdown text directly inside code_group
+        // Position 2 is inside the markdown text directly inside container
         const innerSel = { $from: doc.resolve(2) } as any;
         expect(checkInputArea(innerSel)).toBe(false);
     });

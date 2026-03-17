@@ -1,7 +1,7 @@
 import { Node } from "prosemirror-model";
 import { WaterproofSchema } from "../../schema";
 import { BLOCK_NAME, Block, BlockRange } from "./block";
-import { code, codeGroup, hint, inputArea, markdown, mathDisplay, newline } from "./schema";
+import { code, container, hint, inputArea, markdown, mathDisplay, newline } from "./schema";
 
 const indentation = (level: number): string => "  ".repeat(level);
 const debugInfo = (block: Block): string => `{range=${block.range.from}-${block.range.to}}`;
@@ -171,16 +171,18 @@ export class NewlineBlock implements Block {
 }
 
 /**
- * CodeGroupBlocks are container blocks that group multiple blocks together.
- * In Lean context, they are delimited by ::::multilean and ::::.
+ * ContainerBlocks are generic container blocks that group multiple blocks together.
+ * They carry a name to identify the container type.
+ * In Lean context, multilean blocks are represented as containers with name "multilean".
  * They can contain both top-level blocks (input, hint) and leaf blocks (math, code, markdown).
  */
-export class CodeGroupBlock implements Block {
-    public type = BLOCK_NAME.CODE_GROUP;
+export class ContainerBlock implements Block {
+    public type = BLOCK_NAME.CONTAINER;
     public innerBlocks: Block[];
 
     constructor(
         public stringContent: string,
+        public name: string,
         public range: BlockRange,
         public innerRange: BlockRange,
         public lineStart: number,
@@ -195,11 +197,11 @@ export class CodeGroupBlock implements Block {
 
     toProseMirror() {
         const childNodes = this.innerBlocks.map(block => block.toProseMirror());
-        return codeGroup(childNodes);
+        return container(this.name, childNodes);
     }
 
     debugPrint(level: number): void {
-        console.log(`${indentation(level)}CodeGroupBlock {${debugInfo(this)}} [`);
+        console.log(`${indentation(level)}ContainerBlock(${this.name}) {${debugInfo(this)}} [`);
         this.innerBlocks.forEach(block => block.debugPrint(level + 1));
         console.log(`${indentation(level)}]`);
     }

@@ -29,8 +29,9 @@ export function configuration(languageId: string): TagConfiguration {
             openTag: "$$", closeTag: "$$",
             openRequiresNewline: false, closeRequiresNewline: false
         },
-        codeGroup: {
-            openTag: "", closeTag: "",
+        container: {
+            openTag: (_name: string) => "",
+            closeTag: (_name: string) => "",
             openRequiresNewline: false, closeRequiresNewline: false
         }
     }
