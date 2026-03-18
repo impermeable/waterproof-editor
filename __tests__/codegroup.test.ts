@@ -14,6 +14,7 @@ import { TagConfiguration } from "../src/api";
 import { wrapInContainer, wpLift } from "../src/commands";
 
 import { EditorState, NodeSelection } from "prosemirror-state";
+import { Fragment } from "prosemirror-model";
 import { WaterproofSchema } from "../src/schema";
 import { checkInputArea } from "../src/commands/command-helpers";
 
@@ -426,5 +427,157 @@ describe("checkInputArea with container nesting", () => {
         // Position 2 is inside the markdown text directly inside container
         const innerSel = { $from: doc.resolve(2) } as any;
         expect(checkInputArea(innerSel)).toBe(false);
+    });
+
+    // T3 — Regression: the original code only checked depth=1 for input nodes.
+    // This test exercises the depth>=2 branch: cursor exactly at the input boundary
+    // inside a container (depth=2, before any inner block), which was missed pre-fix.
+    test("returns true at depth 2 (cursor at input boundary inside container)", () => {
+        const mdNode = WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text("ans"));
+        const inputNode = WaterproofSchema.nodes.input.create({}, mdNode);
+        const cgNode = WaterproofSchema.nodes.container.create({name: "test"}, inputNode);
+        const doc = WaterproofSchema.nodes.doc.create({}, cgNode);
+        // pos 2: inside input (after input open token), depth=2
+        // node(1)=container, node(2)=input → checkInputArea should return true
+        const resolvedPos = doc.resolve(2);
+        expect(resolvedPos.depth).toBe(2);
+        const innerSel = { $from: resolvedPos } as any;
+        expect(checkInputArea(innerSel)).toBe(true);
+    });
+});
+
+// ============================================================
+// Regression tests for feature/codegroup bugs
+// ============================================================
+
+// T1 — Regression: wrapInContainer must not absorb the preceding newline.
+// The old implementation used tr.wrap(blockRange, ...) which, for a top-level
+// NodeSelection, caused the preceding newline to be swept inside the container.
+// The fix uses ReplaceAroundStep(sel.from, sel.to, sel.from, sel.to, ...).
+describe("wrapInContainer newline regression", () => {
+    test("newline before wrapped node stays outside container", () => {
+        // Doc: [newline, code]
+        // newline.nodeSize=1 → code is at pos 1
+        const nlNode = WaterproofSchema.nodes.newline.create();
+        const codeNode = WaterproofSchema.nodes.code.create();
+        const doc = WaterproofSchema.nodes.doc.create({}, Fragment.from([nlNode, codeNode]));
+        const state = EditorState.create({ doc });
+        const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 1)));
+
+        let newState: EditorState | null = null;
+        wrapInContainer(multileanConfig)(stateWithSel, (tr) => { newState = stateWithSel.apply(tr); });
+        expect(newState).not.toBeNull();
+
+        const newDoc = newState!.doc;
+        // Buggy behaviour: newline gets absorbed → doc.childCount=1, container contains [newline, code]
+        // Fixed behaviour: doc.childCount=2, newline stays as first child
+        expect(newDoc.childCount).toBe(2);
+        expect(newDoc.child(0).type.name).toBe("newline");
+        expect(newDoc.child(1).type.name).toBe("container");
+        expect(newDoc.child(1).firstChild!.type.name).toBe("code");
+    });
+});
+
+// T2 — Regression: wrapping a container node inside another container must be rejected.
+describe("wrapInContainer container-in-container prevention", () => {
+    test("returns false when selected node is itself a container", () => {
+        const mdNode = WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text("hello"));
+        const cgNode = WaterproofSchema.nodes.container.create({name: "inner"}, mdNode);
+        const doc = WaterproofSchema.nodes.doc.create({}, cgNode);
+        const state = EditorState.create({ doc });
+        const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 0)));
+        const result = wrapInContainer(multileanConfig)(stateWithSel, undefined);
+        expect(result).toBe(false);
+    });
+});
+
+// T4 — Regression: a text edit inside the container after wrapping must not corrupt the doc.
+// This exercises the position-mapping path that was broken by the old tr.wrap approach.
+describe("wrapInContainer followed by content edit", () => {
+    test("doc structure remains valid after wrap and text insert inside code", () => {
+        // Doc: [newline, code, newline]
+        const nlNode = WaterproofSchema.nodes.newline.create();
+        const codeNode = WaterproofSchema.nodes.code.create();
+        const nl2Node = WaterproofSchema.nodes.newline.create();
+        const doc = WaterproofSchema.nodes.doc.create({}, Fragment.from([nlNode, codeNode, nl2Node]));
+        const state = EditorState.create({ doc });
+        const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 1)));
+
+        let wrapped: EditorState | null = null;
+        wrapInContainer(multileanConfig)(stateWithSel, (tr) => { wrapped = stateWithSel.apply(tr); });
+        expect(wrapped).not.toBeNull();
+
+        // Verify structure after wrap: [newline, container[code], newline]
+        const wrappedDoc = wrapped!.doc;
+        expect(wrappedDoc.childCount).toBe(3);
+        expect(wrappedDoc.child(0).type.name).toBe("newline");
+        expect(wrappedDoc.child(1).type.name).toBe("container");
+        expect(wrappedDoc.child(1).firstChild!.type.name).toBe("code");
+        expect(wrappedDoc.child(2).type.name).toBe("newline");
+
+        // Now insert text inside the code node (position 3: container open at 1,
+        // code open at 2, code content starts at 3).
+        const editTr = wrapped!.tr.insertText("x", 3);
+        const edited = wrapped!.apply(editTr);
+        const editedDoc = edited.doc;
+
+        // Structure must still be [newline, container[code_with_text], newline]
+        expect(editedDoc.childCount).toBe(3);
+        expect(editedDoc.child(0).type.name).toBe("newline");
+        expect(editedDoc.child(1).type.name).toBe("container");
+        expect(editedDoc.child(1).firstChild!.type.name).toBe("code");
+        expect(editedDoc.child(2).type.name).toBe("newline");
+    });
+});
+
+// T5 — Regression: wrapInContainer must return false when openRequiresNewline is true
+// and there is no preceding newline node.
+describe("wrapInContainer openRequiresNewline enforcement", () => {
+    test("returns false when container requires preceding newline but none present", () => {
+        const strictConfig: TagConfiguration = {
+            ...multileanConfig,
+            container: {
+                ...multileanConfig.container,
+                openRequiresNewline: true,
+            }
+        };
+        // Doc: [markdown, code] — no newline between them
+        const mdNode = WaterproofSchema.nodes.markdown.create({});
+        const codeNode = WaterproofSchema.nodes.code.create();
+        const doc = WaterproofSchema.nodes.doc.create({}, Fragment.from([mdNode, codeNode]));
+        const state = EditorState.create({ doc });
+        // markdown.nodeSize = 2 (empty atom), so code is at pos 2
+        const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 2)));
+        const result = wrapInContainer(strictConfig)(stateWithSel, undefined);
+        expect(result).toBe(false);
+    });
+});
+
+// T6 — Regression: wpLift must lift ALL children when container has multiple inner blocks.
+describe("wpLift with multiple children", () => {
+    test("lifts all children out of container when container has multiple inner blocks", () => {
+        const mdNode = WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text("hello"));
+        const nlNode = WaterproofSchema.nodes.newline.create();
+        const codeNode = WaterproofSchema.nodes.code.create();
+        const cgNode = WaterproofSchema.nodes.container.create(
+            {name: "test"},
+            Fragment.from([mdNode, nlNode, codeNode])
+        );
+        const doc = WaterproofSchema.nodes.doc.create({}, cgNode);
+        const state = EditorState.create({ doc });
+        const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 0)));
+
+        let newState: EditorState | null = null;
+        wpLift(multileanConfig)(stateWithSel, (tr) => { newState = stateWithSel.apply(tr); });
+        expect(newState).not.toBeNull();
+
+        // Container is gone; children should be at doc level
+        const newDoc = newState!.doc;
+        expect(newDoc.firstChild!.type.name).toBe("markdown");
+        // All three inner nodes (markdown, newline, code) are now direct children of doc
+        const types = Array.from({ length: newDoc.childCount }, (_, i) => newDoc.child(i).type.name);
+        expect(types).toContain("markdown");
+        expect(types).toContain("newline");
+        expect(types).toContain("code");
     });
 });
