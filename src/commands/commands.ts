@@ -1,8 +1,7 @@
-import { Fragment, NodeType } from "prosemirror-model";
+import { NodeRange, NodeType } from "prosemirror-model";
 import { Command, EditorState, NodeSelection, TextSelection, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
-import { liftTarget, ReplaceAroundStep } from "prosemirror-transform";
-import { Slice } from "prosemirror-model";
+import { liftTarget } from "prosemirror-transform";
 import { WaterproofSchema } from "../schema";
 import { getParentAndIndex, needsNewlineAfter, needsNewlineBefore } from "./utils";
 import { TagConfiguration } from "../api";
@@ -153,17 +152,12 @@ export function wrapInContainer(tagConf: TagConfiguration, name: string): Comman
 
         if (needsNewlineBefore(WaterproofSchema.nodes.container, tagConf) && !beforeIsNewline) return false;
 
-        const blockRange = sel.$from.blockRange(sel.$to);
-        if (blockRange === null) return false;
-
         if (dispatch) {
             const tr = state.tr;
-            // Use ReplaceAroundStep directly: for a top-level NodeSelection,
-            // blockRange computes range.start = -1 (boundary position math),
-            // which causes tr.wrap to include the preceding newline inside the container.
-            const containerNode = WaterproofSchema.nodes.container.create({name});
-            const slice = new Slice(Fragment.from(containerNode), 0, 0);
-            tr.step(new ReplaceAroundStep(sel.from, sel.to, sel.from, sel.to, slice, 1, true));
+            // Construct the NodeRange directly from the selection endpoints rather than using
+            // sel.$from.blockRange(sel.$to), which at the top level computes range.start = sel.from - 1
+            // and would pull the preceding newline inside the container.
+            tr.wrap(new NodeRange(sel.$from, sel.$to, sel.$from.depth), [{type: WaterproofSchema.nodes.container, attrs: {name}}]);
             tr.setSelection(NodeSelection.create(tr.doc, tr.mapping.map(sel.from)));
             tr.scrollIntoView();
             dispatch(tr);
@@ -190,12 +184,7 @@ function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration): Command {
 
         if (dispatch) {
             const tr = state.tr;
-            // Use ReplaceAroundStep directly, mirroring wrapInContainer.
-            // tr.wrap(blockRange, …) computes a top-level blockRange with start=-1,
-            // which causes it to absorb the preceding newline into the wrapper.
-            const wrapperNode = nodeType.create();
-            const slice = new Slice(Fragment.from(wrapperNode), 0, 0);
-            tr.step(new ReplaceAroundStep(sel.from, sel.to, sel.from, sel.to, slice, 1, true));
+            tr.wrap(new NodeRange(sel.$from, sel.$to, sel.$from.depth), [{type: nodeType}]);
 
             // Insert any missing newlines.  After ReplaceAroundStep the wrapper
             // occupies [sel.from, sel.to + 2] (one extra token on each side).
