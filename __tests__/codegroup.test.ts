@@ -361,7 +361,7 @@ describe("wrapInContainer command", () => {
     test("wrapInContainer wraps selected node in a container", () => {
         const state = makeStateWithMarkdown();
         let newState: EditorState | null = null;
-        const cmd = wrapInContainer(config);
+        const cmd = wrapInContainer(config, "multilean");
         cmd(state, (tr) => { newState = state.apply(tr); });
 
         expect(newState).not.toBeNull();
@@ -373,7 +373,7 @@ describe("wrapInContainer command", () => {
     test("wrapInContainer dry-run (no dispatch) returns true when node is selected", () => {
         // Per ProseMirror convention, returning true without dispatch means "I can execute".
         const state = makeStateWithMarkdown();
-        const cmd = wrapInContainer(config);
+        const cmd = wrapInContainer(config, "multilean");
         const result = cmd(state, undefined);
         expect(result).toBe(true);
     });
@@ -465,7 +465,7 @@ describe("wrapInContainer newline regression", () => {
         const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 1)));
 
         let newState: EditorState | null = null;
-        wrapInContainer(multileanConfig)(stateWithSel, (tr) => { newState = stateWithSel.apply(tr); });
+        wrapInContainer(multileanConfig, "multilean")(stateWithSel, (tr) => { newState = stateWithSel.apply(tr); });
         expect(newState).not.toBeNull();
 
         const newDoc = newState!.doc;
@@ -486,7 +486,7 @@ describe("wrapInContainer container-in-container prevention", () => {
         const doc = WaterproofSchema.nodes.doc.create({}, cgNode);
         const state = EditorState.create({ doc });
         const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 0)));
-        const result = wrapInContainer(multileanConfig)(stateWithSel, undefined);
+        const result = wrapInContainer(multileanConfig, "multilean")(stateWithSel, undefined);
         expect(result).toBe(false);
     });
 });
@@ -504,7 +504,7 @@ describe("wrapInContainer followed by content edit", () => {
         const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 1)));
 
         let wrapped: EditorState | null = null;
-        wrapInContainer(multileanConfig)(stateWithSel, (tr) => { wrapped = stateWithSel.apply(tr); });
+        wrapInContainer(multileanConfig, "multilean")(stateWithSel, (tr) => { wrapped = stateWithSel.apply(tr); });
         expect(wrapped).not.toBeNull();
 
         // Verify structure after wrap: [newline, container[code], newline]
@@ -548,7 +548,7 @@ describe("wrapInContainer openRequiresNewline enforcement", () => {
         const state = EditorState.create({ doc });
         // markdown.nodeSize = 2 (empty atom), so code is at pos 2
         const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 2)));
-        const result = wrapInContainer(strictConfig)(stateWithSel, undefined);
+        const result = wrapInContainer(strictConfig, "multilean")(stateWithSel, undefined);
         expect(result).toBe(false);
     });
 });

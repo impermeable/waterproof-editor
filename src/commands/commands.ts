@@ -140,7 +140,7 @@ export function wrapInInput(tagConf: TagConfiguration): Command {
     return wpWrapIn(WaterproofSchema.nodes.input, tagConf);
 }
 
-export function wrapInContainer(tagConf: TagConfiguration, name: string = "multilean"): Command {
+export function wrapInContainer(tagConf: TagConfiguration, name: string): Command {
     return (state, dispatch) => {
         const sel = state.selection;
         if (!(sel instanceof NodeSelection)) return false;
@@ -149,9 +149,7 @@ export function wrapInContainer(tagConf: TagConfiguration, name: string = "multi
         if (sel.node.type === WaterproofSchema.nodes.container) return false;
 
         const before = sel.$from.nodeBefore;
-        const after = sel.$to.nodeAfter;
         const beforeIsNewline = before?.type === WaterproofSchema.nodes.newline;
-        const afterIsNewline = after?.type === WaterproofSchema.nodes.newline;
 
         if (needsNewlineBefore(WaterproofSchema.nodes.container, tagConf) && !beforeIsNewline) return false;
 
