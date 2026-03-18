@@ -6,7 +6,7 @@ import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { WaterproofSchema } from "../schema";
 import { newline } from "../document/blocks/schema";
 import { TagConfiguration } from "../api";
-import { getParentAndIndex, needsNewlineAfter } from "./utils";
+import { getParentAndIndex, needsNewlineAfter, needsNewlineBefore } from "./utils";
 
 /////// Helper functions /////////
 
@@ -17,9 +17,12 @@ import { getParentAndIndex, needsNewlineAfter } from "./utils";
  * @param nodeType The type of node to insert (one of `WaterproofSchema.nodes`)
  * @returns An insertion transaction.
  */
-export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean): Transaction | undefined {
+export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeType, tagConf: TagConfiguration): Transaction | undefined {
     const sel = state.selection;
     let trans: Transaction = tr;
+
+    const insertNewlineBeforeIfNotExists = needsNewlineBefore(nodeType, tagConf);
+    const insertNewlineAfterIfNotExists  = needsNewlineAfter(nodeType, tagConf);
 
     const parentAndIndex = getParentAndIndex(sel);
     if (parentAndIndex === null) return;
@@ -49,13 +52,17 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
     const beforeNewline = parent.maybeChild(index - 2);
     const hasNewlineBefore = beforeNewline === null ? false : beforeNewline.type === WaterproofSchema.nodes.newline;
 
+    // A newline is also required after the new node if the current node (now below) requires one before its open tag.
+    const currentNode = parent.maybeChild(index);
+    const currentNeedsNewlineBefore = tagConf && currentNode ? needsNewlineBefore(currentNode.type, tagConf) : false;
+
     const toInsert: PNode[] = [];
 
     if (insertNewlineBeforeIfNotExists && !hasNewlineBefore && beforeIsNewline) {
         toInsert.push(newline());
     }
     toInsert.push(nodeType.create());
-    if (insertNewlineAfterIfNotExists && !beforeIsNewline) {
+    if ((insertNewlineAfterIfNotExists || currentNeedsNewlineBefore) && !beforeIsNewline) {
         toInsert.push(newline());
     }
 
@@ -71,9 +78,12 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
  * @param nodeType The type of node to insert (one of `WaterproofSchema.nodes`)
  * @returns An insertion transaction.
  */
-export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean, tagConf?: TagConfiguration): Transaction | undefined {
+export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeType, tagConf: TagConfiguration): Transaction | undefined {
     const sel = state.selection;
     let trans: Transaction = tr;
+
+    const insertNewlineBeforeIfNotExists = needsNewlineBefore(nodeType, tagConf);
+    const insertNewlineAfterIfNotExists  = needsNewlineAfter(nodeType, tagConf);
 
     const parentAndIndex = getParentAndIndex(sel);
     if (parentAndIndex === null) return;
