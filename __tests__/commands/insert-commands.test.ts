@@ -5,7 +5,7 @@
 import { EditorState, TextSelection } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { WaterproofSchema } from "../../src/schema";
-import { getCmdInsertCode } from "../../src/commands/insert-command";
+import { getCmdInsertCode, getCmdInsertMarkdown } from "../../src/commands/insert-command";
 import { InsertionPlace } from "../../src/commands";
 import { configuration } from "../../src/markdown-defaults";
 
@@ -18,6 +18,29 @@ jest.mock('../../src/inputArea.ts', () => ({
     getState: jest.fn(() => ({ teacher: true }))
   }
 }));
+
+// A doc with a single code cell; selection inside the code content (position 11 = after 9 chars).
+const stateOneCode = {"doc":{"type":"doc","content":[{"type":"code","content":[{"type":"text","text":"Goal True."}]}]},"selection":{"type":"text","anchor":11,"head":11}};
+
+test("Insert markdown below code cell adds a newline separator", () => {
+    const view = new EditorView(null, {state: EditorState.fromJSON({schema: WaterproofSchema}, stateOneCode)});
+
+    const cmd = getCmdInsertMarkdown(InsertionPlace.Below, tagConf);
+    const res = cmd(view.state, view.dispatch, view);
+
+    expect(res).toBe(true);
+
+    // The newline node between code and markdown is required so that the serializer
+    // does not place markdown text on the same line as the closing code fence ("\n```").
+    const expected = {"doc":{"type":"doc",
+        "content":[
+            {"type":"code","content":[{"type":"text","text":"Goal True."}]},
+            {"type":"newline"},
+            {"type":"markdown"}
+        ]},
+        "selection":{"type":"text","anchor":11,"head":11}};
+    expect(view.state.toJSON()).toStrictEqual(expected);
+});
 
 test("Insert code below twice (selection static)", () => {
     const view = new EditorView(null, {state: EditorState.fromJSON({schema: WaterproofSchema}, state)});
