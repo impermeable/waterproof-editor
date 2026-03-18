@@ -445,7 +445,7 @@ describe("checkInputArea with container nesting", () => {
 });
 
 // ============================================================
-// Regression tests for feature/codegroup bugs
+// Regression tests for container bugs
 // ============================================================
 
 // T1 — Regression: wrapInContainer must not absorb the preceding newline.
