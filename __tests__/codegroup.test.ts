@@ -13,8 +13,8 @@ import { sanityCheckTree } from "./mapping/util";
 import { TagConfiguration } from "../src/api";
 import { wrapInContainer, wpLift } from "../src/commands";
 
-import { EditorState, NodeSelection } from "prosemirror-state";
-import { Fragment } from "prosemirror-model";
+import { EditorState, NodeSelection, Transaction } from "prosemirror-state";
+import { Fragment, Node as PNode } from "prosemirror-model";
 import { WaterproofSchema } from "../src/schema";
 import { checkInputArea } from "../src/commands/command-helpers";
 
@@ -34,6 +34,38 @@ const multileanSerializer = new DefaultTagSerializer(multileanConfig);
 function createTestMapping(blocks: WaterproofDocument) {
     const mapping = new Mapping(blocks, 1, config, serializer);
     return mapping.getMapping();
+}
+
+// ============================================================
+// Test utility helpers
+// ============================================================
+
+/** Constructs a document from blocks and serializes it with the given serializer (defaults to `serializer`). */
+function serializeBlocks(blocks: WaterproofDocument, ser = serializer): string {
+    return ser.serializeDocument(constructDocument(blocks));
+}
+
+/** Creates an EditorState with a NodeSelection at `pos`. */
+function stateWithNodeSelAt(doc: PNode, pos: number): EditorState {
+    const state = EditorState.create({ doc });
+    return state.apply(state.tr.setSelection(NodeSelection.create(state.doc, pos)));
+}
+
+/** Applies a ProseMirror command to `state`, returning the resulting state or null if not dispatched. */
+function applyCommand(
+    state: EditorState,
+    cmd: (s: EditorState, dispatch?: (tr: Transaction) => void) => boolean
+): EditorState | null {
+    let newState: EditorState | null = null;
+    cmd(state, (tr) => { newState = state.apply(tr); });
+    return newState;
+}
+
+/** Returns the type names of all direct children of a doc node. */
+function docChildTypes(doc: PNode): string[] {
+    const types: string[] = [];
+    doc.forEach(child => types.push(child.type.name));
+    return types;
 }
 
 // ============================================================
@@ -68,9 +100,7 @@ describe("container serialization", () => {
             { from: 0, to: 28 }, { from: 14, to: 23 }, 0,
             innerBlocks
         );
-        const doc = constructDocument([cg]);
-        const result = serializer.serializeDocument(doc);
-        expect(result).toBe("Some text");
+        expect(serializeBlocks([cg])).toBe("Some text");
     });
 
     test("serialize container with code block", () => {
@@ -82,9 +112,7 @@ describe("container serialization", () => {
             { from: 0, to: 42 }, { from: 14, to: 37 }, 0,
             innerBlocks
         );
-        const doc = constructDocument([cg]);
-        const result = serializer.serializeDocument(doc);
-        expect(result).toBe("```lean4\ndef x := 1\n```");
+        expect(serializeBlocks([cg])).toBe("```lean4\ndef x := 1\n```");
     });
 
     test("serialize container with input area", () => {
@@ -103,9 +131,7 @@ describe("container serialization", () => {
             { from: 0, to: 54 }, { from: 14, to: 49 }, 0,
             innerBlocks
         );
-        const doc = constructDocument([cg]);
-        const result = serializer.serializeDocument(doc);
-        expect(result).toBe("<input-area>input text</input-area>");
+        expect(serializeBlocks([cg])).toBe("<input-area>input text</input-area>");
     });
 
     test("serialize container with hint", () => {
@@ -125,9 +151,7 @@ describe("container serialization", () => {
             { from: 0, to: 61 }, { from: 14, to: 52 }, 0,
             innerBlocks
         );
-        const doc = constructDocument([cg]);
-        const result = serializer.serializeDocument(doc);
-        expect(result).toBe('<hint title="My Hint">hint text</hint>');
+        expect(serializeBlocks([cg])).toBe('<hint title="My Hint">hint text</hint>');
     });
 
     test("serialize container with math_display", () => {
@@ -139,9 +163,7 @@ describe("container serialization", () => {
             { from: 0, to: 26 }, { from: 14, to: 21 }, 0,
             innerBlocks
         );
-        const doc = constructDocument([cg]);
-        const result = serializer.serializeDocument(doc);
-        expect(result).toBe("$$x^2$$");
+        expect(serializeBlocks([cg])).toBe("$$x^2$$");
     });
 
     test("serialize container with non-empty tags (multilean)", () => {
@@ -153,9 +175,7 @@ describe("container serialization", () => {
             { from: 0, to: 31 }, { from: 14, to: 26 }, 0,
             innerBlocks
         );
-        const doc = constructDocument([cg]);
-        const result = multileanSerializer.serializeDocument(doc);
-        expect(result).toBe("::::multilean\nSome content\n::::");
+        expect(serializeBlocks([cg], multileanSerializer)).toBe("::::multilean\nSome content\n::::");
     });
 
     test("serialize container with multiple children", () => {
@@ -168,9 +188,7 @@ describe("container serialization", () => {
             { from: 0, to: 47 }, { from: 14, to: 42 }, 0,
             innerBlocks
         );
-        const doc = constructDocument([cg]);
-        const result = serializer.serializeDocument(doc);
-        expect(result).toBe("intro```lean4\ndef x := 1\n```");
+        expect(serializeBlocks([cg])).toBe("intro```lean4\ndef x := 1\n```");
     });
 });
 
@@ -336,9 +354,7 @@ describe("container Rocq context", () => {
         const cg = new ContainerBlock(
             "text", "test", { from: 0, to: 23 }, { from: 14, to: 18 }, 0, innerBlocks
         );
-        const doc = constructDocument([cg]);
-        const result = rocqSerializer.serializeDocument(doc);
-        expect(result).toBe("text");
+        expect(serializeBlocks([cg], rocqSerializer)).toBe("text");
     });
 });
 
@@ -353,16 +369,12 @@ describe("wrapInContainer command", () => {
     function makeStateWithMarkdown(): EditorState {
         const mdNode = WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text("hello"));
         const doc = WaterproofSchema.nodes.doc.create({}, mdNode);
-        const state = EditorState.create({ doc });
-        // Select the markdown node
-        return state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 0)));
+        return stateWithNodeSelAt(doc, 0);
     }
 
     test("wrapInContainer wraps selected node in a container", () => {
         const state = makeStateWithMarkdown();
-        let newState: EditorState | null = null;
-        const cmd = wrapInContainer(config, "multilean");
-        cmd(state, (tr) => { newState = state.apply(tr); });
+        const newState = applyCommand(state, wrapInContainer(config, "multilean"));
 
         expect(newState).not.toBeNull();
         const doc = newState!.doc;
@@ -373,8 +385,7 @@ describe("wrapInContainer command", () => {
     test("wrapInContainer dry-run (no dispatch) returns true when node is selected", () => {
         // Per ProseMirror convention, returning true without dispatch means "I can execute".
         const state = makeStateWithMarkdown();
-        const cmd = wrapInContainer(config, "multilean");
-        const result = cmd(state, undefined);
+        const result = wrapInContainer(config, "multilean")(state, undefined);
         expect(result).toBe(true);
     });
 });
@@ -384,13 +395,9 @@ describe("wpLift from container", () => {
         const mdNode = WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text("hello"));
         const cgNode = WaterproofSchema.nodes.container.create({name: "test"}, mdNode);
         const doc = WaterproofSchema.nodes.doc.create({}, cgNode);
-        // Select the container node
-        const state = EditorState.create({ doc });
-        const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 0)));
+        const stateWithSel = stateWithNodeSelAt(doc, 0);
 
-        let newState: EditorState | null = null;
-        const cmd = wpLift(config);
-        cmd(stateWithSel, (tr) => { newState = stateWithSel.apply(tr); });
+        const newState = applyCommand(stateWithSel, wpLift(config));
 
         expect(newState).not.toBeNull();
         // After lifting, the markdown should be at doc level (no container wrapper)
@@ -404,15 +411,6 @@ describe("checkInputArea with container nesting", () => {
         const inputNode = WaterproofSchema.nodes.input.create({}, mdNode);
         const cgNode = WaterproofSchema.nodes.container.create({name: "test"}, inputNode);
         const doc = WaterproofSchema.nodes.doc.create({}, cgNode);
-        const state = EditorState.create({ doc });
-        // Position 3 is inside the markdown text inside input inside container
-        const resolvedPos = doc.resolve(3);
-        const sel = state.tr.setSelection(
-            // Text selection inside the markdown node
-            state.tr.selection.constructor === NodeSelection
-                ? NodeSelection.create(doc, 0)
-                : state.tr.selection
-        ).selection;
         // Manually test checkInputArea with the resolved position inside the input
         // depth: doc(0) > container(1) > input(2) > markdown(3) > text
         // from.node(1) = container, from.node(2) = input → should return true
@@ -461,19 +459,15 @@ describe("wrapInContainer newline regression", () => {
         const nlNode = WaterproofSchema.nodes.newline.create();
         const codeNode = WaterproofSchema.nodes.code.create();
         const doc = WaterproofSchema.nodes.doc.create({}, Fragment.from([nlNode, codeNode]));
-        const state = EditorState.create({ doc });
-        const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 1)));
+        const stateWithSel = stateWithNodeSelAt(doc, 1);
 
-        let newState: EditorState | null = null;
-        wrapInContainer(multileanConfig, "multilean")(stateWithSel, (tr) => { newState = stateWithSel.apply(tr); });
+        const newState = applyCommand(stateWithSel, wrapInContainer(multileanConfig, "multilean"));
         expect(newState).not.toBeNull();
 
-        const newDoc = newState!.doc;
         // Buggy behaviour: newline gets absorbed → doc.childCount=1, container contains [newline, code]
         // Fixed behaviour: doc.childCount=2, newline stays as first child
-        expect(newDoc.childCount).toBe(2);
-        expect(newDoc.child(0).type.name).toBe("newline");
-        expect(newDoc.child(1).type.name).toBe("container");
+        const newDoc = newState!.doc;
+        expect(docChildTypes(newDoc)).toEqual(["newline", "container"]);
         expect(newDoc.child(1).firstChild!.type.name).toBe("code");
     });
 });
@@ -484,8 +478,7 @@ describe("wrapInContainer container-in-container prevention", () => {
         const mdNode = WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text("hello"));
         const cgNode = WaterproofSchema.nodes.container.create({name: "inner"}, mdNode);
         const doc = WaterproofSchema.nodes.doc.create({}, cgNode);
-        const state = EditorState.create({ doc });
-        const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 0)));
+        const stateWithSel = stateWithNodeSelAt(doc, 0);
         const result = wrapInContainer(multileanConfig, "multilean")(stateWithSel, undefined);
         expect(result).toBe(false);
     });
@@ -500,33 +493,22 @@ describe("wrapInContainer followed by content edit", () => {
         const codeNode = WaterproofSchema.nodes.code.create();
         const nl2Node = WaterproofSchema.nodes.newline.create();
         const doc = WaterproofSchema.nodes.doc.create({}, Fragment.from([nlNode, codeNode, nl2Node]));
-        const state = EditorState.create({ doc });
-        const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 1)));
+        const stateWithSel = stateWithNodeSelAt(doc, 1);
 
-        let wrapped: EditorState | null = null;
-        wrapInContainer(multileanConfig, "multilean")(stateWithSel, (tr) => { wrapped = stateWithSel.apply(tr); });
+        const wrapped = applyCommand(stateWithSel, wrapInContainer(multileanConfig, "multilean"));
         expect(wrapped).not.toBeNull();
 
         // Verify structure after wrap: [newline, container[code], newline]
-        const wrappedDoc = wrapped!.doc;
-        expect(wrappedDoc.childCount).toBe(3);
-        expect(wrappedDoc.child(0).type.name).toBe("newline");
-        expect(wrappedDoc.child(1).type.name).toBe("container");
-        expect(wrappedDoc.child(1).firstChild!.type.name).toBe("code");
-        expect(wrappedDoc.child(2).type.name).toBe("newline");
+        expect(docChildTypes(wrapped!.doc)).toEqual(["newline", "container", "newline"]);
+        expect(wrapped!.doc.child(1).firstChild!.type.name).toBe("code");
 
         // Now insert text inside the code node (position 3: container open at 1,
         // code open at 2, code content starts at 3).
-        const editTr = wrapped!.tr.insertText("x", 3);
-        const edited = wrapped!.apply(editTr);
-        const editedDoc = edited.doc;
+        const edited = wrapped!.apply(wrapped!.tr.insertText("x", 3));
 
         // Structure must still be [newline, container[code_with_text], newline]
-        expect(editedDoc.childCount).toBe(3);
-        expect(editedDoc.child(0).type.name).toBe("newline");
-        expect(editedDoc.child(1).type.name).toBe("container");
-        expect(editedDoc.child(1).firstChild!.type.name).toBe("code");
-        expect(editedDoc.child(2).type.name).toBe("newline");
+        expect(docChildTypes(edited.doc)).toEqual(["newline", "container", "newline"]);
+        expect(edited.doc.child(1).firstChild!.type.name).toBe("code");
     });
 });
 
@@ -545,9 +527,8 @@ describe("wrapInContainer openRequiresNewline enforcement", () => {
         const mdNode = WaterproofSchema.nodes.markdown.create({});
         const codeNode = WaterproofSchema.nodes.code.create();
         const doc = WaterproofSchema.nodes.doc.create({}, Fragment.from([mdNode, codeNode]));
-        const state = EditorState.create({ doc });
         // markdown.nodeSize = 2 (empty atom), so code is at pos 2
-        const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 2)));
+        const stateWithSel = stateWithNodeSelAt(doc, 2);
         const result = wrapInContainer(strictConfig, "multilean")(stateWithSel, undefined);
         expect(result).toBe(false);
     });
@@ -564,18 +545,13 @@ describe("wpLift with multiple children", () => {
             Fragment.from([mdNode, nlNode, codeNode])
         );
         const doc = WaterproofSchema.nodes.doc.create({}, cgNode);
-        const state = EditorState.create({ doc });
-        const stateWithSel = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 0)));
+        const stateWithSel = stateWithNodeSelAt(doc, 0);
 
-        let newState: EditorState | null = null;
-        wpLift(multileanConfig)(stateWithSel, (tr) => { newState = stateWithSel.apply(tr); });
+        const newState = applyCommand(stateWithSel, wpLift(multileanConfig));
         expect(newState).not.toBeNull();
 
         // Container is gone; children should be at doc level
-        const newDoc = newState!.doc;
-        expect(newDoc.firstChild!.type.name).toBe("markdown");
-        // All three inner nodes (markdown, newline, code) are now direct children of doc
-        const types = Array.from({ length: newDoc.childCount }, (_, i) => newDoc.child(i).type.name);
+        const types = docChildTypes(newState!.doc);
         expect(types).toContain("markdown");
         expect(types).toContain("newline");
         expect(types).toContain("code");
