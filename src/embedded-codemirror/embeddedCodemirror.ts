@@ -147,7 +147,7 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 					tr.delete(offset + fromA, offset + toA);
 				}
 
-				// Keep mapping from old positions (A) to the transaction's current document.
+				// Accumulate the total offset of the changes
 				// Some edits (e.g. toggle comment) are represented as multiple inserts/replaces.
 				offset += (toB - fromB) - (toA - fromA);
 			});
