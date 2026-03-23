@@ -142,7 +142,11 @@ const ProgressBarPluginSpec: PluginSpec<IProgressPluginState> = {
         if (progressState) {
           createProgressBar(progressState, progressBarContainer, spinnerContainer);
         }
-      },
+      }, 
+      destroy() {
+        progressBarContainer.remove();
+        spinnerContainer.remove();
+      }
     };
   }
 };

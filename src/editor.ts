@@ -155,6 +155,48 @@ export class WaterproofEditor {
 		this._editorConfig.api.editorReady();
 	}
 
+	refreshDocument(content: string, version: number = 1) {
+		// Initialize the file translator given the fileformat.
+		if (!this._view) return;
+		if (this._mapping && this._mapping.version == version) return;
+
+		this._translator = new FileTranslator();
+
+		let resultingDocument = content;
+		let documentChange: DocChange | WrappingDocChange | undefined = undefined;
+
+		if (this._editorConfig.documentPreprocessor !== undefined) {
+			console.log("Using document preprocessor!!");
+			const result = this._editorConfig.documentPreprocessor(content);
+			resultingDocument = result.resultingDocument;
+			documentChange = result.documentChange;
+			if (documentChange !== undefined) {
+				console.log("Document change due to preprocessor: ", documentChange);
+				this._editorConfig.api.documentChange(documentChange);
+			}
+			if (resultingDocument !== content) version = version + 1;
+		}
+
+		const parsedContent = this._translator.toProsemirror(resultingDocument);
+		// this._contentElem.innerHTML = parsedContent;
+
+		const proseDoc = constructDocument(this._editorConfig.documentConstructor(resultingDocument));
+
+		this._mapping = new this._editorConfig.mapping(parsedContent, version);
+
+		const newState = EditorState.create({
+			doc: proseDoc,
+			plugins: this._view.state.plugins,
+			schema: this._schema
+		});
+
+		this._view.updateState(newState);
+
+
+		/** Ask for line numbers */
+		this.sendLineNumbers();
+	}
+
 	get state(): EditorState | undefined {
 		return this._view?.state;
 	}
