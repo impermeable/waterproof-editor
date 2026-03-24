@@ -72,12 +72,11 @@ export class Mapping {
     /**
      * Map a text offset into the corresponding ProseMirror index.
      * @param offset The offset (in characters) in the document.
-     * @returns The corresponding ProseMirror index into the ProseMirror view.
+     * @returns The corresponding ProseMirror index, or null if the offset is not within any content region.
      */
-    public textOffsetToPmIndex(offset: number) {
+    public textOffsetToPmIndex(offset: number): number | null {
         const correctNode: TreeNode | null = this.tree.findNodeByOriginalPosition(offset);
-        if (correctNode === null) throw new MappingError(` [findInvPosition] The prosemirror index for offset (${offset}) could not be found `);
-        if (correctNode === this.tree.root) throw new MappingError(` [findInvPosition] Offset (${offset}) is not within any content region `);
+        if (correctNode === null || correctNode === this.tree.root) return null;
         return (offset - correctNode.contentRange.from) + correctNode.prosemirrorStart;
     }
 

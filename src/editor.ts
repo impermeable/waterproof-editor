@@ -518,6 +518,7 @@ export class WaterproofEditor {
         if (!this._view || !this._mapping) return false;
         const from = this._mapping.textOffsetToPmIndex(startOffset);
         const to = this._mapping.textOffsetToPmIndex(endOffset);
+        if (from === null || to === null) return false;
         const tr = this._view.state.tr.insertText(text, from, to);
         this._view.dispatch(tr);
         return true;
@@ -582,7 +583,8 @@ export class WaterproofEditor {
 
 		if (this._mapping === undefined || this._view === undefined) return;
 
-		const pmPos: number = this._mapping.textOffsetToPmIndex(busyPos);
+		const pmPos = this._mapping.textOffsetToPmIndex(busyPos);
+		if (pmPos === null) return;
 
 		
 		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
@@ -627,16 +629,17 @@ export class WaterproofEditor {
 		if (map === undefined || this._view === undefined) return;
 
 		// Map the positions
-		const newDiags = diagnostics.map(d => {
+		const newDiags = diagnostics.flatMap(d => {
 			const start = map.textOffsetToPmIndex(d.startOffset);
 			const end = map.textOffsetToPmIndex(d.endOffset);
+			if (start === null || end === null) return [];
 
-			return {
+			return [{
 				message: d.message,
 				severity: d.severity,
 				start,
 				end
-			}
+			}];
 		});
 		// Add the new diagnostics to the array of stored diagnostics
 		this.currentProseDiagnostics.push(...newDiags);
@@ -658,6 +661,7 @@ export class WaterproofEditor {
 
 		const start = map.textOffsetToPmIndex(toRemove.startOffset);
 		const end = map.textOffsetToPmIndex(toRemove.endOffset);
+		if (start === null || end === null) return false;
 
 		const proseDiag: DiagnosticObjectProse = {
 			start, end,
@@ -703,7 +707,7 @@ export class WaterproofEditor {
 			const diag = diagnostics[i];
 			const start = map.textOffsetToPmIndex(diag.startOffset);
 			const end = map.textOffsetToPmIndex(diag.endOffset);
-			if (start >= end) continue;
+			if (start === null || end === null || start >= end) continue;
 			this.currentProseDiagnostics[i] = {
 				message: diag.message,
 				start,
@@ -736,13 +740,10 @@ export class WaterproofEditor {
 		const buckets = new Map(blocks.map(block => [block.nodeView, [] as OffsetSemanticToken[]]));
 
 		const mappedTokens = tokens.flatMap(token => {
-			try {
-				return [{
-					token,
-					from: mapping.textOffsetToPmIndex(token.startOffset),
-					to: mapping.textOffsetToPmIndex(token.endOffset)
-				}];
-			} catch { return []; } // token outside any mapped region, skip
+			const from = mapping.textOffsetToPmIndex(token.startOffset);
+			const to = mapping.textOffsetToPmIndex(token.endOffset);
+			if (from === null || to === null) return [];
+			return [{ token, from, to }];
 		})
 
 		for (const { token, from, to } of mappedTokens) {
