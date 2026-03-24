@@ -61,45 +61,44 @@ function buildDecorations(state: EditorState): DecorationSet {
     return builder.finish();
 }
 
-// TODO checkout how to wire in the actual theme.
 const semanticTheme = EditorView.theme({
     // Keywords / control flow
-    ".tok-keyword":       { color: "var(--wp-terminalAnsiBlue)" },
-    ".tok-macro":         { color: "var(--wp-terminalAnsiBlue)" },
-    ".tok-modifier":      { color: "var(--wp-terminalAnsiBlue)" },
-    ".tok-operator":      { color: "var(--wp-terminalAnsiBlue)" },
+    ".tok-keyword":       { color: "var(--wp-semanticKeyword)" },
+    ".tok-macro":         { color: "var(--wp-semanticKeyword)" },
+    ".tok-modifier":      { color: "var(--wp-semanticKeyword)" },
+    ".tok-operator":      { color: "var(--wp-semanticKeyword)" },
 
     // Functions / callables
-    ".tok-function":      { color: "var(--wp-terminalAnsiYellow)" },
-    ".tok-method":        { color: "var(--wp-terminalAnsiYellow)" },
-    ".tok-event":         { color: "var(--wp-terminalAnsiYellow)" },
+    ".tok-function":      { color: "var(--wp-semanticFunction)" },
+    ".tok-method":        { color: "var(--wp-semanticFunction)" },
+    ".tok-event":         { color: "var(--wp-semanticFunction)" },
 
     // Types / shapes
-    ".tok-type":          { color: "var(--wp-editorHintForeground)" },
-    ".tok-class":         { color: "var(--wp-editorHintForeground)" },
-    ".tok-struct":        { color: "var(--wp-editorHintForeground)" },
-    ".tok-enum":          { color: "var(--wp-editorHintForeground)" },
-    ".tok-interface":     { color: "var(--wp-editorHintForeground)" },
-    ".tok-typeParameter": { color: "var(--wp-editorHintForeground)" },
-    ".tok-namespace":     { color: "var(--wp-editorHintForeground)" },
+    ".tok-type":          { color: "var(--wp-semanticType)" },
+    ".tok-class":         { color: "var(--wp-semanticType)" },
+    ".tok-struct":        { color: "var(--wp-semanticType)" },
+    ".tok-enum":          { color: "var(--wp-semanticType)" },
+    ".tok-interface":     { color: "var(--wp-semanticType)" },
+    ".tok-typeParameter": { color: "var(--wp-semanticType)" },
+    ".tok-namespace":     { color: "var(--wp-semanticType)" },
 
     // Variables / bindings
-    ".tok-variable":      { color: "var(--wp-terminalAnsiCyan)" },
-    ".tok-parameter":     { color: "var(--wp-terminalAnsiCyan)" },
+    ".tok-variable":      { color: "var(--wp-semanticVariable)" },
+    ".tok-parameter":     { color: "var(--wp-semanticVariable)" },
 
     // Properties / members
-    ".tok-property":      { color: "var(--wp-editorInlayHintForeground)" },
-    ".tok-enumMember":    { color: "var(--wp-editorInlayHintForeground)" },
-    ".tok-decorator":     { color: "var(--wp-editorInlayHintForeground)" },
+    ".tok-property":      { color: "var(--wp-semanticProperty)" },
+    ".tok-enumMember":    { color: "var(--wp-semanticProperty)" },
+    ".tok-decorator":     { color: "var(--wp-semanticProperty)" },
 
     // Literals / comments
-    ".tok-string":        { color: "var(--wp-terminalAnsiGreen)" },
-    ".tok-number":        { color: "var(--wp-terminalAnsiGreen)" },
-    ".tok-regexp":        { color: "var(--wp-terminalAnsiGreen)" },
-    ".tok-comment":       { color: "var(--wp-terminalAnsiGreen)" },
+    ".tok-string":        { color: "var(--wp-semanticLiteral)" },
+    ".tok-number":        { color: "var(--wp-semanticLiteral)" },
+    ".tok-regexp":        { color: "var(--wp-semanticLiteral)" },
+    ".tok-comment":       { color: "var(--wp-semanticComment)" },
 
     // Lean-specific: sorry and sorry-like terms — highlighted in red to be conspicuous
-    ".tok-leanSorryLike": { color: "var(--wp-terminalAnsiRed)" },
+    ".tok-leanSorryLike": { color: "var(--wp-semanticLeanSorryLike)" },
 });
 
 export function semanticTokenTheme() {
