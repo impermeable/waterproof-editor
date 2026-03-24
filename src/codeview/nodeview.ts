@@ -239,10 +239,10 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 						run: clearSnippet
 					}
 				]),
-			this._baseThemeCompartment.of(getCustomTheme(initialThemeStyle === ThemeStyle.Dark)),
-        ...semanticHighlighting(),
+					this._baseThemeCompartment.of(getCustomTheme(initialThemeStyle === ThemeStyle.Dark)),
+				...semanticHighlighting(),
 				this._semanticTokenCompartment.of(semanticTokenTheme()),
-        highlightActiveLine(),
+				highlightActiveLine(),
 				CodeMirror.updateListener.of(update => this.forwardUpdate(update)),
 				placeholder(placeholderContent())
 			],
@@ -339,15 +339,15 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		});
 	}
 
-	updateSemanticTokens(tokens: OffsetSemanticToken[]) {
+	public updateSemanticTokens(tokens: OffsetSemanticToken[]) {
 		this._codemirror?.dispatch({ effects: setSemanticTokens.of(tokens) });
 	}
 
-	clearSemanticTokens() {
+	public clearSemanticTokens() {
 		this._codemirror?.dispatch({ effects: clearSemanticTokens.of() });
 	}
 
-	get documentLength(): number {
+	public get documentLength(): number {
 		return this._codemirror?.state.doc.length ?? 0;
 	}
 	
