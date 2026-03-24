@@ -737,19 +737,23 @@ export class WaterproofEditor {
 	        return [{ nodeView, start, end }];
 	    });
 
+		blocks.sort((a, b) => a.start - b.start);
 		const buckets = new Map(blocks.map(block => [block.nodeView, [] as OffsetSemanticToken[]]));
 
-		const mappedTokens = tokens.flatMap(token => {
+		// Both tokens and blocks are in document order — advance a block pointer
+		// rather than searching from scratch for each token: O(#tokens + #blocks).
+		let blockIndex = 0;
+		for (const token of tokens) {
 			const from = mapping.textOffsetToPmIndex(token.startOffset);
 			const to = mapping.textOffsetToPmIndex(token.endOffset);
-			if (from === null || to === null) return [];
-			return [{ token, from, to }];
-		})
+			if (from === null || to === null) continue;
 
-		for (const { token, from, to } of mappedTokens) {
-			const block = blocks.find(b => from >= b.start && to <= b.end);
-			if (!block) continue; // token outside any block, skip
-			
+			while (blockIndex < blocks.length && blocks[blockIndex].end <= from) blockIndex++;
+			if (blockIndex >= blocks.length) break;
+
+			const block = blocks[blockIndex];
+			if (from < block.start || to > block.end) continue;
+
 			buckets.get(block.nodeView)!.push({
 				startOffset: from - block.start,
 				endOffset: to - block.start,
