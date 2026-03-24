@@ -239,7 +239,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 						run: clearSnippet
 					}
 				]),
-					this._baseThemeCompartment.of(getCustomTheme(initialThemeStyle === ThemeStyle.Dark)),
+				this._baseThemeCompartment.of(getCustomTheme(initialThemeStyle === ThemeStyle.Dark)),
 				...semanticHighlighting(),
 				this._semanticTokenCompartment.of(semanticTokenTheme()),
 				highlightActiveLine(),
