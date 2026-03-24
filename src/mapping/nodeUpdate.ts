@@ -39,8 +39,6 @@ export class NodeUpdate {
     
     // Handle a node update step
     public nodeUpdate(step: ReplaceStep | ReplaceAroundStep, mapping: Mapping, serializedDoc: string) : ParsedStep {
-        console.log("IN NODE UPDATE", step, mapping.getMapping());
-
         let parsedStep;
         if (step instanceof ReplaceStep) {
             // The step is a ReplaceStep
@@ -49,8 +47,6 @@ export class NodeUpdate {
             // The step is a ReplaceAroundStep (wrapping or unwrapping of nodes)
             parsedStep = this.doReplaceAroundStep(step, mapping);
         }
-
-        console.log("TREEEE", JSON.stringify(parsedStep.newTree, null, 2));
         return parsedStep;
     }
 

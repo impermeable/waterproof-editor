@@ -1,4 +1,4 @@
-import { cursorGroupLeft, selectGroupLeft, cursorLineBoundaryLeft, selectLineBoundaryLeft, cursorGroupRight, selectGroupRight, cursorLineBoundaryRight, selectLineBoundaryRight, cursorDocStart, selectDocStart, cursorPageUp, selectPageUp, cursorDocEnd, selectDocEnd, cursorPageDown, selectPageDown, cursorLineBoundaryBackward, selectLineBoundaryBackward, cursorLineBoundaryForward, selectLineBoundaryForward, insertNewlineAndIndent, deleteCharBackward, deleteCharForward, deleteGroupBackward, deleteGroupForward, cursorCharLeft, cursorCharRight, cursorLineDown, cursorLineUp, selectCharLeft, selectCharRight, selectLineDown, selectLineUp, selectAll } from "@codemirror/commands";
+import { cursorGroupLeft, selectGroupLeft, cursorLineBoundaryLeft, selectLineBoundaryLeft, cursorGroupRight, selectGroupRight, cursorLineBoundaryRight, selectLineBoundaryRight, cursorDocStart, selectDocStart, cursorPageUp, selectPageUp, cursorDocEnd, selectDocEnd, cursorPageDown, selectPageDown, cursorLineBoundaryBackward, selectLineBoundaryBackward, cursorLineBoundaryForward, selectLineBoundaryForward, insertNewlineAndIndent, deleteCharBackward, deleteCharForward, deleteGroupBackward, deleteGroupForward, cursorCharLeft, cursorCharRight, cursorLineDown, cursorLineUp, selectCharLeft, selectCharRight, selectLineDown, selectLineUp, selectAll, toggleComment, moveLineDown, moveLineUp } from "@codemirror/commands";
 import { KeyBinding } from "@codemirror/view";
 import { indentUnit } from "@codemirror/language";
 import { EditorState, StateCommand, SelectionRange, ChangeSpec, Line, EditorSelection } from "@codemirror/state"
@@ -51,6 +51,11 @@ export const keybindings: KeyBinding[] = [
 
     { key: "End", run: cursorLineBoundaryForward, shift: selectLineBoundaryForward, preventDefault: true },
     { key: "Mod-End", run: cursorDocEnd, shift: selectDocEnd },
+
+    { key: "Mod-/", run: toggleComment },
+
+    { key: "Alt-ArrowDown", run: moveLineDown},
+    { key: "Alt-ArrowUp", run: moveLineUp},
 
     { key: "Enter", run: insertNewlineAndIndent },
 
