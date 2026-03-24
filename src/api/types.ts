@@ -116,8 +116,8 @@ export type MenuBarEntry = {
 
 export type LanguageConfiguration = {
     languageSupport: LanguageSupport;
-    highlightLight: HighlightStyle;
-    highlightDark: HighlightStyle;
+    highlightLight?: HighlightStyle;
+    highlightDark?: HighlightStyle;
 }
 
 /**

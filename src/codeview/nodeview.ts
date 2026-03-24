@@ -174,10 +174,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				this._lineNumberCompartment.of(this._lineNumbersExtension),
 				this._themeCompartment.of(
 					(() => {
-						if (languageConfig !== undefined) {
-							return syntaxHighlighting(initialThemeStyle === ThemeStyle.Light ? languageConfig.highlightLight : languageConfig.highlightDark);
-						}
-						return [];
+						const highlight = initialThemeStyle === ThemeStyle.Light ? languageConfig?.highlightLight : languageConfig?.highlightDark;
+						return highlight ? syntaxHighlighting(highlight) : [];
 					})()
 				),
 				languageConfig?.languageSupport ?? [],
@@ -331,15 +329,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			effects: [
 				this._themeCompartment.reconfigure(
 					(() => {
-						if (this.languageConfig !== undefined) {
-							// TODO: Temporary workaround - disable static syntax highlighting for Lean since
-							// semantic highlighting is used instead. Remove once a proper solution is in place.
-							if (this.languageConfig.languageSupport.language.name === "lean") {
-								return [];
-							}
-							return syntaxHighlighting(theme === ThemeStyle.Light ? this.languageConfig.highlightLight : this.languageConfig.highlightDark);
-						}
-						return [];
+						const highlight = theme === ThemeStyle.Light ? this.languageConfig?.highlightLight : this.languageConfig?.highlightDark;
+						return highlight ? syntaxHighlighting(highlight) : [];
 					})()
 				),
 				this._semanticTokenCompartment.reconfigure(semanticTokenTheme()),
