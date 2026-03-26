@@ -40,7 +40,6 @@ export class Mapping {
             0 // lineStart
         );
         this.initTree(inputBlocks);
-        console.log("MAPPED TREE", JSON.stringify(this.tree, null, 1));
     }
 
     //// The getters of this class

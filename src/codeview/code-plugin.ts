@@ -116,7 +116,6 @@ const CoqCodePluginSpec = (completions: Array<Completion>, symbols: Array<Comple
 export const codePlugin = (completions: Array<WaterproofCompletion>, symbols: Array<WaterproofSymbol>, editorInstance: WaterproofEditor, initialThemeStyle: ThemeStyle, languageConfig?: LanguageConfiguration) => {
 	// Here we turn the waterproof completions into proper codemirror completions
 	//   with template 'holes'
-	console.log("LangConf", languageConfig);
 	const cmCompletions =  completions.map((value) => {
 		return snippetCompletion(value.template, value);
 	}); 
