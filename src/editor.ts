@@ -8,7 +8,7 @@ import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { constructDocument } from "./document/construct-document";
 
-import { DocChange, InputAreaStatus, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ThemeStyle, WaterproofEditorConfig, TextContentOfSpecifier } from "./api";
+import { DocChange, InputAreaStatus, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ThemeStyle, WaterproofEditorConfig, TextContentOfSpecifier, SimpleProgressParams } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
@@ -569,8 +569,27 @@ export class WaterproofEditor {
 		this._view.dispatch(trans);
 	}
 
-	public reportProgress(current: number, total: number, text?: string): void {
-		this._progressBar.reportProgress(current, total, text);
+	/**
+	 * Handle a progress update from the server.
+	 * @param params Contains numberOfLines and progress information
+	 */
+	public handleProgressUpdate(params: SimpleProgressParams): void {
+		const { numberOfLines, progress } = params;
+		if (progress.length === 0) {
+			this.removeBusyIndicators();
+			this._progressBar.reportProgress(numberOfLines, numberOfLines, "File verified");
+		} else {
+			const verifiedLineNumber = progress[0].range.start.line + 1;
+			this._progressBar.reportProgress(verifiedLineNumber, numberOfLines, `Verified file up to line: ${verifiedLineNumber}`);
+		}
+	}
+
+	/**
+	 * Handle execution info from the server.
+	 * @param range Object with 'from' property indicating the execution position offset
+	 */
+	public handleExecutionInfo(range: {from: number}): void {
+		this.setBusyIndicator(range.from);
 	}
 
 	public startSpinner(): void { this._progressBar.startSpinner(); }

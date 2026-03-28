@@ -98,6 +98,32 @@ export class MappingError extends Error {
     constructor(message: string) { super("[MappingError] " + message); }
 }
 
+/**
+ * Represents information about the progress of file processing.
+ */
+export type SimpleProgressInfo = {
+    /** Range for which the processing info was reported. */
+    range: {
+        start: { line: number, character: number };
+        end: { line: number, character: number };
+    };
+    /** Kind of progress that was reported. */
+    kind?: FileProgressKind;
+};
+
+/**
+ * Parameters for progress update messages.
+ */
+export type SimpleProgressParams = {
+    numberOfLines: number;
+    progress: SimpleProgressInfo[];
+};
+
+export enum FileProgressKind {
+    Processing = 1,
+    FatalError = 2,
+}
+
 export type MenuBarEntry = {
     /** The text to show in the menubar */
     title: string;
