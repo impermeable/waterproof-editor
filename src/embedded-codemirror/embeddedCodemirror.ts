@@ -3,7 +3,6 @@ import { Node as PNode, Schema } from "prosemirror-model";
 import { TextSelection } from "prosemirror-state";
 import { Decoration, DecorationSource, EditorView, NodeView } from "prosemirror-view";
 import { MovementDirection, MovementUnit } from "./types";
-import { exitCode } from "prosemirror-commands";
 import { keybindings } from "./embedded-codemirror-keymap";
 
 /**
