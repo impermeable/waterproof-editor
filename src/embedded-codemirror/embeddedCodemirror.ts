@@ -8,7 +8,7 @@ import { keybindings } from "./embedded-codemirror-keymap";
 /**
  * A class implementing everything required to create an embedded codemirror editor for prosemirror.
  * Implements the `NodeView` prosemirror class. Can be extended to create custom codemirror editors like
- * the one used to edit markdown or coq.
+ * the one used to edit markdown or Rocq code.
  */
 export class EmbeddedCodeMirrorEditor implements NodeView {
     public _getPos: (() => number | undefined);
@@ -183,7 +183,7 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 
 			switch (unit) {
 				case MovementUnit.line:
-					// We are moving up and down within the coq cell.
+					// We are moving up and down within the code cell.
 					// We get the line the cursor is currently in:
 					{ const currentLine = _state.doc.lineAt(_mainSelection.head);
 					if (dir == MovementDirection.backward) {

@@ -15,7 +15,7 @@ export type Range = {from: number, to: number};
 /**
  * A `WaterproofDocument` is a collection of `Block`s. Every Block in this WaterproofDocument will get translated into some ProseMirror node. 
  * 
- * Supported blocks are `HintBlock`, `InputAreaBlock`, `MarkdownBlock`, `CoqBlock` and `MathDisplayBlock`.
+ * Supported blocks are `HintBlock`, `InputAreaBlock`, `MarkdownBlock`, `CodeBlock` and `MathDisplayBlock`.
  *
  * Also see [documentation/UsingWaterproofEditor.md](../../documentation/UsingWaterproofEditor.md)
  */

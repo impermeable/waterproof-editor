@@ -66,7 +66,7 @@ const UpdateStatusPluginSpec = (editor: WaterproofEditor): PluginSpec<IUpdateSta
               const newStatusUpdate = statusUpdate[index];
               if (inputNode.node.attrs.status !== newStatusUpdate) {
                 // This is (probably) the place where we check for errors in the proof.
-                // A proof should not be accepted if it includes a faulty coq statement.
+                // A proof should not be accepted if it includes a faulty Rocq statement.
 
                 const start = inputNode.pos;
                 const end = start + inputNode.node.nodeSize;
@@ -74,7 +74,7 @@ const UpdateStatusPluginSpec = (editor: WaterproofEditor): PluginSpec<IUpdateSta
                 let className = statusToDecoration(newStatusUpdate);
                 if (thingies.length > 0) {
                   if (thingies.find((value) => value.severity == Severity.Error)) {
-                    // Coq error in proof.
+                    // Rocq error in proof.
                     className += " contains-error";
                   } else {
                     className += " contains-warning";
