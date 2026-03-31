@@ -10,22 +10,22 @@ The `WaterproofDocument` serves as an intermediate representation of the input f
 #### Example document constructor
 An example can be found in [the waterproof-vscode repository](https://github.com/impermeable/waterproof-vscode/blob/main/editor/src/document-construction/construct-document.ts). In `waterproof-vscode` we work with `.mv` files (Markdown files containing Rocq code, which use the `.v` file extension).
 
-In our `.mv` constructor, parts surrounded by `<input-area>` and `</input-area>` are mapped to `InputAreaBlock`s, parts surrounded by `<hint title="{some title}">` and `</hint>` are mapped to `HintBlock`s, parts surrounded by ` ```coq ` and ` ``` ` are translated to `CoqBlock`s, etc.
+In our `.mv` constructor, parts surrounded by `<input-area>` and `</input-area>` are mapped to `InputAreaBlock`s, parts surrounded by `<hint title="{some title}">` and `</hint>` are mapped to `HintBlock`s, parts surrounded by ` ```coq ` and ` ``` ` are translated to `CodeBlock`s, etc.
 
 ### WaterproofDocument
 It may be helpful to think of a WaterproofDocument in terms of the following "grammar":
 ```
 WaterproofDocument  ::= Block+
 
-Block               ::= HintBlock | InputAreaBlock | MarkdownBlock | CoqBlock | MathDisplayBlock | NewlineBlock
+Block               ::= HintBlock | InputAreaBlock | MarkdownBlock | CodeBlock | MathDisplayBlock | NewlineBlock
 
-InnerBlock          ::= MarkdownBlock | CoqBlock | MathDisplayBlock | NewlineBlock
+InnerBlock          ::= MarkdownBlock | CodeBlock | MathDisplayBlock | NewlineBlock
 
 HintBlock           ::= Container of InnerBlock+ with a title.
 InputAreaBlock      ::= Container of InnerBlock+
 
 MarkdownBlock       ::= A container with markdown content (supports inline LaTeX).
-CoqBlock            ::= A container with code content.
+CodeBlock           ::= A container with code content.
 MathDisplayBlock    ::= A container with LaTeX content that should be rendered in math display mode.
 NewlineBlock        ::= A block that keeps track of significant newlines
 ```
