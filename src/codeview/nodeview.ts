@@ -418,7 +418,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	}
 
 	/**
-	 * Add a new Rocq error to this view
+	 * Add a new diagnostic to this view
 	 * @param from The from position of the error.
 	 * @param to The to postion of the error (should be larger than `from`).
 	 * @param message The message attached to this error.
