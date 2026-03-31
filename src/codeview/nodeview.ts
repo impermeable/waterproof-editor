@@ -7,16 +7,16 @@ import {
 	lineNumbers, placeholder} from "@codemirror/view"
 import { Node, Schema } from "prosemirror-model"
 import { EditorView } from "prosemirror-view"
-import { customTheme } from "./color-scheme"
+import { getCustomTheme } from "./color-scheme"
 import { renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, lintGutter } from "@codemirror/lint";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
-import { LanguageConfiguration, ThemeStyle } from "../api";
+import { OffsetSemanticToken, LanguageConfiguration, ThemeStyle } from "../api";
 import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
 import { CodeBlockBusyIndicator } from "./busy-indicator";
-
+import { clearSemanticTokens, semanticHighlighting, semanticTokenTheme, setSemanticTokens } from "./semantic-highlighting";
 
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
@@ -32,7 +32,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _readOnlyCompartment: Compartment;
 	private _themeCompartment: Compartment;
 	private _languageCompartment: Compartment;
-	private _diags : Diagnostic[];
+	private _semanticTokenCompartment: Compartment;
+	private _baseThemeCompartment: Compartment;
 	private lastUsedDiagnosticsVersion: number = 0;
 
 	private busyIndicator: CodeBlockBusyIndicator;
@@ -59,7 +60,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._readOnlyCompartment = new Compartment;
 		this._themeCompartment = new Compartment;
 		this._languageCompartment = new Compartment;
-		this._diags = [];
+		this._semanticTokenCompartment = new Compartment;
+		this._baseThemeCompartment = new Compartment;
 
 		const tacticCompletionSource: CompletionSource = function(context: CompletionContext) {
 			const completionResult: CompletionResult = {
@@ -172,10 +174,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				this._lineNumberCompartment.of(this._lineNumbersExtension),
 				this._themeCompartment.of(
 					(() => {
-						if (languageConfig !== undefined) {
-							return syntaxHighlighting(initialThemeStyle === ThemeStyle.Light ? languageConfig.highlightLight : languageConfig.highlightDark);
-						}
-						return [];
+						const highlight = initialThemeStyle === ThemeStyle.Light ? languageConfig?.highlightLight : languageConfig?.highlightDark;
+						return highlight ? syntaxHighlighting(highlight) : [];
 					})()
 				),
 				languageConfig?.languageSupport ?? [],
@@ -239,9 +239,10 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 						run: clearSnippet
 					}
 				]),
-				customTheme,
-				languageConfig?.languageSupport ?? [],
-                highlightActiveLine(),
+				this._baseThemeCompartment.of(getCustomTheme(initialThemeStyle === ThemeStyle.Dark)),
+				...semanticHighlighting(),
+				this._semanticTokenCompartment.of(semanticTokenTheme()),
+				highlightActiveLine(),
 				CodeMirror.updateListener.of(update => this.forwardUpdate(update)),
 				placeholder(placeholderContent())
 			],
@@ -325,15 +326,29 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	 */
 	public updateThemeFromVSCode(theme: ThemeStyle): void {
 		this._codemirror?.dispatch({
-			effects: this._themeCompartment.reconfigure(
-				(() => {
-					if (this.languageConfig !== undefined) {
-						return syntaxHighlighting(theme === ThemeStyle.Light ? this.languageConfig.highlightLight : this.languageConfig.highlightDark);
-					}
-					return [];
-				})()
-			)
+			effects: [
+				this._themeCompartment.reconfigure(
+					(() => {
+						const highlight = theme === ThemeStyle.Light ? this.languageConfig?.highlightLight : this.languageConfig?.highlightDark;
+						return highlight ? syntaxHighlighting(highlight) : [];
+					})()
+				),
+				this._semanticTokenCompartment.reconfigure(semanticTokenTheme()),
+				this._baseThemeCompartment.reconfigure(getCustomTheme(theme === ThemeStyle.Dark)),
+			]
 		});
+	}
+
+	public updateSemanticTokens(tokens: OffsetSemanticToken[]) {
+		this._codemirror?.dispatch({ effects: setSemanticTokens.of(tokens) });
+	}
+
+	public clearSemanticTokens() {
+		this._codemirror?.dispatch({ effects: clearSemanticTokens.of() });
+	}
+
+	public get documentLength(): number {
+		return this._codemirror?.state.doc.length ?? 0;
 	}
 	
 	/**

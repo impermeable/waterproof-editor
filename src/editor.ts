@@ -8,7 +8,7 @@ import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { constructDocument } from "./document/construct-document";
 
-import { DocChange, InputAreaStatus, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ThemeStyle, WaterproofEditorConfig, TextContentOfSpecifier } from "./api";
+import { DocChange, InputAreaStatus, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ThemeStyle, WaterproofEditorConfig, OffsetSemanticToken, TextContentOfSpecifier } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
@@ -518,6 +518,7 @@ export class WaterproofEditor {
         if (!this._view || !this._mapping) return false;
         const from = this._mapping.textOffsetToPmIndex(startOffset);
         const to = this._mapping.textOffsetToPmIndex(endOffset);
+        if (from === null || to === null) return false;
         const tr = this._view.state.tr.insertText(text, from, to);
         this._view.dispatch(tr);
         return true;
@@ -582,7 +583,8 @@ export class WaterproofEditor {
 
 		if (this._mapping === undefined || this._view === undefined) return;
 
-		const pmPos: number = this._mapping.textOffsetToPmIndex(busyPos);
+		const pmPos = this._mapping.textOffsetToPmIndex(busyPos);
+		if (pmPos === null) return;
 
 		
 		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
@@ -627,16 +629,17 @@ export class WaterproofEditor {
 		if (map === undefined || this._view === undefined) return;
 
 		// Map the positions
-		const newDiags = diagnostics.map(d => {
+		const newDiags = diagnostics.flatMap(d => {
 			const start = map.textOffsetToPmIndex(d.startOffset);
 			const end = map.textOffsetToPmIndex(d.endOffset);
+			if (start === null || end === null) return [];
 
-			return {
+			return [{
 				message: d.message,
 				severity: d.severity,
 				start,
 				end
-			}
+			}];
 		});
 		// Add the new diagnostics to the array of stored diagnostics
 		this.currentProseDiagnostics.push(...newDiags);
@@ -658,6 +661,7 @@ export class WaterproofEditor {
 
 		const start = map.textOffsetToPmIndex(toRemove.startOffset);
 		const end = map.textOffsetToPmIndex(toRemove.endOffset);
+		if (start === null || end === null) return false;
 
 		const proseDiag: DiagnosticObjectProse = {
 			start, end,
@@ -703,7 +707,7 @@ export class WaterproofEditor {
 			const diag = diagnostics[i];
 			const start = map.textOffsetToPmIndex(diag.startOffset);
 			const end = map.textOffsetToPmIndex(diag.endOffset);
-			if (start >= end) continue;
+			if (start === null || end === null || start >= end) continue;
 			this.currentProseDiagnostics[i] = {
 				message: diag.message,
 				start,
@@ -714,6 +718,59 @@ export class WaterproofEditor {
 		// diagnostics have changed
 		this.diagnosticsUpdateCounter++;
 		this.informCodemirrorViews();
+	}
+
+	public setSemanticTokens(tokens: OffsetSemanticToken[]) {
+	    const mapping = this._mapping;
+	    if (!mapping || !this._view) return;
+
+	    const nodeViews = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
+	    if (!nodeViews) return;
+
+	    const blocks = Array.from(nodeViews).flatMap(nodeView => {
+	        const pos = nodeView._getPos();
+	        if (pos === undefined) return [];
+
+			// + 1 to get the position after the opening node, where the content starts
+	        const start = pos + 1;
+	        const end = start + nodeView.documentLength;
+	        return [{ nodeView, start, end }];
+	    });
+
+		blocks.sort((a, b) => a.start - b.start);
+		const buckets = new Map(blocks.map(block => [block.nodeView, [] as OffsetSemanticToken[]]));
+
+		// Both tokens and blocks are in document order — advance a block pointer
+		// rather than searching from scratch for each token: O(#tokens + #blocks).
+		let blockIndex = 0;
+		for (const token of tokens) {
+			const from = mapping.textOffsetToPmIndex(token.startOffset);
+			const to = mapping.textOffsetToPmIndex(token.endOffset);
+			if (from === null || to === null) continue;
+
+			while (blockIndex < blocks.length && blocks[blockIndex].end <= from) blockIndex++;
+			if (blockIndex >= blocks.length) break;
+
+			const block = blocks[blockIndex];
+			if (from < block.start || to > block.end) continue;
+
+			buckets.get(block.nodeView)!.push({
+				startOffset: from - block.start,
+				endOffset: to - block.start,
+				type: token.type,
+			});
+		}
+
+	    for (const [nodeView, localTokens] of buckets) {
+	        nodeView.updateSemanticTokens(localTokens);
+	    }
+	}	
+
+	public clearSemanticTokens() {
+		if (!this._view) return;
+		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
+		if (views === undefined) return;
+		for (const view of views) view.clearSemanticTokens();
 	}
 
 	private informCodemirrorViews() {

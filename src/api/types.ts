@@ -116,8 +116,8 @@ export type MenuBarEntry = {
 
 export type LanguageConfiguration = {
     languageSupport: LanguageSupport;
-    highlightLight: HighlightStyle;
-    highlightDark: HighlightStyle;
+    highlightLight?: HighlightStyle;
+    highlightDark?: HighlightStyle;
 }
 
 /**
@@ -192,4 +192,37 @@ export interface OffsetDiagnostic {
 
 export enum ThemeStyle {
     Light, Dark
+}
+
+export enum SemanticTokenType {
+    Keyword       = "keyword",
+    Variable      = "variable",
+    Property      = "property",
+    Function      = "function",
+    Namespace     = "namespace",
+    Type          = "type",
+    Class         = "class",
+    Enum          = "enum",
+    Interface     = "interface",
+    Struct        = "struct",
+    TypeParameter = "typeParameter",
+    Parameter     = "parameter",
+    EnumMember    = "enumMember",
+    Event         = "event",
+    Method        = "method",
+    Macro         = "macro",
+    Modifier      = "modifier",
+    Comment       = "comment",
+    String        = "string",
+    Number        = "number",
+    Regexp        = "regexp",
+    Operator      = "operator",
+    Decorator     = "decorator",
+    LeanSorryLike = "leanSorryLike",
+}
+
+export interface OffsetSemanticToken {
+    startOffset: number;
+    endOffset: number;
+    type: SemanticTokenType;
 }
