@@ -38,11 +38,11 @@ export class NodeUpdate {
     }
     
     // Handle a node update step
-    public nodeUpdate(step: ReplaceStep | ReplaceAroundStep, mapping: Mapping, serializedDoc: string) : ParsedStep {
+    public nodeUpdate(step: ReplaceStep | ReplaceAroundStep, mapping: Mapping, serializedDoc: string, serializer: DocumentSerializer, proseDoc: Node) : ParsedStep {
         let parsedStep;
         if (step instanceof ReplaceStep) {
             // The step is a ReplaceStep
-            parsedStep = this.doReplaceStep(step, mapping, serializedDoc);
+            parsedStep = this.doReplaceStep(step, mapping, serializedDoc, serializer, proseDoc);
         } else {
             // The step is a ReplaceAroundStep (wrapping or unwrapping of nodes)
             parsedStep = this.doReplaceAroundStep(step, mapping);
@@ -50,7 +50,7 @@ export class NodeUpdate {
         return parsedStep;
     }
 
-    doReplaceStep(step: ReplaceStep, mapping: Mapping, serializedDoc: string): ParsedStep {
+    doReplaceStep(step: ReplaceStep, mapping: Mapping, serializedDoc: string, serializer: DocumentSerializer, proseDoc: Node): ParsedStep {
         // Determine operation type
         const type = typeFromStep(step);
         console.log("In doReplaceStep, operation type:", type);
@@ -58,7 +58,7 @@ export class NodeUpdate {
             case OperationType.insert:
                 return this.replaceInsert(step, mapping.getMapping(), serializedDoc);
             case OperationType.delete:
-                return this.replaceDelete(step, mapping.getMapping());
+                return this.replaceDelete(step, mapping.getMapping(), serializer, proseDoc);
             case OperationType.replace:
                 throw new NodeUpdateError(" We do not support ReplaceSteps that replace nodes with other nodes (textual replaces are handled in the textUpdate module) ");
         }
@@ -261,14 +261,26 @@ export class NodeUpdate {
      * @param tree The input tree
      * @returns A ParsedStep containing the resulting DocChange and the updated tree.
      */
-    replaceDelete(step: ReplaceStep, tree: Tree): ParsedStep {       
+    replaceDelete(step: ReplaceStep, tree: Tree, serializer: DocumentSerializer, proseDoc: Node): ParsedStep {       
         // Find all nodes that are fully in the deleted range
         const nodesToDelete: TreeNode[] = [];
         let from = Number.POSITIVE_INFINITY;
         let to = Number.NEGATIVE_INFINITY;
 
-        // First pass: identify nodes to delete and compute line delta before modifying the tree
-        let deletedNewlines = 0;
+
+        const origDocStart = step.from;
+        const origDocEnd = step.to;
+
+        // Figure out how many newlines are in the deleted content, needed to update the
+        // line numbers of the nodes that come after the deleted nodes.
+        const parentNodeType = proseDoc.resolve(origDocStart).parent.type.name;
+        const parentNode = parentNodeType === "doc" ? null : parentNodeType;
+        // Get the slice of the document that will be deleted, serialize it and count the newlines in it
+        const { content } = proseDoc.slice(origDocStart, origDocEnd);
+        const str = serializer.serializeFragment(content, parentNode);
+        const deletedNewlines = countNewlines(str);
+
+        // First pass: identify nodes to delete
         tree.traverseDepthFirst((node: TreeNode) => {
             if (node.prosemirrorStart >= step.from && node.prosemirrorEnd <= step.to) {
                 nodesToDelete.push(node);
@@ -276,13 +288,6 @@ export class NodeUpdate {
                 if (node.tagRange.from < from) from = node.tagRange.from;
                 if (node.tagRange.to > to) to = node.tagRange.to;
 
-                // Count newlines contributed by this node
-                if (node.type === "newline") {
-                    deletedNewlines++;
-                } else if (node.type === "code" || node.type === "math_display") {
-                    // open tag \n and close tag \n
-                    deletedNewlines += 2;
-                }
             }
         });
 

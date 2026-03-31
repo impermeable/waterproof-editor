@@ -127,7 +127,7 @@ export class Mapping {
         } else {
             // The entire document is serialized here. This is done to be able to produce an accurate linecount
             // If this leads to performance issues, this could likely be resolved by being smarter about this.
-            result = this.nodeUpdate.nodeUpdate(step, this, this.serializer.serializeDocument(doc));
+            result = this.nodeUpdate.nodeUpdate(step, this, this.serializer.serializeDocument(doc), this.serializer, doc);
         }
 
         this.tree = result.newTree

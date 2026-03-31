@@ -1,6 +1,12 @@
-import { Node } from "prosemirror-model";
+import { Fragment, Node } from "prosemirror-model";
 import { WaterproofSchema } from "../schema";
 import { TagConfiguration } from "../api";
+
+export class SerializationError extends Error {
+    constructor(message: string) {
+        super("[SerializationError] " + message);
+    }
+}
 
 export abstract class DocumentSerializer {
     /**
@@ -57,9 +63,12 @@ export abstract class DocumentSerializer {
     }
 
     /**
-     * 
-     * @param node 
-     * @returns 
+     * Serializes a node to its string representation.
+     * @param node The node to serialize.
+     * @param parent The type name of the parent node, or null if the node is at root level.
+     * @param neighbors A function that returns the node types above and below the current node, with an option to skip newline nodes.
+     * @returns The serialized (string) representation of the node.
+     * @throws A {@linkcode SerializationError} when the node type is not supported.
      */
     public serializeNode(node: Node, parent: string | null, neighbors: (skipNewlines: boolean) => {nodeAbove: string | null, nodeBelow: string | null}): string {
         switch (node.type) {
@@ -71,13 +80,51 @@ export abstract class DocumentSerializer {
             case WaterproofSchema.nodes.text: return this.serializeText(node);
             case WaterproofSchema.nodes.newline: return this.serializeNewline();
             default:
-                throw new Error(`[SerializeNode] Node of type "${node.type.name}" not supported.`);
+                throw new SerializationError(`[SerializeNode] Node of type "${node.type.name}" not supported.`);
         }
+    }
+    
+    /**
+     * Serializes a fragment of nodes into a string representation.
+     * 
+     * This method iterates through each child node in the fragment and serializes it individually.
+     * For each node, it provides context about neighboring nodes to the serialization function,
+     * with an option to skip newline nodes when determining context.
+     * @param fragment The node content fragment to serialize
+     * @param parent The parent node name, or null if there is no parent
+     * @returns The serialized string representation of the fragment
+     * @throws A {@linkcode SerializationError} when the document contains a node type that is not supported by the serializer.
+     */
+    public serializeFragment(fragment: Fragment, parent: string | null): string {
+        const output: string[] = [];
+        fragment.forEach((child, _, idx) => {
+            const nodeDirectlyAbove = fragment.maybeChild(idx - 1);
+            const nodeTwoAbove = fragment.maybeChild(idx - 2);
+
+            const nodeDirectlyBelow = fragment.maybeChild(idx + 1);
+            const nodeTwoBelow = fragment.maybeChild(idx + 2);
+
+            const func = (skipNewlines: boolean): { nodeAbove: string | null; nodeBelow: string | null } => {
+                let above = nodeDirectlyAbove?.type.name ?? null;
+                let below = nodeDirectlyBelow?.type.name ?? null;
+
+                if (above === "newline" && skipNewlines) above = nodeTwoAbove?.type.name ?? null;
+                if (below === "newline" && skipNewlines) below = nodeTwoBelow?.type.name ?? null;
+
+                return {nodeAbove: above, nodeBelow: below};
+            };
+
+            output.push(this.serializeNode(child, parent, func));
+        });
+        return output.join("");
     }
 
     /**
+     * Serializes the whole ProseMirror document into its string representation.
      * 
-     * @param node 
+     * @param node The document node to serialize, this should probably be the root (`doc`) node of the ProseMirror document.
+     * @returns The string representation of the document
+     * @throws A {@linkcode SerializationError} when the document contains a node type that is not supported by the serializer.
      */
     public serializeDocument(node: Node) {
         const output: string[] = [];
