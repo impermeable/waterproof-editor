@@ -1,5 +1,5 @@
 import { Fragment, Slice } from "prosemirror-model";
-import { ReplaceStep } from "prosemirror-transform";
+import { ReplaceAroundStep, ReplaceStep } from "prosemirror-transform";
 import { DocChange } from "../../src/api";
 import { Block } from "../../src/document";
 import { Mapping, TreeNode } from "../../src/mapping";
@@ -183,4 +183,71 @@ test("Mapping.update node insert in the middle shifts lineStart of later code bl
     expect(updatedCodeNodes[2].lineStart).toBe(4 + 3);
 
     expect(updatedTree.computeLineNumbers()).toStrictEqual([1, 4, 7]);
+});
+
+// Regression: wpLift on an input node with surrounding newlines produces a 3-step transaction:
+//   Step 1 — ReplaceAroundStep that lifts the input's content to the parent level
+//   Step 2 — ReplaceStep that deletes the leading duplicate newline (now at step1.from)
+//   Step 3 — ReplaceStep that deletes the trailing duplicate newline
+//
+// The bug: step 3's `from` position equals code2.prosemirrorEnd in the pre-transaction doc.
+// mapping.update() resolves that position against the *pre-transaction* doc, finds it inside
+// a code node, and classifies the step as a text edit.  The cache then misses and
+// tree.findNodeByProsePos() returns the newline node at that boundary, which is not
+// text-editable → TextUpdateError is thrown.
+test("Regression: wpLift newline-deduplication steps are not misclassified as text edits", () => {
+    // Document: code("abc") | newline | input([ newline | code("def") | newline ]) | newline | code("ghi")
+    // In coq format:
+    //   ```coq\nabc\n```\n<input-area>\n```coq\ndef\n```\n</input-area>\n```coq\nghi\n```
+    //
+    // ProseMirror layout (pre-transaction):
+    //   0[code1 1"abc"4]5  5(nl1)  6[input 7(nl_a) 8[code2 9"def"12]13 13(nl_b) 14]15  15(nl2)  16[code3 17"ghi"20]21
+    const docString = "```coq\nabc\n```\n<input-area>\n```coq\ndef\n```\n</input-area>\n```coq\nghi\n```";
+
+    const blocks = parse(docString, {language: "coq"});
+    const mapping = new Mapping(blocks, 0, config, serializer);
+    const proseDoc = constructDocument(blocks);
+
+    const tree = mapping.getMapping();
+    const inputNode = tree.root.children.find(n => n.type === "input");
+    if (!inputNode) throw new Error("Test setup: input node not found");
+
+    // Verify the expected pre-transaction positions so the test is self-checking.
+    expect(inputNode.pmRange).toEqual({ from: 6, to: 15 });
+    expect(inputNode.prosemirrorStart).toBe(7);
+    expect(inputNode.prosemirrorEnd).toBe(14);
+
+    // Step 1: lift — removes the input wrapper, promoting its three children (nl_a, code2, nl_b).
+    const step1 = new ReplaceAroundStep(
+        inputNode.pmRange.from,      // 6
+        inputNode.pmRange.to,        // 15
+        inputNode.prosemirrorStart,  // 7  (gapFrom: first inner content position)
+        inputNode.prosemirrorEnd,    // 14 (gapTo:  last  inner content position)
+        new Slice(Fragment.empty, 0, 0),
+        0
+    );
+
+    // After step 1, nl_a lands at inputNode.pmRange.from (= 6).
+    // Step 2: delete nl_a (leading duplicate: nl1 before input + nl_a as first child).
+    const step2from = inputNode.pmRange.from; // 6
+    const step2 = new ReplaceStep(step2from, step2from + 1, new Slice(Fragment.empty, 0, 0));
+
+    // After steps 1 and 2, nl2 (the outer trailing newline) is at position
+    //   inputNode.pmRange.to - 3  =  15 - 3  =  12.
+    // This equals code2.prosemirrorEnd in the pre-transaction doc — the position that
+    // triggers the misclassification bug when mapping.update() resolves it against proseDoc.
+    const step3from = inputNode.pmRange.to - 3; // 12
+    const step3 = new ReplaceStep(step3from, step3from + 1, new Slice(Fragment.empty, 0, 0));
+
+    // All three steps must complete without throwing.
+    // With the bug present, step 3 throws:
+    //   TextUpdateError: "When attempting to refresh the text update node cache
+    //                     we got a node that does not support text edits"
+    expect(() => {
+        mapping.update(step1, proseDoc);
+        mapping.update(step2, proseDoc);
+        mapping.update(step3, proseDoc);
+    }).not.toThrow();
+
+    sanityCheckTree(mapping.getMapping().root);
 });
