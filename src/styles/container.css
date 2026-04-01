@@ -2,6 +2,5 @@
     display: block;
     position: relative;
     padding-left: 8px;
-    border-left: 4px dashed var(--wp-buttonBorder);
     margin: 4px 0;
 }
