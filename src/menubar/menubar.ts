@@ -195,26 +195,6 @@ function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfigurat
     if (customMenuItems !== undefined)
         items.push(...customMenuItems);
 
-    items.push(
-            ...[
-                // Insert Coq command
-                createMenuItem("Math↓", `Insert new verified math block underneath (${keyBinding("q")})`, getCmdInsertCode(InsertionPlace.Below, tagConf)),
-                createMenuItem("Math↑", `Insert new verified math block above (${keyBinding("Q")})`, getCmdInsertCode(InsertionPlace.Above, tagConf)),
-                // Insert Markdown
-                createMenuItem("Text↓", `Insert new text block underneath (${keyBinding("m")})`, getCmdInsertMarkdown(InsertionPlace.Below, tagConf)),
-                createMenuItem("Text↑", `Insert new text block above (${keyBinding("M")})`, getCmdInsertMarkdown(InsertionPlace.Above, tagConf)),
-                // Insert LaTeX
-                createMenuItem(`${LaTeX_SVG} <div>↓</div>`, `Insert new LaTeX block underneath (${keyBinding("l")})`, getCmdInsertLatex(InsertionPlace.Below, tagConf)),
-                createMenuItem(`${LaTeX_SVG} <div>↑</div>`, `Insert new LaTeX block above (${keyBinding("L")})`, getCmdInsertLatex(InsertionPlace.Above, tagConf)),
-                // Select the parent node.
-                createMenuItem("Parent", `Select the parent node (${keyBinding(".")})`, selectParentNode),
-                // in teacher mode, display input area, hint and lift buttons.
-                createMenuItem("ⵊ...", "Make selection an input area", teacherOnlyWrapper(wrapInInput(tagConf)), teacherOnly),
-                createMenuItem("<strong>?</strong>", "Make selection a hint element", teacherOnlyWrapper(wrapInHint(tagConf)), teacherOnly),
-                createMenuItem("↑", "Lift selected node (Reverts the effect of making a 'hint' or 'input area')", teacherOnlyWrapper(wpLift(tagConf)), teacherOnly),
-                createMenuItem("🗑️", "Delete selection", teacherOnlyWrapper(deleteSelection(tagConf)), teacherOnly),
-            ])
-
 
     // The DEBUG label will be dropped in case we are *not* in debug mode.
     // eslint-disable-next-line no-unused-labels
