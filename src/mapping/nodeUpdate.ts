@@ -32,6 +32,8 @@ export class NodeUpdate {
                 return [this.tagConf.input.openTag, this.tagConf.input.closeTag];
             case "math_display":
                 return [this.tagConf.math.openTag, this.tagConf.math.closeTag];
+            case "container":
+                return [this.tagConf.container.openTag(title), this.tagConf.container.closeTag(title)];
             default:
                 throw new NodeUpdateError(`Unsupported node type: ${nodeName}`);
         }
@@ -198,7 +200,8 @@ export class NodeUpdate {
             )
         }
 
-        const [openTagForNode, closeTagForNode] = this.nodeNameToTagPair(node.type.name, node.attrs.title ? node.attrs.title : "");
+        const nodeTitle = node.attrs.title ? node.attrs.title : (node.attrs.name ? node.attrs.name : "");
+        const [openTagForNode, closeTagForNode] = this.nodeNameToTagPair(node.type.name, nodeTitle);
 
         const contentLineStart = currentLine + countNewlines(openTagForNode);
         const lineStart = (node.type.name === "code" || node.type.name === "math_display") ? contentLineStart : 0;
@@ -207,7 +210,7 @@ export class NodeUpdate {
             node.type.name, // node type
             {from: startOrig + openTagForNode.length, to: 0}, // inner range
             {from: startOrig, to: 0}, // full range
-            node.attrs.title ? node.attrs.title : "", // title
+            nodeTitle, // title
             startProse + 1, 0, // prosemirror start, end
             {from: startProse, to: 0},
             lineStart
@@ -403,24 +406,38 @@ export class NodeUpdate {
             throw new NodeUpdateError(" We only support ReplaceAroundSteps with a single wrapping node ");
         }
 
-        // Check that the wrapping node is of a supported type (hint or input)
+        // Check that the wrapping node is of a supported type (hint, input, or container)
         const insertedNodeType = wrappingNode.type.name;
-        if (insertedNodeType !== "hint" && insertedNodeType !== "input") {
-            throw new NodeUpdateError(" We only support wrapping in hints or inputs ");
+        if (insertedNodeType !== "hint" && insertedNodeType !== "input" && insertedNodeType !== "container") {
+            throw new NodeUpdateError(" We only support wrapping in hints, inputs, or containers ");
         }
 
-        // If we are wrapping in a hint node we need to have a title attribute
-        const title: string = insertedNodeType === "hint" ? wrappingNode.attrs.title : "";
+        // If we are wrapping in a hint node we need to have a title attribute; container uses name attribute
+        const title: string = insertedNodeType === "hint" ? wrappingNode.attrs.title
+            : insertedNodeType === "container" ? wrappingNode.attrs.name
+            : "";
         // Get the tags for the wrapping node
         const [openTag, closeTag] = this.nodeNameToTagPair(insertedNodeType, title);
 
         // The step includes a range of nodes that are wrapped. We use the mapping
         // to find the node at gapFrom (the first one being wrapped) and the node
         // at gapTo (the last one being wrapped).
-        const nodesBeingWrappedStart = tree.findNodeByProsePos(step.gapFrom);
+        let nodesBeingWrappedStart = tree.findNodeByProsePos(step.gapFrom);
         const nodesBeingWrappedEnd = tree.findNodeByProsePos(step.gapTo);
         // If one of the two doesn't exist we error
         if (!nodesBeingWrappedStart || !nodesBeingWrappedEnd) throw new NodeUpdateError(" Could not find node in mapping ");
+
+        // findNodeByProsePos is biased: at a boundary position it returns the node ENDING there.
+        // If gapFrom equals nodesBeingWrappedStart.pmRange.to, we got the preceding node instead
+        // of the node that starts at gapFrom. Advance to the next sibling to correct this.
+        if (nodesBeingWrappedStart.pmRange.to === step.gapFrom) {
+            const parent = tree.findParent(nodesBeingWrappedStart);
+            const siblings = parent ? parent.children : tree.root.children;
+            const idx = siblings.indexOf(nodesBeingWrappedStart);
+            if (idx + 1 < siblings.length) {
+                nodesBeingWrappedStart = siblings[idx + 1];
+            }
+        }
 
         // Generate the document change (this is a wrapping document change)
         const docChange: WrappingDocChange = {

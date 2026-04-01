@@ -9,3 +9,4 @@ export * as "markdown" from "./markdown-defaults";
 export { DocumentSerializer, DefaultTagSerializer } from "./serialization/DocumentSerializer";
 export { Node } from "prosemirror-model";
 export * from "./edit-utils";
+export { wrapInContainer } from "./commands";

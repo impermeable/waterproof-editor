@@ -1,7 +1,7 @@
 import { Node } from "prosemirror-model";
 import { WaterproofSchema } from "../../schema";
 import { BLOCK_NAME, Block, BlockRange } from "./block";
-import { code, hint, inputArea, markdown, mathDisplay, newline } from "./schema";
+import { code, container, hint, inputArea, markdown, mathDisplay, newline } from "./schema";
 
 const indentation = (level: number): string => "  ".repeat(level);
 const debugInfo = (block: Block): string => `{range=${block.range.from}-${block.range.to}}`;
@@ -167,5 +167,42 @@ export class NewlineBlock implements Block {
     // Debug print function.
     debugPrint(level: number): void {
         console.log(`${indentation(level)}Newline`);
+    }
+}
+
+/**
+ * ContainerBlocks are generic container blocks that group multiple blocks together.
+ * They carry a name to identify the container type.
+ * In Lean context, multilean blocks are represented as containers with name "multilean".
+ * They can contain both top-level blocks (input, hint) and leaf blocks (math, code, markdown).
+ */
+export class ContainerBlock implements Block {
+    public type = BLOCK_NAME.CONTAINER;
+    public innerBlocks: Block[];
+
+    constructor(
+        public stringContent: string,
+        public name: string,
+        public range: BlockRange,
+        public innerRange: BlockRange,
+        public lineStart: number,
+        childBlocks: Block[] | ((innerContent: string, innerRange: BlockRange, lineStartOffset: number) => Block[])
+    ) {
+        if (typeof childBlocks === "function") {
+            this.innerBlocks = childBlocks(stringContent, innerRange, lineStart);
+        } else {
+            this.innerBlocks = childBlocks;
+        }
+    }
+
+    toProseMirror() {
+        const childNodes = this.innerBlocks.map(block => block.toProseMirror());
+        return container(this.name, childNodes);
+    }
+
+    debugPrint(level: number): void {
+        console.log(`${indentation(level)}ContainerBlock(${this.name}) {${debugInfo(this)}} [`);
+        this.innerBlocks.forEach(block => block.debugPrint(level + 1));
+        console.log(`${indentation(level)}]`);
     }
 }

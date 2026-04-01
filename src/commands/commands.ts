@@ -1,4 +1,4 @@
-import { NodeType } from "prosemirror-model";
+import { NodeRange, NodeType } from "prosemirror-model";
 import { Command, EditorState, NodeSelection, TextSelection, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { liftTarget } from "prosemirror-transform";
@@ -17,8 +17,8 @@ export function wpLift(_tagConf: TagConfiguration): Command {
         const after = $to.nodeAfter;
         
         const {type} = node;
-        if (type !== WaterproofSchema.nodes.hint && type !== WaterproofSchema.nodes.input) {
-            // We can only lift hint or input area nodes.
+        if (type !== WaterproofSchema.nodes.hint && type !== WaterproofSchema.nodes.input && type !== WaterproofSchema.nodes.container) {
+            // We can only lift hint, input area, or container nodes.
             return false;
         }
 
@@ -139,67 +139,68 @@ export function wrapInInput(tagConf: TagConfiguration): Command {
     return wpWrapIn(WaterproofSchema.nodes.input, tagConf);
 }
 
+export function wrapInContainer(tagConf: TagConfiguration, name: string): Command {
+    return (state, dispatch) => {
+        const sel = state.selection;
+        if (!(sel instanceof NodeSelection)) return false;
+
+        // Don't wrap a container inside another container
+        if (sel.node.type === WaterproofSchema.nodes.container) return false;
+
+        const before = sel.$from.nodeBefore;
+        const beforeIsNewline = before?.type === WaterproofSchema.nodes.newline;
+
+        if (needsNewlineBefore(WaterproofSchema.nodes.container, tagConf) && !beforeIsNewline) return false;
+
+        if (dispatch) {
+            const tr = state.tr;
+            // Construct the NodeRange directly from the selection endpoints rather than using
+            // sel.$from.blockRange(sel.$to), which at the top level computes range.start = sel.from - 1
+            // and would pull the preceding newline inside the container.
+            tr.wrap(new NodeRange(sel.$from, sel.$to, sel.$from.depth), [{type: WaterproofSchema.nodes.container, attrs: {name}}]);
+            tr.setSelection(NodeSelection.create(tr.doc, tr.mapping.map(sel.from)));
+            tr.scrollIntoView();
+            dispatch(tr);
+        }
+        return true;
+    };
+}
+
 function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration): Command {
     return (state, dispatch) => {
         const sel = state.selection;
         if (!(sel instanceof NodeSelection)) return false;
-        
+
         const before = sel.$from.nodeBefore;
         const after = sel.$to.nodeAfter;
-        
+        const beforeIsNewline = before !== null && before.type === WaterproofSchema.nodes.newline;
+        const afterIsNewline  = after  !== null && after.type  === WaterproofSchema.nodes.newline;
+
+        // If the wrapper requires a surrounding newline that is not already present,
+        // we insert one rather than rejecting.  This handles the common Lean pattern
+        // where markdown directly follows a code block with no intervening NewlineBlock.
+        const addNewlineBefore = needsNewlineBefore(nodeType, tagConf) && !beforeIsNewline && before !== null;
+        const addNewlineAfter  = needsNewlineAfter(nodeType, tagConf)  && !afterIsNewline  && after  !== null;
+
         if (dispatch) {
-            const beforeIsNewline = before === null ? false : before.type === WaterproofSchema.nodes.newline;
-            const afterIsNewline = after === null ? false : after.type === WaterproofSchema.nodes.newline;
-            const nodeBeingWrapped = sel.node;
-            const needsBefore = needsNewlineBefore(nodeBeingWrapped.type, tagConf);
-            const needsAfter = needsNewlineAfter(nodeBeingWrapped.type, tagConf);
-            
-            if ((needsBefore && !beforeIsNewline) || (needsAfter && !afterIsNewline)) {
-                return false;
-            }
-            
-            let $start = sel.$from;
-            let $end = sel.$to;
-            const consumeBefore = needsBefore && beforeIsNewline;
-            const consumeAfter = needsAfter && afterIsNewline;
-            // console.log("Consume before and after:", consumeBefore, consumeAfter);
-            if (before !== null && consumeBefore) {
-                // extend the selection to incldue the before newline node
-                $start = state.doc.resolve(sel.from - before.nodeSize);
-            }
-            if (after !== null && consumeAfter) {
-                // extend the selection to include the after newline node
-                $end = state.doc.resolve(sel.to + after.nodeSize);
-            }
-            
-            // We extend the blockRange to include the newlines if they are being consumed.
-            const blockRange = $start.blockRange($end);
-            if (blockRange === null) return false;
             const tr = state.tr;
-            tr.wrap(blockRange, [{type: nodeType}]);
+            tr.wrap(new NodeRange(sel.$from, sel.$to, sel.$from.depth), [{type: nodeType}]);
 
-            // We potentially have to insert newlines before or after the newly created input area.
-            if (consumeBefore) {
-                const nodeBeforeNewline = $start.nodeBefore;
-                if (nodeBeforeNewline !== null && needsNewlineAfter(nodeBeforeNewline.type, tagConf)) {
-                    // Inserting newline before the input area
-                    tr.insert(tr.mapping.map(blockRange.start) - 1, WaterproofSchema.nodes.newline.create());
-                }
+            // Insert any missing newlines.  After ReplaceAroundStep the wrapper
+            // occupies [sel.from, sel.to + 2] (one extra token on each side).
+            // Insert the after-newline first (higher position) so that the
+            // before-insert position is not shifted.
+            if (addNewlineAfter) {
+                tr.insert(sel.to + 2, WaterproofSchema.nodes.newline.create());
             }
-            
-            if (consumeAfter) {
-                const nodeAfterNewline = $end.nodeAfter;
-                if (nodeAfterNewline !== null && needsNewlineBefore(nodeAfterNewline.type, tagConf)) {
-                    // Inserting newline after the input area
-                    tr.insert(tr.mapping.map(blockRange.end), WaterproofSchema.nodes.newline.create());
-                }
+            if (addNewlineBefore) {
+                tr.insert(sel.from, WaterproofSchema.nodes.newline.create());
             }
 
-            // Finally, dispatch the transaction and set the selection to be the node selection of the newly created input area.
-            tr.setSelection(NodeSelection.create(tr.doc, tr.mapping.map(sel.from)));
+            // The wrapper node is at sel.from + (1 if we inserted a newline before it).
+            tr.setSelection(NodeSelection.create(tr.doc, sel.from + (addNewlineBefore ? 1 : 0)));
             tr.scrollIntoView();
             dispatch(tr);
-            return true;
         }
         return true;
     }

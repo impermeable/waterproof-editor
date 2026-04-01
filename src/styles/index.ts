@@ -9,6 +9,9 @@ import "./style.css";
 // for hints
 import "./hints.css";
 
+// for containers (multilean blocks)
+import "./container.css";
+
 // for menubar
 import "./menubar.css";
 

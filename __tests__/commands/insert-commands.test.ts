@@ -19,6 +19,52 @@ jest.mock('../../src/inputArea.ts', () => ({
   }
 }));
 
+// A doc with a single code cell; selection inside the code content (position 11 = after 9 chars).
+const stateOneCode = {"doc":{"type":"doc","content":[{"type":"code","content":[{"type":"text","text":"Goal True."}]}]},"selection":{"type":"text","anchor":11,"head":11}};
+
+test("Insert markdown below code cell adds a newline separator", () => {
+    const view = new EditorView(null, {state: EditorState.fromJSON({schema: WaterproofSchema}, stateOneCode)});
+
+    const cmd = getCmdInsertMarkdown(InsertionPlace.Below, tagConf);
+    const res = cmd(view.state, view.dispatch, view);
+
+    expect(res).toBe(true);
+
+    // The newline node between code and markdown is required so that the serializer
+    // does not place markdown text on the same line as the closing code fence ("\n```").
+    const expected = {"doc":{"type":"doc",
+        "content":[
+            {"type":"code","content":[{"type":"text","text":"Goal True."}]},
+            {"type":"newline"},
+            {"type":"markdown"}
+        ]},
+        "selection":{"type":"text","anchor":11,"head":11}};
+    expect(view.state.toJSON()).toStrictEqual(expected);
+});
+
+// A doc with a single code cell; selection inside the code content.
+const stateOneCodeForAbove = {"doc":{"type":"doc","content":[{"type":"code","content":[{"type":"text","text":"Goal True."}]}]},"selection":{"type":"text","anchor":11,"head":11}};
+
+test("Insert markdown above code cell adds a newline separator", () => {
+    const view = new EditorView(null, {state: EditorState.fromJSON({schema: WaterproofSchema}, stateOneCodeForAbove)});
+
+    const cmd = getCmdInsertMarkdown(InsertionPlace.Above, tagConf);
+    const res = cmd(view.state, view.dispatch, view);
+
+    expect(res).toBe(true);
+
+    // The newline node between markdown and code is required so that the serializer
+    // does not place markdown text on the same line as the opening code fence ("```lean\n").
+    const expected = {"doc":{"type":"doc",
+        "content":[
+            {"type":"markdown"},
+            {"type":"newline"},
+            {"type":"code","content":[{"type":"text","text":"Goal True."}]}
+        ]},
+        "selection":{"type":"text","anchor":14,"head":14}};
+    expect(view.state.toJSON()).toStrictEqual(expected);
+});
+
 test("Insert code below twice (selection static)", () => {
     const view = new EditorView(null, {state: EditorState.fromJSON({schema: WaterproofSchema}, state)});
 

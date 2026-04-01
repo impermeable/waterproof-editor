@@ -28,6 +28,11 @@ export function configuration(languageId: string): TagConfiguration {
         math: {
             openTag: "$$", closeTag: "$$",
             openRequiresNewline: false, closeRequiresNewline: false
+        },
+        container: {
+            openTag: (_name: string) => "",
+            closeTag: (_name: string) => "",
+            openRequiresNewline: false, closeRequiresNewline: false
         }
     }
 };

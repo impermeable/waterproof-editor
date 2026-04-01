@@ -2,7 +2,7 @@ import { mathPlugin, mathSerializer } from "@benrbray/prosemirror-math";
 import { selectParentNode } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
 import { Node as ProseNode } from "prosemirror-model";
-import { EditorState, NodeSelection, Plugin, Selection, TextSelection, Transaction } from "prosemirror-state";
+import { Command, EditorState, NodeSelection, Plugin, Selection, TextSelection, Transaction } from "prosemirror-state";
 import { ReplaceAroundStep, ReplaceStep, Step } from "prosemirror-transform";
 import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
@@ -756,6 +756,14 @@ export class WaterproofEditor {
 				severity: d.severity
 			}
 		});
+	}
+
+	/**
+	 * Execute a ProseMirror command on the editor.
+	 * @param cmd The ProseMirror command to execute.
+	 */
+	public executeProsemirrorCommand(cmd: Command): void {
+		if (this._view) cmd(this._view.state, this._view.dispatch, this._view);
 	}
 
 	// Editor API

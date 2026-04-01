@@ -53,6 +53,16 @@ export abstract class DocumentSerializer {
      * of the node are newline nodes they will be skipped and the next nodes will be returned (if they exist).
      */
     abstract serializeHint(hintNode: Node, parentNode: string | null, neighbors: (skipNewlines: boolean) => {nodeAbove: string | null, nodeBelow: string | null}): string;
+
+    /**
+     * Describes how to turn a container node into a string representation.
+     * This node can have children (including input areas and hints), so you probably want to call `this.serializeNode` on every child node.
+     * The container's name can be retrieved via `containerNode.attrs.name`.
+     * @param containerNode The container node that is going to be serialized
+     * @param parentNode The parent node of this node (if it has one)
+     * @param neighbors Function that upon calling will return the neighbors of the node being serialized.
+     */
+    abstract serializeContainer(containerNode: Node, parentNode: string | null, neighbors: (skipNewlines: boolean) => {nodeAbove: string | null, nodeBelow: string | null}): string;
     
     serializeText(node: Node): string {
         return node.textContent;
@@ -77,6 +87,7 @@ export abstract class DocumentSerializer {
             case WaterproofSchema.nodes.math_display: return this.serializeMath(node, parent, neighbors);
             case WaterproofSchema.nodes.input: return this.serializeInput(node, parent, neighbors);
             case WaterproofSchema.nodes.hint: return this.serializeHint(node, parent, neighbors);
+            case WaterproofSchema.nodes.container: return this.serializeContainer(node, parent, neighbors);
             case WaterproofSchema.nodes.text: return this.serializeText(node);
             case WaterproofSchema.nodes.newline: return this.serializeNewline();
             default:
@@ -188,5 +199,24 @@ export class DefaultTagSerializer extends DocumentSerializer {
             textContent.push(output);
         });
         return this.tagConf.hint.openTag(title) + textContent.join("") + this.tagConf.hint.closeTag;
+    }
+
+    serializeContainer(node: Node): string {
+        const name = node.attrs.name as string;
+        const textContent: string[] = [];
+        node.forEach((child, _, idx) => {
+            const nodeDirectlyAbove = node.maybeChild(idx - 1);
+            const nodeDirectlyBelow = node.maybeChild(idx + 1);
+            const func = (skipNewlines: boolean): { nodeAbove: string | null; nodeBelow: string | null } => {
+                let above = nodeDirectlyAbove?.type.name ?? null;
+                let below = nodeDirectlyBelow?.type.name ?? null;
+                if (above === "newline" && skipNewlines) above = node.maybeChild(idx - 2)?.type.name ?? null;
+                if (below === "newline" && skipNewlines) below = node.maybeChild(idx + 2)?.type.name ?? null;
+                return {nodeAbove: above, nodeBelow: below};
+            };
+            const output = this.serializeNode(child, "container", func);
+            textContent.push(output);
+        });
+        return this.tagConf.container.openTag(name) + textContent.join("") + this.tagConf.container.closeTag(name);
     }
 }
