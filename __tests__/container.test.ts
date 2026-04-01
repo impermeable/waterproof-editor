@@ -512,29 +512,8 @@ describe("wrapInContainer followed by content edit", () => {
     });
 });
 
-// T5 — Regression: wrapInContainer must return false when openRequiresNewline is true
-// and there is no preceding newline node.
-describe("wrapInContainer openRequiresNewline enforcement", () => {
-    test("returns false when container requires preceding newline but none present", () => {
-        const strictConfig: TagConfiguration = {
-            ...multileanConfig,
-            container: {
-                ...multileanConfig.container,
-                openRequiresNewline: true,
-            }
-        };
-        // Doc: [markdown, code] — no newline between them
-        const mdNode = WaterproofSchema.nodes.markdown.create({});
-        const codeNode = WaterproofSchema.nodes.code.create();
-        const doc = WaterproofSchema.nodes.doc.create({}, Fragment.from([mdNode, codeNode]));
-        // markdown.nodeSize = 2 (empty atom), so code is at pos 2
-        const stateWithSel = stateWithNodeSelAt(doc, 2);
-        const result = wrapInContainer(strictConfig, "multilean")(stateWithSel, undefined);
-        expect(result).toBe(false);
-    });
-});
 
-// T6 — Regression: wpLift must lift ALL children when container has multiple inner blocks.
+// T5 — Regression: wpLift must lift ALL children when container has multiple inner blocks.
 describe("wpLift with multiple children", () => {
     test("lifts all children out of container when container has multiple inner blocks", () => {
         const mdNode = WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text("hello"));

@@ -1,4 +1,4 @@
-import { NodeRange, NodeType } from "prosemirror-model";
+import { Attrs, NodeRange, NodeType } from "prosemirror-model";
 import { Command, EditorState, NodeSelection, TextSelection, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { liftTarget } from "prosemirror-transform";
@@ -143,30 +143,15 @@ export function wrapInContainer(tagConf: TagConfiguration, name: string): Comman
     return (state, dispatch) => {
         const sel = state.selection;
         if (!(sel instanceof NodeSelection)) return false;
+        // Nesting containers is not allowed for now
+        // TODO: Make this configurable
+        if (sel.node.type === WaterproofSchema.nodes.container) return false; 
 
-        // Don't wrap a container inside another container
-        if (sel.node.type === WaterproofSchema.nodes.container) return false;
-
-        const before = sel.$from.nodeBefore;
-        const beforeIsNewline = before?.type === WaterproofSchema.nodes.newline;
-
-        if (needsNewlineBefore(WaterproofSchema.nodes.container, tagConf) && !beforeIsNewline) return false;
-
-        if (dispatch) {
-            const tr = state.tr;
-            // Construct the NodeRange directly from the selection endpoints rather than using
-            // sel.$from.blockRange(sel.$to), which at the top level computes range.start = sel.from - 1
-            // and would pull the preceding newline inside the container.
-            tr.wrap(new NodeRange(sel.$from, sel.$to, sel.$from.depth), [{type: WaterproofSchema.nodes.container, attrs: {name}}]);
-            tr.setSelection(NodeSelection.create(tr.doc, tr.mapping.map(sel.from)));
-            tr.scrollIntoView();
-            dispatch(tr);
-        }
-        return true;
-    };
+        return wpWrapIn(WaterproofSchema.nodes.container, tagConf, {name})(state, dispatch)
+    }
 }
 
-function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration): Command {
+function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration, attrs? : Attrs): Command {
     return (state, dispatch) => {
         const sel = state.selection;
         if (!(sel instanceof NodeSelection)) return false;
@@ -200,7 +185,7 @@ function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration): Command {
             const blockRange = $start.blockRange($end);
             if (blockRange === null) return false;
             const tr = state.tr;
-            tr.wrap(blockRange, [{type: nodeType}]);
+            tr.wrap(blockRange, [{type: nodeType, attrs}]);
 
             // We potentially have to insert newlines before or after the newly created input area.
             const nodeBefore = $start.nodeBefore;
