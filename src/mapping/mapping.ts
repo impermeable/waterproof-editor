@@ -109,14 +109,11 @@ export class Mapping {
             // This is probably the most used path
             isText = true;
         } else {
-            // TODO: Figure out if this takes a lot of computation and whether we can do this more efficiently.
-            // A textual deletion has no content, but so do node deletions. We differentiate between them by
-            // checking what the parent node of the from position is. 
-            const parentNodeType = doc.resolve(step.from).parent.type;
+            const nodeAtPos = this.tree.findNodeByProsePos(step.from);
             isText = (step.slice.content.childCount === 0 &&
-                (parentNodeType === WaterproofSchema.nodes.markdown ||
-                    parentNodeType === WaterproofSchema.nodes.code ||
-                    parentNodeType === WaterproofSchema.nodes.math_display));
+                (nodeAtPos?.type === "markdown" ||
+                 nodeAtPos?.type === "code" ||
+                 nodeAtPos?.type === "math_display"));
         }
 
         let result: ParsedStep;

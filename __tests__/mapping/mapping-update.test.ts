@@ -185,6 +185,46 @@ test("Mapping.update node insert in the middle shifts lineStart of later code bl
     expect(updatedTree.computeLineNumbers()).toStrictEqual([1, 4, 7]);
 });
 
+// Character deletions inside a code/markdown/math_display block must still be
+// classified as text edits and routed to textUpdate, not to replaceDelete.
+test("Regression: character deletion inside a code block is classified as a text edit", () => {
+    // Document: one code block containing "abc"
+    // ProseMirror layout: 0[code 1"a"2"b"3"c"4]5
+    // Deleting "bc" = step.from=3, step.to=5 (empty slice, content is partially within the node)
+    const docString = "```coq\nabc\n```";
+
+    const blocks = parse(docString, {language: "coq"});
+    const mapping = new Mapping(blocks, 0, config, serializer);
+    const proseDoc = constructDocument(blocks);
+
+    const tree = mapping.getMapping();
+    const codeNode = tree.root.children.find(n => n.type === "code");
+    if (!codeNode) throw new Error("Test setup: code node not found");
+
+    // Delete "bc": step covers [3, 5), which is strictly inside the code node.
+    // replaceDelete would find no whole nodes in this range and throw NodeUpdateError.
+    // textUpdate correctly removes the two characters from the file.
+    const step = new ReplaceStep(
+        3, // 3 — one char into content, so this is a partial deletion
+        5,        // 5 — end of content
+        new Slice(Fragment.empty, 0, 0)
+    );
+
+    let result: DocChange | undefined;
+    expect(() => {
+        result = mapping.update(step, proseDoc) as DocChange;
+    }).not.toThrow();
+
+    // The file edit should remove "bc" (2 chars) from the code content.
+    expect(result).toStrictEqual<DocChange>({
+        finalText: "",
+        startInFile: 9,
+        endInFile: 11,
+    });
+
+    sanityCheckTree(mapping.getMapping().root);
+});
+
 // Regression: wpLift on an input node with surrounding newlines produces a 3-step transaction:
 //   Step 1 — ReplaceAroundStep that lifts the input's content to the parent level
 //   Step 2 — ReplaceStep that deletes the leading duplicate newline (now at step1.from)
