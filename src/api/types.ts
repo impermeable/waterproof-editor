@@ -85,7 +85,6 @@ export type TagConfiguration = {
     hint:  { openTag: ((title: string) => string), closeTag: string } & RequiresNewline,
     input: OpenCloseTag & RequiresNewline,
     math: OpenCloseTag & RequiresNewline,
-    // TODO: Refactor closeTag to string
     container: { openTag: (name: string) => string, closeTag: string } & RequiresNewline,
 }
 

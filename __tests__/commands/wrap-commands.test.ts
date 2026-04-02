@@ -206,14 +206,7 @@ describe("wrapInHint serialization (Lean config)", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Wrapping markdown nodes (the broken case in Lean documents)
-//
-// In a Lean document the tokenizer does not preserve the newline that follows
-// a code-close fence (``\n``` ``) as a NewlineBlock — it is non-significant and
-// gets absorbed into the following markdown text.  Therefore a markdown node
-// that follows a code block has NO preceding NewlineBlock.  The previous
-// implementation rejected the wrap because input/hint require a preceding
-// newline; the correct behaviour is to insert the missing newline(s) instead.
+// Wrapping markdown nodes (Regression tests) 
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("wrapInInput on markdown after code (no preceding newline)", () => {

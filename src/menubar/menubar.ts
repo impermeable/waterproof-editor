@@ -1,5 +1,5 @@
 import { selectParentNode } from "prosemirror-commands";
-import { Command, PluginView, Plugin, PluginKey } from "prosemirror-state";
+import { Command, PluginView, Plugin, PluginKey, EditorState } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { InsertionPlace, wrapInHint, wrapInInput, deleteSelection, wpLift } from "../commands";
@@ -14,7 +14,7 @@ type MenuEntry = {
     showByDefault: boolean;
     cmd: Command;
     customEntry: boolean;
-    isActive?: (state: import("prosemirror-state").EditorState) => boolean;
+    isActive?: (state: EditorState) => boolean;
 };
 
 /**
