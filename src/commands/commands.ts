@@ -143,7 +143,7 @@ export function wrapInContainer(tagConf: TagConfiguration, name: string): Comman
     return (state, dispatch) => {
         const sel = state.selection;
         if (!(sel instanceof NodeSelection)) return false;
-        // Nesting containers is not allowed for now
+        // Nesting containers is not allowed for now, because we want to disallow it for multilean
         // TODO: Make this configurable
         if (sel.node.type === WaterproofSchema.nodes.container) return false; 
 
@@ -171,7 +171,7 @@ function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration, attrs? : Attrs)
 
             const consumeBefore = needsBefore && beforeIsNewline && !openingTagEndsWithNewline(nodeType, tagConf);
             const consumeAfter = needsAfter && afterIsNewline && !closingTagStartsWithNewline(nodeType, tagConf);
-            // console.log("Consume before and after:", consumeBefore, consumeAfter);
+            
             if (before !== null && consumeBefore) {
                 // extend the selection to incldue the before newline node
                 $start = state.doc.resolve(sel.from - before.nodeSize);

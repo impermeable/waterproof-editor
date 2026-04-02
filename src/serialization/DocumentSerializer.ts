@@ -217,6 +217,6 @@ export class DefaultTagSerializer extends DocumentSerializer {
             const output = this.serializeNode(child, "container", func);
             textContent.push(output);
         });
-        return this.tagConf.container.openTag(name) + textContent.join("") + this.tagConf.container.closeTag(name);
+        return this.tagConf.container.openTag(name) + textContent.join("") + this.tagConf.container.closeTag;
     }
 }

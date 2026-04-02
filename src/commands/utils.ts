@@ -96,7 +96,7 @@ export function closingTagStartsWithNewline(nodeType: NodeType, tagConf: TagConf
         case WaterproofSchema.nodes.math_display:
             return tagConf.math.closeTag.startsWith("\n")
         case WaterproofSchema.nodes.container:
-            return tagConf.container.closeTag("").startsWith("\n")
+            return tagConf.container.closeTag.startsWith("\n")
         default:
             return false;
     }

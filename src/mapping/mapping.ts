@@ -118,6 +118,8 @@ export class Mapping {
             isText = true;
         } else {
             const nodeAtPos = this.tree.findNodeByProsePos(step.from);
+
+            // This last condition has been introduced for the case where we're deleting the first node among children.
             isText = (step.slice.content.childCount === 0 &&
                 (nodeAtPos?.type === "markdown" ||
                  nodeAtPos?.type === "code" ||
@@ -137,7 +139,7 @@ export class Mapping {
         } else {
             // The entire document is serialized here. This is done to be able to produce an accurate linecount
             // If this leads to performance issues, this could likely be resolved by being smarter about this.
-            result = this.nodeUpdate.nodeUpdate(step, this, this.serializer.serializeDocument(currentDoc), this.serializer, currentDoc);
+            result = this.nodeUpdate.nodeUpdate(step, this, this.serializer, currentDoc);
         }
 
         this.tree = result.newTree;

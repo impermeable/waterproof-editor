@@ -190,7 +190,7 @@ test("Mapping.update node insert in the middle shifts lineStart of later code bl
 test("Regression: character deletion inside a code block is classified as a text edit", () => {
     // Document: one code block containing "abc"
     // ProseMirror layout: 0[code 1"a"2"b"3"c"4]5
-    // Deleting "bc" = step.from=3, step.to=5 (empty slice, content is partially within the node)
+    // Deleting "bc" = step.from=3, step.to=5 
     const docString = "```coq\nabc\n```";
 
     const blocks = parse(docString, {language: "coq"});
@@ -202,7 +202,7 @@ test("Regression: character deletion inside a code block is classified as a text
     if (!codeNode) throw new Error("Test setup: code node not found");
 
     // Delete "bc": step covers [3, 5), which is strictly inside the code node.
-    // replaceDelete would find no whole nodes in this range and throw NodeUpdateError.
+    // Previously, replaceDelete would find no whole nodes in this range and throw NodeUpdateError.
     // textUpdate correctly removes the two characters from the file.
     const step = new ReplaceStep(
         3, // 3 — one char into content, so this is a partial deletion
@@ -229,12 +229,6 @@ test("Regression: character deletion inside a code block is classified as a text
 //   Step 1 — ReplaceAroundStep that lifts the input's content to the parent level
 //   Step 2 — ReplaceStep that deletes the leading duplicate newline (now at step1.from)
 //   Step 3 — ReplaceStep that deletes the trailing duplicate newline
-//
-// The bug: step 3's `from` position equals code2.prosemirrorEnd in the pre-transaction doc.
-// mapping.update() used to resolve that position against the *pre-transaction* doc, find it inside
-// a code node, and classifies the step as a text edit.  The cache then misses and
-// tree.findNodeByProsePos() returns the newline node at that boundary, which is not
-// text-editable → TextUpdateError is thrown.
 test("Regression: wpLift newline-deduplication steps are not misclassified as text edits", () => {
     // Document: code("abc") | newline | input([ newline | code("def") | newline ]) | newline | code("ghi")
     // In coq format:
@@ -252,12 +246,10 @@ test("Regression: wpLift newline-deduplication steps are not misclassified as te
     const inputNode = tree.root.children.find(n => n.type === "input");
     if (!inputNode) throw new Error("Test setup: input node not found");
 
-    // Verify the expected pre-transaction positions so the test is self-checking.
     expect(inputNode.pmRange).toEqual({ from: 6, to: 15 });
     expect(inputNode.prosemirrorStart).toBe(7);
     expect(inputNode.prosemirrorEnd).toBe(14);
 
-    // Step 1: lift — removes the input wrapper, promoting its three children (nl_a, code2, nl_b).
     const step1 = new ReplaceAroundStep(
         inputNode.pmRange.from,      // 6
         inputNode.pmRange.to,        // 15
@@ -274,15 +266,9 @@ test("Regression: wpLift newline-deduplication steps are not misclassified as te
 
     // After steps 1 and 2, nl2 (the outer trailing newline) is at position
     //   inputNode.pmRange.to - 3  =  15 - 3  =  12.
-    // This equals code2.prosemirrorEnd in the pre-transaction doc — the position that
-    // triggers the misclassification bug when mapping.update() resolves it against proseDoc.
     const step3from = inputNode.pmRange.to - 3; // 12
     const step3 = new ReplaceStep(step3from, step3from + 1, new Slice(Fragment.empty, 0, 0));
 
-    // All three steps must complete without throwing.
-    // With the bug present, step 3 throws:
-    //   TextUpdateError: "When attempting to refresh the text update node cache
-    //                     we got a node that does not support text edits"
     expect(() => {
         mapping.update(step1, proseDoc);
         mapping.update(step2, proseDoc);
@@ -299,10 +285,6 @@ test("Regression: wpLift newline-deduplication steps are not misclassified as te
     expect(mapping.getMapping().computeLineNumbers()).toStrictEqual([1, 4, 7]);
 });
 
-// Bug 2: Deleting the first code block (pmRange.from === 0) was mis-routed to
-// textUpdate because findNodeByProsePos(0) returns the first child (mid === 0,
-// boundary bias doesn't fire). textUpdate then computes a negative offsetBegin
-// (step.from - prosemirrorStart = 0 - 1 = -1), corrupting the tree.
 test("Regression: deleting the first code block at position 0 routes to nodeUpdate", () => {
     const docString = "```coq\nabc\n```\n```coq\ndef\n```";
 

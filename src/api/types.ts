@@ -86,7 +86,7 @@ export type TagConfiguration = {
     input: OpenCloseTag & RequiresNewline,
     math: OpenCloseTag & RequiresNewline,
     // TODO: Refactor closeTag to string
-    container: { openTag: (name: string) => string, closeTag: (name: string) => string } & RequiresNewline,
+    container: { openTag: (name: string) => string, closeTag: string } & RequiresNewline,
 }
 
 export class NodeUpdateError extends Error {

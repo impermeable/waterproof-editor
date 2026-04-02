@@ -31,7 +31,7 @@ export function configuration(languageId: string): TagConfiguration {
         },
         container: {
             openTag: (_name: string) => "",
-            closeTag: (_name: string) => "",
+            closeTag: "",
             openRequiresNewline: false, closeRequiresNewline: false
         }
     }

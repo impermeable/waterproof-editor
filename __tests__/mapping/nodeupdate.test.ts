@@ -26,7 +26,8 @@ test("Insert code underneath markdown", () => {
     const step: ReplaceStep = new ReplaceStep(9, 9, slice);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, "# Hello", serializer, nodeMock);
+    jest.spyOn(serializer, "serializeDocument").mockReturnValue("# Hello")
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
 
     expect(result).toStrictEqual<DocChange>({
         finalText: "\n```coq\n\n```",
@@ -102,7 +103,8 @@ test("Insert code underneath markdown inside input area", () => {
     const step: ReplaceStep = new ReplaceStep(10, 10, slice);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, "<input-area># Hello</input-area>", serializer, nodeMock);
+    jest.spyOn(serializer, "serializeDocument").mockReturnValue("<input-area># Hello</input-area>")
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
     console.log(JSON.stringify(newTree.root, null, " "))
     sanityCheckTree(newTree.root);
     expect(result).toStrictEqual<DocChange>({
@@ -133,7 +135,7 @@ test("Unwrap input area", () => {
     const step = new ReplaceAroundStep(0, 11, 1, 10, slice, 0);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, "", serializer, nodeMock);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
     console.log(JSON.stringify(newTree.root, null, " "))
     sanityCheckTree(newTree.root);
     expect(result).toStrictEqual<WrappingDocChange>({
@@ -166,7 +168,7 @@ test("Unwrap hint area", () => {
     const step = new ReplaceAroundStep(0, 11, 1, 10, slice, 0);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, "", serializer, nodeMock);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
     console.log(JSON.stringify(newTree.root, null, " "))
     sanityCheckTree(newTree.root);
     expect(result).toStrictEqual<WrappingDocChange>({
@@ -201,7 +203,7 @@ test("Unwrap hint area with content after", () => {
     const step = new ReplaceAroundStep(0, 11, 1, 10, slice, 0);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, "", serializer, nodeMock);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
     console.log(JSON.stringify(newTree.root, null, " "))
     sanityCheckTree(newTree.root);
     expect(result).toStrictEqual<WrappingDocChange>({
@@ -228,7 +230,7 @@ test("Wrap markdown in hint area", () => {
     const step = new ReplaceAroundStep(0, 9, 0, 9, slice, 1);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, "", serializer, nodeMock);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
     sanityCheckTree(newTree.root);
 
     expect(result).toStrictEqual<WrappingDocChange>({
@@ -255,7 +257,7 @@ test("Wrap markdown in input area", () => {
     const step = new ReplaceAroundStep(0, 9, 0, 9, slice, 1);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, "", serializer, nodeMock);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
     sanityCheckTree(newTree.root);
 
     expect(result).toStrictEqual<WrappingDocChange>({
@@ -300,7 +302,7 @@ test("Delete a code block between markdown blocks", () => {
     const step = new ReplaceStep(codeNode.pmRange.from, codeNode.pmRange.to, Slice.empty);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const { newTree, result } = nodeUpdate.nodeUpdate(step, mapping, "", serializer, nodeMock);
+    const { newTree, result } = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
 
     expect(result).toStrictEqual<DocChange>({
         finalText: "",
@@ -345,7 +347,7 @@ test("Delete adjacent code and markdown blocks", () => {
     const step = new ReplaceStep(codeNode.pmRange.from, trailingMarkdown.pmRange.to, Slice.empty);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const { newTree, result } = nodeUpdate.nodeUpdate(step, mapping, "", serializer, nodeMock);
+    const { newTree, result } = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
 
     expect(result).toStrictEqual<DocChange>({
         finalText: "",
@@ -375,7 +377,7 @@ test("Delete markdown cell", () => {
     const step = new ReplaceStep(9, 18, slice);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, "", serializer, nodeMock);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
     sanityCheckTree(newTree.root);
 
     expect(result).toStrictEqual<DocChange>({
@@ -412,7 +414,7 @@ test("Delete first of two codeblocks", () => {
     const step = new ReplaceStep(0, 7, slice);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, "", serializer, nodeMock);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
     sanityCheckTree(newTree.root);
 
     expect(result).toStrictEqual<DocChange>({
@@ -451,7 +453,7 @@ test("Complex deletion", () => {
 
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, "", serializer, nodeMock);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
     console.log(JSON.stringify(newTree.root, null, " "));
     sanityCheckTree(newTree.root);
 
@@ -498,7 +500,9 @@ test("Complex deletion undo", () => {
 
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, "# Hello", serializer, nodeMock);
+    
+    jest.spyOn(serializer, "serializeDocument").mockReturnValue("# Hello")
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
     console.log(JSON.stringify(newTree.root, null, " "));
     sanityCheckTree(newTree.root);
 
@@ -524,7 +528,8 @@ test("Insert code after markdown-newline-markdown: linecount reflects prior newl
     const step = new ReplaceStep(19, 19, slice);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree} = nodeUpdate.nodeUpdate(step, mapping, "# Hello\n# World", serializer, nodeMock);
+    jest.spyOn(serializer, "serializeDocument").mockReturnValue("# Hello\n# World")
+    const {newTree} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
 
     // The serialized doc has 1 newline before the insertion point (documentPos=15).
     // The inserted newline adds 1 more → lineCounter=2 when the code node is built.
@@ -545,7 +550,9 @@ test("Insert code after existing code block: linecount accounts for all prior ta
     const step = new ReplaceStep(14, 14, slice);
 
     const nodeUpdate = new NodeUpdate(config, serializer);
-    const {newTree} = nodeUpdate.nodeUpdate(step, mapping, "Hello\n```coq\nCode\n```", serializer, nodeMock);
+
+    jest.spyOn(serializer, "serializeDocument").mockReturnValue("Hello\n```coq\nCode\n```")
+    const {newTree} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
 
     // The serialized doc has 3 newlines before the insertion point (documentPos=21).
     // The inserted newline adds 1 more → lineCounter=4 when the code node is built.
@@ -573,8 +580,10 @@ test("Undo deletion of first codeblock (without newline)", () => {
     configureNodeMock("```coq\nCode\n```");
     const nodeUpdate = new NodeUpdate(config, serializer);
     const deleteStep = new ReplaceStep(0, 6, Slice.empty);
+
+    jest.spyOn(serializer, "serializeDocument").mockReturnValue("Hello\n```coq\nCode\n# Hello```")
     nodeUpdate.nodeUpdate(
-        deleteStep, mapping, "```coq\nCode\n```\n# Hello", serializer, nodeMock
+        deleteStep, mapping, serializer, nodeMock
     );
 
     // Step 2: Undo — reinsert the code block at position 0.
@@ -586,8 +595,9 @@ test("Undo deletion of first codeblock (without newline)", () => {
     ]), 0, 0);
     const undoStep = new ReplaceStep(0, 0, undoSlice);
 
+    jest.spyOn(serializer, "serializeDocument").mockReturnValue("# Hello```")
     const { newTree, result } = nodeUpdate.nodeUpdate(
-        undoStep, mapping, "# Hello", serializer, nodeMock
+        undoStep, mapping, serializer, nodeMock
     );
 
     sanityCheckTree(newTree.root);

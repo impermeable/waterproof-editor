@@ -12,7 +12,7 @@ const leanConfig: TagConfiguration = {
     input:    { openTag: ":::input\n",                         closeTag: "\n:::",  openRequiresNewline: true,  closeRequiresNewline: true  },
     markdown: { openTag: "",                                   closeTag: "",       openRequiresNewline: false, closeRequiresNewline: false },
     math:     { openTag: "$$`",                                closeTag: "`",      openRequiresNewline: false, closeRequiresNewline: false },
-    container:{ openTag: (n: string) => `::::${n}\n`,         closeTag: () => "\n::::", openRequiresNewline: true, closeRequiresNewline: true },
+    container:{ openTag: (n: string) => `::::${n}\n`,         closeTag: "\n::::", openRequiresNewline: true, closeRequiresNewline: true },
 };
 const leanSerializer = new DefaultTagSerializer(leanConfig);
 

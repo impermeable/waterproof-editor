@@ -33,18 +33,18 @@ export class NodeUpdate {
             case "math_display":
                 return [this.tagConf.math.openTag, this.tagConf.math.closeTag];
             case "container":
-                return [this.tagConf.container.openTag(title), this.tagConf.container.closeTag(title)];
+                return [this.tagConf.container.openTag(title), this.tagConf.container.closeTag];
             default:
                 throw new NodeUpdateError(`Unsupported node type: ${nodeName}`);
         }
     }
     
     // Handle a node update step
-    public nodeUpdate(step: ReplaceStep | ReplaceAroundStep, mapping: Mapping, serializedDoc: string, serializer: DocumentSerializer, proseDoc: Node) : ParsedStep {
+    public nodeUpdate(step: ReplaceStep | ReplaceAroundStep, mapping: Mapping, serializer: DocumentSerializer, proseDoc: Node) : ParsedStep {
         let parsedStep;
         if (step instanceof ReplaceStep) {
             // The step is a ReplaceStep
-            parsedStep = this.doReplaceStep(step, mapping, serializedDoc, serializer, proseDoc);
+            parsedStep = this.doReplaceStep(step, mapping, serializer, proseDoc);
         } else {
             // The step is a ReplaceAroundStep (wrapping or unwrapping of nodes)
             parsedStep = this.doReplaceAroundStep(step, mapping);
@@ -52,13 +52,13 @@ export class NodeUpdate {
         return parsedStep;
     }
 
-    doReplaceStep(step: ReplaceStep, mapping: Mapping, serializedDoc: string, serializer: DocumentSerializer, proseDoc: Node): ParsedStep {
+    doReplaceStep(step: ReplaceStep, mapping: Mapping, serializer: DocumentSerializer, proseDoc: Node): ParsedStep {
         // Determine operation type
         const type = typeFromStep(step);
         console.log("In doReplaceStep, operation type:", type);
         switch (type) {
             case OperationType.insert:
-                return this.replaceInsert(step, mapping.getMapping(), serializedDoc);
+                return this.replaceInsert(step, mapping.getMapping(), serializer, proseDoc);
             case OperationType.delete:
                 return this.replaceDelete(step, mapping.getMapping(), serializer, proseDoc);
             case OperationType.replace:
@@ -84,7 +84,7 @@ export class NodeUpdate {
     // ReplaceInsert is used when we insert new nodes into the document
     // Note: that these steps can be quite complex, as they can contain multiple (nested) nodes
     //       for example undoing a node deletion 'reinserts' the deleted node(s)
-    replaceInsert(step: ReplaceStep, tree: Tree, serializedDoc: string): ParsedStep {
+    replaceInsert(step: ReplaceStep, tree: Tree, serializer: DocumentSerializer, proseDoc : Node): ParsedStep {
         // We start by checking that there is something to insert in the step
         if (!step.slice.content.childCount) {
             throw new NodeUpdateError(" ReplaceStep insert has no content ");
@@ -110,6 +110,7 @@ export class NodeUpdate {
         let serialized = "";
         // We use the fully serialized document to determine an accurate linecount
         // If this causes performance issues, we could likely fix this by being smarter about it.
+        const serializedDoc = serializer.serializeDocument(proseDoc)
         let lineCounter = countNewlines(serializedDoc.substring(0, documentPos));
         step.slice.content.forEach((node, _, idx) => {
             const parentContent = step.slice.content;

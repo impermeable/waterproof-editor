@@ -25,7 +25,7 @@ const multileanConfig: TagConfiguration = {
     ...config,
     container: {
         openTag: (name: string) => `::::${name}\n`,
-        closeTag: (_name: string) => "\n::::",
+        closeTag: "\n::::",
         openRequiresNewline: false, closeRequiresNewline: false,
     }
 };

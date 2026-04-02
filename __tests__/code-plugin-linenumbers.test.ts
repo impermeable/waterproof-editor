@@ -5,14 +5,7 @@ import { WaterproofSchema } from "../src/schema";
 
 // The code plugin stores activeNodeViews in a Set<CodeBlockView>.
 // After a ReplaceAroundStep (lift), ProseMirror may destroy and recreate a code
-// NodeView.  The factory function adds the new view to the Set, but the old
-// (stale) view is never removed — CodeBlockView has no destroy() method, and
-// the code plugin only cleans up views for ReplaceStep, not ReplaceAroundStep.
-//
-// In the code plugin's `apply`, line numbers are only distributed to cells when
-//   value.activeNodeViews.size == newlines.length
-// A single stale view causes a permanent mismatch that silently blocks all
-// future line-number updates.
+// NodeView. This test checks this is properly handled.
 
 // Mock the INPUT_AREA_PLUGIN_KEY required by CodeBlockView
 jest.mock('../src/inputArea.ts', () => ({
@@ -54,8 +47,6 @@ test("After lift, stale NodeViews in activeNodeViews prevent line numbers from r
     state.apply(tr);
 
     // EXPECTED: the 3 real code cells should each receive their line number.
-    // BUG: activeNodeViews.size (4) != lineNumbers.length (3), so the code plugin
-    //       skips the entire distribution — NO cell gets any line number update.
     expect(mockViews[0].updateLineNumbers).toHaveBeenCalledWith(2, false);  // line 1 + 1
     expect(mockViews[1].updateLineNumbers).toHaveBeenCalledWith(6, false);  // line 5 + 1
     expect(mockViews[3].updateLineNumbers).toHaveBeenCalledWith(10, false); // line 9 + 1

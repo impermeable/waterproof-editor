@@ -36,7 +36,7 @@ const tagConf: TagConfiguration = {
     },
     container: {
         openTag: (name: string) => `::::${name}\n`,
-        closeTag: (_name: string) => "\n::::",
+        closeTag: "\n::::",
         openRequiresNewline: false, closeRequiresNewline: false,
     }
 }
