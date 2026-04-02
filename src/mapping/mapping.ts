@@ -121,7 +121,8 @@ export class Mapping {
             isText = (step.slice.content.childCount === 0 &&
                 (nodeAtPos?.type === "markdown" ||
                  nodeAtPos?.type === "code" ||
-                 nodeAtPos?.type === "math_display"));
+                 nodeAtPos?.type === "math_display") &&
+                step.from >= nodeAtPos.prosemirrorStart);
         }
 
         let result: ParsedStep;

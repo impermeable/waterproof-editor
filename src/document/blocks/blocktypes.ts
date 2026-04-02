@@ -133,6 +133,7 @@ export class MarkdownBlock implements Block {
 export class CodeBlock implements Block {
     public type = BLOCK_NAME.CODE;
 
+    // TODO: Document this and figure out if linestart is zero or one indexed
     constructor( public stringContent: string, public range: BlockRange, public innerRange: BlockRange, public lineStart: number ) {}
 
     toProseMirror() {

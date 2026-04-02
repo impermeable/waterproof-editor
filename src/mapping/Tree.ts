@@ -147,6 +147,7 @@ export class Tree {
      * Find the most specific node that contains the given ProseMirror position, this function is biased to find the
      * first node (in terms of position) containing the position. I.e. in a tree with a code cell that ends at 28 and a newline that
      * starts at 28, we will return the code cell when searching for position 28.
+     * TODO: This behaviour does not work for the first child.
      * @param pos ProseMirror position to search for
      * @param node The node to start the search from, defaults to the root node of the tree
      * @returns The most specific node containing the position, or null if no such node exists

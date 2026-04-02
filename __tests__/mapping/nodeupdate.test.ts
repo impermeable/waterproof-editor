@@ -387,6 +387,44 @@ test("Delete markdown cell", () => {
     expect(newTree.computeLineNumbers()).toStrictEqual([]);
 })
 
+test("Delete first of two codeblocks", () => {
+    // Simulates the following:
+    /* ```coq
+       Code
+       ```
+       ```coq
+       More
+       ```
+    */
+    // Then deleting the first cell.
+    
+    configureNodeMock("```coq\nCode\n```\n")
+    const mapping = createMapping([
+        new CodeBlock("Code", {from: 0, to: 15}, {from: 7, to: 11}, 1),
+        new NewlineBlock({from: 15, to: 16 }, {from: 15, to: 16}, 0),
+        new CodeBlock("More", {from: 16, to: 31}, {from: 23, to: 27}, 4)
+         ]);
+
+    const slice: Slice = new Slice(Fragment.from([]), 0, 0);
+
+    // PM layout: code={0,6} newline={6,7} code2={7,13}
+    // Delete the first code block + trailing newline in PM space
+    const step = new ReplaceStep(0, 7, slice);
+
+    const nodeUpdate = new NodeUpdate(config, serializer);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, "", serializer, nodeMock);
+    sanityCheckTree(newTree.root);
+
+    expect(result).toStrictEqual<DocChange>({
+        finalText: "",
+        startInFile: 0,
+        endInFile: 16
+    })
+
+    expect(newTree.computeLineNumbers()).toStrictEqual([1]);
+})
+
+
 
 test("Complex deletion", () => {
     // # Hello

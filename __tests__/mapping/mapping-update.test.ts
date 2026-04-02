@@ -298,3 +298,42 @@ test("Regression: wpLift newline-deduplication steps are not misclassified as te
     // step 3 removes the trailing duplicate newline (shifts code3 down by 1 more line).
     expect(mapping.getMapping().computeLineNumbers()).toStrictEqual([1, 4, 7]);
 });
+
+// Bug 2: Deleting the first code block (pmRange.from === 0) was mis-routed to
+// textUpdate because findNodeByProsePos(0) returns the first child (mid === 0,
+// boundary bias doesn't fire). textUpdate then computes a negative offsetBegin
+// (step.from - prosemirrorStart = 0 - 1 = -1), corrupting the tree.
+test("Regression: deleting the first code block at position 0 routes to nodeUpdate", () => {
+    const docString = "```coq\nabc\n```\n```coq\ndef\n```";
+
+    const blocks = parse(docString, {language: "coq"});
+    const mapping = new Mapping(blocks, 0, config, serializer);
+    const proseDoc = constructDocument(blocks);
+
+    const tree = mapping.getMapping();
+    const codeNodes = tree.root.children.filter(n => n.type === "code");
+    expect(codeNodes.length).toBe(2);
+
+    const firstCode = codeNodes[0];
+    // Delete the entire first code block (from pmRange.from to pmRange.to)
+    // plus the trailing newline so the step range covers [0, newline.pmRange.to]
+    const newlineAfterFirst = tree.root.children.find(
+        n => n.type === "newline" && n.pmRange.from === firstCode.pmRange.to
+    );
+    if (!newlineAfterFirst) throw new Error("Test setup: newline after first code block not found");
+    const deleteTo = newlineAfterFirst.pmRange.to;
+
+    const step = new ReplaceStep(0, deleteTo, new Slice(Fragment.empty, 0, 0));
+
+    let result: DocChange | undefined;
+    expect(() => {
+        result = mapping.update(step, proseDoc) as DocChange;
+    }).not.toThrow();
+
+    // The deletion should remove the first code block and its trailing newline
+    expect(result).toBeDefined();
+    expect(result!.finalText).toBe("");
+    expect(result!.startInFile).toBeGreaterThanOrEqual(0);
+
+    sanityCheckTree(mapping.getMapping().root);
+});

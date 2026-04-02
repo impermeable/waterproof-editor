@@ -279,6 +279,7 @@ export class NodeUpdate {
         // Mapping._currentDoc is kept in sync and passed here as proseDoc.
         const parentNodeType = proseDoc.resolve(origDocStart).parent.type.name;
         const parentNode = parentNodeType === "doc" ? null : parentNodeType;
+        // Get the slice of the document that will be deleted, serialize it and count the newlines in it
         const { content } = proseDoc.slice(origDocStart, origDocEnd);
         const str = serializer.serializeFragment(content, parentNode);
         const deletedNewlines = countNewlines(str);
