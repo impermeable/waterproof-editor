@@ -424,8 +424,6 @@ test("Delete first of two codeblocks", () => {
     expect(newTree.computeLineNumbers()).toStrictEqual([1]);
 })
 
-
-
 test("Complex deletion", () => {
     // # Hello
     // <hint title="💡 Hint">
@@ -553,4 +551,50 @@ test("Insert code after existing code block: linecount accounts for all prior ta
     // The inserted newline adds 1 more → lineCounter=4 when the code node is built.
     // The code open tag ("```coq\n") adds 1 more → contentLineStart=5.
     expect(newTree.computeLineNumbers()).toStrictEqual([1, 5]);
+});
+
+test("Undo deletion of first codeblock (without newline)", () => {
+    // Simulates the document:
+    // ```coq
+    // Code
+    // ```
+    // # Hello
+    //
+    // The user deletes the first code cell, then presses undo.
+    const mapping = createMapping([
+        new CodeBlock("Code", {from: 0, to: 15}, {from: 7, to: 11}, 1),
+        new NewlineBlock({from: 15, to: 16}, {from: 15, to: 16}, 0),
+        new MarkdownBlock("# Hello", {from: 16, to: 23}, {from: 16, to: 23}, 0),
+    ]);
+
+    // Step 1: Delete the first code block.
+    // ProseMirror's deleteSelection on a NodeSelection of the code block
+    // generates ReplaceStep(0, code.pmRange.to) = ReplaceStep(0, 6).
+    configureNodeMock("```coq\nCode\n```");
+    const nodeUpdate = new NodeUpdate(config, serializer);
+    const deleteStep = new ReplaceStep(0, 6, Slice.empty);
+    nodeUpdate.nodeUpdate(
+        deleteStep, mapping, "```coq\nCode\n```\n# Hello", serializer, nodeMock
+    );
+
+    // Step 2: Undo — reinsert the code block at position 0.
+    // The inverse of ReplaceStep(0, 6, empty) is ReplaceStep(0, 0, original_slice).
+    const undoSlice = new Slice(Fragment.from([
+        WaterproofSchema.nodes.code.create(null,
+            Fragment.from([WaterproofSchema.text("Code")])
+        ),
+    ]), 0, 0);
+    const undoStep = new ReplaceStep(0, 0, undoSlice);
+
+    const { newTree, result } = nodeUpdate.nodeUpdate(
+        undoStep, mapping, "# Hello", serializer, nodeMock
+    );
+
+    sanityCheckTree(newTree.root);
+
+    expect(result).toStrictEqual<DocChange>({
+        finalText: "```coq\nCode\n```",
+        startInFile: 0,
+        endInFile: 0
+    });
 });

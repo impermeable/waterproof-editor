@@ -286,7 +286,7 @@ export class NodeUpdate {
 
         // First pass: identify nodes to delete
         tree.traverseDepthFirst((node: TreeNode) => {
-            if (node.prosemirrorStart >= step.from && node.prosemirrorEnd <= step.to) {
+            if (node.prosemirrorStart >= step.from && node.prosemirrorEnd < step.to) {
                 nodesToDelete.push(node);
 
                 if (node.tagRange.from < from) from = node.tagRange.from;
