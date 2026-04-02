@@ -264,21 +264,21 @@ export class NodeUpdate {
      * @param tree The input tree
      * @returns A ParsedStep containing the resulting DocChange and the updated tree.
      */
-    replaceDelete(step: ReplaceStep, tree: Tree, serializer: DocumentSerializer, proseDoc: Node): ParsedStep {       
+    replaceDelete(step: ReplaceStep, tree: Tree, serializer: DocumentSerializer, proseDoc: Node): ParsedStep {
         // Find all nodes that are fully in the deleted range
         const nodesToDelete: TreeNode[] = [];
         let from = Number.POSITIVE_INFINITY;
         let to = Number.NEGATIVE_INFINITY;
-
 
         const origDocStart = step.from;
         const origDocEnd = step.to;
 
         // Figure out how many newlines are in the deleted content, needed to update the
         // line numbers of the nodes that come after the deleted nodes.
+        // proseDoc reflects the state after all prior steps in this transaction because
+        // Mapping._currentDoc is kept in sync and passed here as proseDoc.
         const parentNodeType = proseDoc.resolve(origDocStart).parent.type.name;
         const parentNode = parentNodeType === "doc" ? null : parentNodeType;
-        // Get the slice of the document that will be deleted, serialize it and count the newlines in it
         const { content } = proseDoc.slice(origDocStart, origDocEnd);
         const str = serializer.serializeFragment(content, parentNode);
         const deletedNewlines = countNewlines(str);
@@ -290,7 +290,6 @@ export class NodeUpdate {
 
                 if (node.tagRange.from < from) from = node.tagRange.from;
                 if (node.tagRange.to > to) to = node.tagRange.to;
-
             }
         });
 

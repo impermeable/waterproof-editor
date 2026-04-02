@@ -231,7 +231,7 @@ test("Regression: character deletion inside a code block is classified as a text
 //   Step 3 — ReplaceStep that deletes the trailing duplicate newline
 //
 // The bug: step 3's `from` position equals code2.prosemirrorEnd in the pre-transaction doc.
-// mapping.update() resolves that position against the *pre-transaction* doc, finds it inside
+// mapping.update() used to resolve that position against the *pre-transaction* doc, find it inside
 // a code node, and classifies the step as a text edit.  The cache then misses and
 // tree.findNodeByProsePos() returns the newline node at that boundary, which is not
 // text-editable → TextUpdateError is thrown.
@@ -290,4 +290,11 @@ test("Regression: wpLift newline-deduplication steps are not misclassified as te
     }).not.toThrow();
 
     sanityCheckTree(mapping.getMapping().root);
+
+    // After wpLift the document is:
+    //   ```coq\nabc\n```\n```coq\ndef\n```\n```coq\nghi\n```
+    // Line numbers (0-indexed): code1 content on line 1, code2 on line 4, code3 on line 7.
+    // Step 2 removes the leading duplicate newline (shifts code2 and code3 down by 1 line);
+    // step 3 removes the trailing duplicate newline (shifts code3 down by 1 more line).
+    expect(mapping.getMapping().computeLineNumbers()).toStrictEqual([1, 4, 7]);
 });

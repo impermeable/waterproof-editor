@@ -17,6 +17,14 @@ export class Mapping {
     private tree: Tree;
     /** The version of the underlying textDocument */
     private _version: number;
+    /**
+     * Tracks the ProseMirror document after each processed step.
+     * The caller of `update` always passes the pre-transaction document, so for
+     * step N in a multi-step transaction the passed `doc` is already stale.
+     * We keep `_currentDoc` in sync by applying each step to it, so that
+     * subsequent calls within the same transaction see the correct document.
+     */
+    private _currentDoc: Node | null = null;
 
     private readonly serializer: DocumentSerializer;
     private readonly nodeUpdate: NodeUpdate;
@@ -118,16 +126,25 @@ export class Mapping {
 
         let result: ParsedStep;
 
+        // For multi-step transactions the caller passes the same pre-transaction `doc` for
+        // every step, so by step N it is stale. Use our internally-evolved document instead.
+        const currentDoc = this._currentDoc ?? doc;
+
         // Parse the step into a text document change
         if (step instanceof ReplaceStep && isText) {
             result = this.textUpdate.textUpdate(step, this);
         } else {
             // The entire document is serialized here. This is done to be able to produce an accurate linecount
             // If this leads to performance issues, this could likely be resolved by being smarter about this.
-            result = this.nodeUpdate.nodeUpdate(step, this, this.serializer.serializeDocument(doc), this.serializer, doc);
+            result = this.nodeUpdate.nodeUpdate(step, this, this.serializer.serializeDocument(currentDoc), this.serializer, currentDoc);
         }
 
-        this.tree = result.newTree
+        this.tree = result.newTree;
+
+        // Evolve _currentDoc by applying the step, so the next call in the same
+        // transaction receives the correct document rather than the stale original.
+        const applied = step.apply(currentDoc);
+        this._currentDoc = applied.doc ?? currentDoc;
 
         if ('finalText' in result.result) {
             if (this.checkDocChange(result.result)) this._version++;
