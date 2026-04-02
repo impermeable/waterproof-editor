@@ -82,6 +82,14 @@ const CoqCodePluginSpec = (completions: Array<Completion>, symbols: Array<Comple
 				}
 			}
 
+			// Prune stale views whose NodeView was destroyed by ProseMirror
+			// (e.g. after a ReplaceAroundStep / lift that recreates a NodeView).
+			for (const view of value.activeNodeViews) {
+				if (view._getPos() === undefined) {
+					value.activeNodeViews.delete(view);
+				}
+			}
+
 			// Update the state 
 			const meta = tr.getMeta(CODE_PLUGIN_KEY);
 			if (meta) {
