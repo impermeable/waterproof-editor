@@ -26,78 +26,31 @@ export function getParentAndIndex(sel: Selection): {parent: Node; index: number}
     return null;
 }
 
+function tagConfForNodeType(nodeType: NodeType, tagConf: TagConfiguration) {
+    if (nodeType === WaterproofSchema.nodes.code) return tagConf.code;
+    if (nodeType === WaterproofSchema.nodes.hint) return tagConf.hint;
+    if (nodeType === WaterproofSchema.nodes.input) return tagConf.input;
+    if (nodeType === WaterproofSchema.nodes.markdown) return tagConf.markdown;
+    if (nodeType === WaterproofSchema.nodes.math_display) return tagConf.math;
+    if (nodeType === WaterproofSchema.nodes.container) return tagConf.container;
+    return null;
+}
+
 export function needsNewlineBefore(nodeType: NodeType, tagConf: TagConfiguration): boolean {
-    switch (nodeType) {
-        case WaterproofSchema.nodes.code:
-            return tagConf.code.openRequiresNewline;
-        case WaterproofSchema.nodes.hint:
-            return tagConf.hint.openRequiresNewline;
-        case WaterproofSchema.nodes.input:
-            return tagConf.input.openRequiresNewline;
-        case WaterproofSchema.nodes.markdown:
-            return tagConf.markdown.openRequiresNewline;
-        case WaterproofSchema.nodes.math_display:
-            return tagConf.math.openRequiresNewline;
-        case WaterproofSchema.nodes.container:
-            return tagConf.container.openRequiresNewline;
-        default:
-            return false;
-    }
+    return tagConfForNodeType(nodeType, tagConf)?.openRequiresNewline ?? false;
 }
 
 export function needsNewlineAfter(nodeType: NodeType, tagConf: TagConfiguration): boolean {
-    switch (nodeType) {
-        case WaterproofSchema.nodes.code:
-            return tagConf.code.closeRequiresNewline;
-        case WaterproofSchema.nodes.hint:
-            return tagConf.hint.closeRequiresNewline;
-        case WaterproofSchema.nodes.input:
-            return tagConf.input.closeRequiresNewline;
-        case WaterproofSchema.nodes.markdown:
-            return tagConf.markdown.closeRequiresNewline;
-        case WaterproofSchema.nodes.math_display:
-            return tagConf.math.closeRequiresNewline;
-        case WaterproofSchema.nodes.container:
-            return tagConf.container.closeRequiresNewline;
-        default:
-            return false;
-    }
+    return tagConfForNodeType(nodeType, tagConf)?.closeRequiresNewline ?? false;
 }
 
 export function openingTagEndsWithNewline(nodeType: NodeType, tagConf: TagConfiguration): boolean {
-    switch (nodeType) {
-        case WaterproofSchema.nodes.code:
-            return tagConf.code.openTag.endsWith("\n")
-        case WaterproofSchema.nodes.hint:
-            return tagConf.hint.openTag("").endsWith("\n")
-        case WaterproofSchema.nodes.input:
-            return tagConf.input.openTag.endsWith("\n")
-        case WaterproofSchema.nodes.markdown:
-            return tagConf.markdown.openTag.endsWith("\n")
-        case WaterproofSchema.nodes.math_display:
-            return tagConf.math.openTag.endsWith("\n")
-        case WaterproofSchema.nodes.container:
-            return tagConf.container.openTag("").endsWith("\n")
-        default:
-            return false;
-    }
+    const entry = tagConfForNodeType(nodeType, tagConf);
+    if (!entry) return false;
+    const openTag = typeof entry.openTag === "function" ? entry.openTag("") : entry.openTag;
+    return openTag.endsWith("\n");
 }
 
 export function closingTagStartsWithNewline(nodeType: NodeType, tagConf: TagConfiguration): boolean {
-    switch (nodeType) {
-        case WaterproofSchema.nodes.code:
-            return tagConf.code.closeTag.startsWith("\n")
-        case WaterproofSchema.nodes.hint:
-            return tagConf.hint.closeTag.startsWith("\n")
-        case WaterproofSchema.nodes.input:
-            return tagConf.input.closeTag.startsWith("\n")
-        case WaterproofSchema.nodes.markdown:
-            return tagConf.markdown.closeTag.startsWith("\n")
-        case WaterproofSchema.nodes.math_display:
-            return tagConf.math.closeTag.startsWith("\n")
-        case WaterproofSchema.nodes.container:
-            return tagConf.container.closeTag.startsWith("\n")
-        default:
-            return false;
-    }
+    return tagConfForNodeType(nodeType, tagConf)?.closeTag.startsWith("\n") ?? false;
 }

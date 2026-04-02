@@ -2,6 +2,21 @@ import { Fragment, Node } from "prosemirror-model";
 import { WaterproofSchema } from "../schema";
 import { TagConfiguration } from "../api";
 
+export function makeNeighbors(
+    above: Node | null | undefined,
+    twoAbove: Node | null | undefined,
+    below: Node | null | undefined,
+    twoBelow: Node | null | undefined
+): (skipNewlines: boolean) => { nodeAbove: string | null; nodeBelow: string | null } {
+    return (skipNewlines) => {
+        let nodeAbove = above?.type.name ?? null;
+        let nodeBelow = below?.type.name ?? null;
+        if (nodeAbove === "newline" && skipNewlines) nodeAbove = twoAbove?.type.name ?? null;
+        if (nodeBelow === "newline" && skipNewlines) nodeBelow = twoBelow?.type.name ?? null;
+        return { nodeAbove, nodeBelow };
+    };
+}
+
 export class SerializationError extends Error {
     constructor(message: string) {
         super("[SerializationError] " + message);
@@ -109,22 +124,10 @@ export abstract class DocumentSerializer {
     public serializeFragment(fragment: Fragment, parent: string | null): string {
         const output: string[] = [];
         fragment.forEach((child, _, idx) => {
-            const nodeDirectlyAbove = fragment.maybeChild(idx - 1);
-            const nodeTwoAbove = fragment.maybeChild(idx - 2);
-
-            const nodeDirectlyBelow = fragment.maybeChild(idx + 1);
-            const nodeTwoBelow = fragment.maybeChild(idx + 2);
-
-            const func = (skipNewlines: boolean): { nodeAbove: string | null; nodeBelow: string | null } => {
-                let above = nodeDirectlyAbove?.type.name ?? null;
-                let below = nodeDirectlyBelow?.type.name ?? null;
-
-                if (above === "newline" && skipNewlines) above = nodeTwoAbove?.type.name ?? null;
-                if (below === "newline" && skipNewlines) below = nodeTwoBelow?.type.name ?? null;
-
-                return {nodeAbove: above, nodeBelow: below};
-            };
-
+            const func = makeNeighbors(
+                fragment.maybeChild(idx - 1), fragment.maybeChild(idx - 2),
+                fragment.maybeChild(idx + 1), fragment.maybeChild(idx + 2)
+            );
             output.push(this.serializeNode(child, parent, func));
         });
         return output.join("");
@@ -137,28 +140,8 @@ export abstract class DocumentSerializer {
      * @returns The string representation of the document
      * @throws A {@linkcode SerializationError} when the document contains a node type that is not supported by the serializer.
      */
-    public serializeDocument(node: Node) {
-        const output: string[] = [];
-        node.content.forEach((child, _, idx) => {
-            const nodeDirectlyAbove = node.maybeChild(idx - 1);
-            const nodeTwoAbove = node.maybeChild(idx - 2);
-
-            const nodeDirectlyBelow = node.maybeChild(idx + 1);
-            const nodeTwoBelow = node.maybeChild(idx + 2);
-
-            const func = (skipNewlines: boolean): { nodeAbove: string | null; nodeBelow: string | null } => {
-                let above = nodeDirectlyAbove?.type.name ?? null;
-                let below = nodeDirectlyBelow?.type.name ?? null;
-
-                if (above === "newline" && skipNewlines) above = nodeTwoAbove?.type.name ?? null;
-                if (below === "newline" && skipNewlines) below = nodeTwoBelow?.type.name ?? null;
-
-                return {nodeAbove: above, nodeBelow: below};
-            };
-
-            output.push(this.serializeNode(child, node.type.name, func));
-        });
-        return output.join("");
+    public serializeDocument(node: Node): string {
+        return this.serializeFragment(node.content, node.type.name);
     }
 }
 
@@ -203,20 +186,6 @@ export class DefaultTagSerializer extends DocumentSerializer {
 
     serializeContainer(node: Node): string {
         const name = node.attrs.name as string;
-        const textContent: string[] = [];
-        node.forEach((child, _, idx) => {
-            const nodeDirectlyAbove = node.maybeChild(idx - 1);
-            const nodeDirectlyBelow = node.maybeChild(idx + 1);
-            const func = (skipNewlines: boolean): { nodeAbove: string | null; nodeBelow: string | null } => {
-                let above = nodeDirectlyAbove?.type.name ?? null;
-                let below = nodeDirectlyBelow?.type.name ?? null;
-                if (above === "newline" && skipNewlines) above = node.maybeChild(idx - 2)?.type.name ?? null;
-                if (below === "newline" && skipNewlines) below = node.maybeChild(idx + 2)?.type.name ?? null;
-                return {nodeAbove: above, nodeBelow: below};
-            };
-            const output = this.serializeNode(child, "container", func);
-            textContent.push(output);
-        });
-        return this.tagConf.container.openTag(name) + textContent.join("") + this.tagConf.container.closeTag;
+        return this.tagConf.container.openTag(name) + this.serializeFragment(node.content, "container") + this.tagConf.container.closeTag;
     }
 }

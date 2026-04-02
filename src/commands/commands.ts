@@ -1,4 +1,4 @@
-import { Attrs, NodeRange, NodeType } from "prosemirror-model";
+import { Attrs, NodeType } from "prosemirror-model";
 import { Command, EditorState, NodeSelection, TextSelection, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { liftTarget } from "prosemirror-transform";
@@ -29,28 +29,11 @@ export function wpLift(_tagConf: TagConfiguration): Command {
         const firstIsNewline = firstChild.type === WaterproofSchema.nodes.newline;
         const lastIsNewline = lastChild.type === WaterproofSchema.nodes.newline;
 
-
-
         const beforeIsNewline = before === null ? false : before.type === WaterproofSchema.nodes.newline;
         const afterIsNewline = after === null ? false : after.type === WaterproofSchema.nodes.newline;
-        // Can we assume that the newlines in the dcuments are always there for some node?
-        // const needsBefore = needsNewlineBefore(node.type, tagConf);
-        // const needsAfter = needsNewlineAfter(node.type, tagConf);
-
-        // console.log("first", firstIsNewline, "last", lastIsNewline, "before", beforeIsNewline, "after", afterIsNewline, "needsBefore", needsBefore, "needsAfter", needsAfter);
 
         const shouldRemoveNewlineBefore = beforeIsNewline && firstIsNewline;
         const shouldRemoveNewlineAfter = afterIsNewline && lastIsNewline && childCount > 1;
-
-        // if (beforeIsNewline && firstIsNewline) {
-        //     console.log("Both first child and before node are newlines");
-        //     console.log("We are going to remove the node before");
-        // }
-
-        // if (afterIsNewline && lastIsNewline && childCount > 1) {
-        //     console.log("Both the last node and the after node are newlines (and the first and last child are not the same)");
-        //     console.log("We are going to remove the node after");
-        // }
 
         // Create a block range that covers the content of the input/hint block
         const range = state.doc.resolve(from + 1).blockRange(state.doc.resolve(to - 1));
@@ -171,7 +154,7 @@ function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration, attrs? : Attrs)
 
             const consumeBefore = needsBefore && beforeIsNewline && !openingTagEndsWithNewline(nodeType, tagConf);
             const consumeAfter = needsAfter && afterIsNewline && !closingTagStartsWithNewline(nodeType, tagConf);
-            
+
             if (before !== null && consumeBefore) {
                 // extend the selection to incldue the before newline node
                 $start = state.doc.resolve(sel.from - before.nodeSize);
