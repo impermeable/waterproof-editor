@@ -77,57 +77,68 @@ export function wpLift(_tagConf: TagConfiguration): Command {
     }
 }
 
+function computeNodeSelectionDeleteRange(
+    sel: NodeSelection,
+    parentAndIndex: NonNullable<ReturnType<typeof getParentAndIndex>>,
+    tagConf: TagConfiguration
+): [number, number] {
+    const { parent, index } = parentAndIndex;
+    const before = parent.maybeChild(index - 1);
+    const after = parent.maybeChild(index + 1);
+    const beforeSize = before === null ? 0 : before.nodeSize;
+    const afterSize = after === null ? 0 : after.nodeSize;
+
+    // node before before, node after after
+    const befoore = parent.maybeChild(index - 2);
+    const afteer = parent.maybeChild(index + 2);
+
+    const beforeIsNewline = before !== null && before.type === WaterproofSchema.nodes.newline;
+    const afterIsNewline = after !== null && after.type === WaterproofSchema.nodes.newline;
+    const befooreNeedsNewlineAfter = befoore !== null && needsNewlineAfter(befoore.type, tagConf);
+    const afteerNeedsNewlineBefore = afteer !== null && needsNewlineBefore(afteer.type, tagConf);
+
+    const { from, to } = sel;
+
+    // Both sides are newlines and both outer nodes need them: keep before newline, delete after
+    if (beforeIsNewline && afterIsNewline && befooreNeedsNewlineAfter && afteerNeedsNewlineBefore) {
+        return [from, to + afterSize];
+    }
+    // After is newline and selected node needs newline before: keep after newline, delete before
+    if (afterIsNewline && afteer !== null && needsNewlineBefore(sel.node.type, tagConf)) {
+        return [from - beforeSize, to];
+    }
+    // Before is newline and outer node before needs it: keep before newline, delete after
+    if (beforeIsNewline && befooreNeedsNewlineAfter) {
+        return [from, to + afterSize];
+    }
+    // Both sides are newlines but neither outer node needs them: delete both
+    if (beforeIsNewline && afterIsNewline && !afteerNeedsNewlineBefore) {
+        return [from - beforeSize, to + afterSize];
+    }
+    // Default: delete only the selected node
+    return [from, to];
+}
+
 export function deleteSelection(tagConf: TagConfiguration): Command {
     return (state, dispatch) => {
         const sel = state.selection;
         if (sel.empty) return false;
+
         if (sel instanceof TextSelection) {
             if (dispatch) dispatch(state.tr.deleteSelection().scrollIntoView());
             return true;
-        } else if (sel instanceof NodeSelection) {
-            // const {parent, index} = getParentAndIndex(state.selection.$from);
-            const parentAndIndex = getParentAndIndex(sel);
-            if (!parentAndIndex) return false;
-            const {parent, index} = parentAndIndex;
-
-            const before = parent.maybeChild(index - 1);
-            const after = parent.maybeChild(index + 1);
-            const beforeSize = before === null ? 0 : before.nodeSize;
-            const afterSize = after === null ? 0 : after.nodeSize;
-            // node before before
-            const befoore = parent.maybeChild(index - 2);
-            // node after after
-            const afteer = parent.maybeChild(index + 2);
-            
-            const beforeIsNewline = before === null ? false : before.type === WaterproofSchema.nodes.newline;
-            const afterIsNewline = after === null ? false : after.type === WaterproofSchema.nodes.newline;
-
-            if (beforeIsNewline && afterIsNewline && befoore !== null && afteer !== null && needsNewlineAfter(befoore.type, tagConf) && needsNewlineBefore(afteer.type, tagConf)) {
-                // Before and after are newlines, and befoore needs newline after and afteer needs newline before
-                // We need to keep one of the newlines, so we delete the node and the after newline
-                if (dispatch) dispatch(state.tr.delete(state.selection.from, state.selection.to + afterSize).scrollIntoView());
-                return true;
-            } else if (afterIsNewline && afteer !== null && needsNewlineBefore(sel.node.type, tagConf)) {
-                // After is newline and afteer needs newline before
-                // We need to keep the after newline, so we delete the node and the before newline
-                if (dispatch) dispatch(state.tr.delete(state.selection.from - beforeSize, state.selection.to).scrollIntoView());
-                return true;
-            } else if (beforeIsNewline && befoore !== null && needsNewlineAfter(befoore.type, tagConf)) {
-                // Before is newline and befoore needs newline after
-                // We need to keep the before newline, so we delete the node and the after newline
-                if (dispatch) dispatch(state.tr.delete(state.selection.from, state.selection.to + afterSize).scrollIntoView());
-                return true;
-            } else if (beforeIsNewline && afterIsNewline && (befoore === null || (befoore !== null && !needsNewlineAfter(befoore.type, tagConf))) && (afteer === null || (afteer !== null && !needsNewlineBefore(afteer.type, tagConf)))) {
-                // Before and after are newlines, but befoore does not need newline after and afteer does not need newline before
-                // We can delete both newlines
-                if (dispatch) dispatch(state.tr.delete(state.selection.from - beforeSize, state.selection.to + afterSize).scrollIntoView());
-                return true;
-            } else {
-                if (dispatch) dispatch(state.tr.deleteSelection().scrollIntoView());
-                return true;
-            }
         }
-        return false;
+
+        if (!(sel instanceof NodeSelection)) return false;
+
+        const parentAndIndex = getParentAndIndex(sel);
+        if (!parentAndIndex) return false;
+
+        if (dispatch) {
+            const [deleteFrom, deleteTo] = computeNodeSelectionDeleteRange(sel, parentAndIndex, tagConf);
+            dispatch(state.tr.delete(deleteFrom, deleteTo).scrollIntoView());
+        }
+        return true;
     }
 }
 
