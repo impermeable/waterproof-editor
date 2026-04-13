@@ -1,6 +1,10 @@
 .container {
     display: block;
     position: relative;
-    padding-left: 8px;
     margin: 4px 0;
+}
+
+.teacher-mode .container {
+    padding-left: 8px;
+    border-left: 4px dashed var(--wp-listFilterWidgetBackground);
 }

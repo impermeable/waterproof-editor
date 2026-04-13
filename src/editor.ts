@@ -567,6 +567,7 @@ export class WaterproofEditor {
 		const trans = state.tr;
 		trans.setMeta(INPUT_AREA_PLUGIN_KEY, {teacher: isTeacher});
 		this._view.dispatch(trans);
+		this._editorElem.classList.toggle("teacher-mode", isTeacher);
 	}
 
 	public reportProgress(current: number, total: number, text?: string): void {
