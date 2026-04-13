@@ -85,7 +85,7 @@ export class TextUpdate {
             }
         });
 
-        return {result, newTree: tree, lineDelta: 0};
+        return { result, newTree: tree };
     }
 }
 

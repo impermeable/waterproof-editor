@@ -9,8 +9,6 @@ export type ParsedStep = {
     result: DocChange | WrappingDocChange;
     /** The new tree that represents the updated mapping */
     newTree: Tree;
-    /** The net change in line count caused by this step (positive = lines added, negative = lines removed) */
-    lineDelta: number;
 }
 
 /**

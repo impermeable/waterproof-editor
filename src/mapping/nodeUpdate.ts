@@ -160,7 +160,7 @@ export class NodeUpdate {
         // Add the nodes to the parent node. We do this later so that updating in the step 
         // before does not affect the positions of the nodes we are adding
         nodes.forEach(n => parent.addChild(n));
-        return { result: docChange, newTree: tree, lineDelta: lineDelta };
+        return { result: docChange, newTree: tree };
     }
 
     buildTreeFromNode(node: Node, startOrig: number, startProse: number, currentLine: number = 0): TreeNode {
@@ -304,7 +304,7 @@ export class NodeUpdate {
         });
         tree.root.shiftCloseOffsets(-originalRemovedLength, -proseRemovedLength);
 
-        return { result: docChange, newTree: tree, lineDelta: -deletedNewlines };
+        return { result: docChange, newTree: tree };
     }
 
     // ReplaceAroundDelete is used when we unwrap nodes (remove the hint or input tags)
@@ -369,7 +369,7 @@ export class NodeUpdate {
             wrapperParent.addChild(n);
         });
         
-        return { result: docChange, newTree: tree, lineDelta: 0 };
+        return { result: docChange, newTree: tree };
     }
     
     replaceAroundReplace(step: ReplaceAroundStep, tree: Tree): ParsedStep {
@@ -476,9 +476,7 @@ export class NodeUpdate {
         tree.traverseDepthFirst((thisNode: TreeNode) => {
             if (thisNode.pmRange.from >= positions.proseEnd) {
                 thisNode.shiftOffsets(openTag.length + closeTag.length, 2);
-                /////// NEW ////////
                 thisNode.shiftLineStart(openTagLines + closeTagLines);
-                /////// END NEW ///////
             }
         });
 
@@ -493,7 +491,7 @@ export class NodeUpdate {
 
         tree.root.shiftCloseOffsets(openTag.length + closeTag.length, 2);
 
-        return {result: docChange, newTree: tree, lineDelta: openTagLines + closeTagLines};
+        return { result: docChange, newTree: tree };
     }
 
 }
