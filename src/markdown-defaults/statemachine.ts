@@ -201,165 +201,150 @@ export function parse(document: string, config: {language?: string, startParsing
         return;
     }
 
-    while (i < stopParsingAt) {
-        switch (state) {
-            case ParserState.Markdown: {
-                if (opensCodeBlock()) {
-                    closeMarkdown();
-                    // Set parser state to start parsing the code block contents.
-                    state = ParserState.Code;
-                    setRangeStart();
-                    i += codeBlockOffset + codeBlockOpenLength;
-                    newlineCounter+=codeBlockOffset;
-                    newlineCounter++;
-                    setInnerRangeStart();
-                    setLineStart();
-                    continue;
-                }
-                else if (opensLaTeXBlock()) {
-                    closeMarkdown();
-                    state = ParserState.LaTeX;
-                    setRangeStart();
-                    i += latexBlockOpenCloseLength; // Skip the $$
-                    setInnerRangeStart();
-                    setLineStart();
-                    continue;
-                }
-                else if (nested === NestedState.None && opensHintBlock()) {
-                    closeMarkdown();
-                    setRangeStart();
-                    setLineStart();
-                    i += hintOpenLength; // Skip the <hint title="
-                    innerRangeStartNested = i;
-                    rangeStartNested = i;
-                    state = ParserState.HintTitle;
-                    nested = NestedState.Hint;
-                    continue;
-                }
-                else if (nested === NestedState.None && opensInputAreaBlock()) {
-                    closeMarkdown();
-                    setRangeStart();
-                    i += inputAreaOpenLength;
-                    setInnerRangeStart();
-                    setLineStart();
+    function handleMarkdownCase(): void {
+        if (opensCodeBlock()) {
+            closeMarkdown();
+            // Set parser state to start parsing the code block contents.
+            state = ParserState.Code;
+            setRangeStart();
+            i += codeBlockOffset + codeBlockOpenLength;
+            newlineCounter += codeBlockOffset;
+            newlineCounter++;
+            setInnerRangeStart();
+            setLineStart();
+        } else if (opensLaTeXBlock()) {
+            closeMarkdown();
+            state = ParserState.LaTeX;
+            setRangeStart();
+            i += latexBlockOpenCloseLength; // Skip the $$
+            setInnerRangeStart();
+            setLineStart();
+        } else if (nested === NestedState.None && opensHintBlock()) {
+            closeMarkdown();
+            setRangeStart();
+            setLineStart();
+            i += hintOpenLength; // Skip the <hint title="
+            innerRangeStartNested = i;
+            rangeStartNested = i;
+            state = ParserState.HintTitle;
+            nested = NestedState.Hint;
+        } else if (nested === NestedState.None && opensInputAreaBlock()) {
+            closeMarkdown();
+            setRangeStart();
+            i += inputAreaOpenLength;
+            setInnerRangeStart();
+            setLineStart();
+            innerRangeStartNested = i;
+            rangeStartNested = i;
+            nested = NestedState.Input;
+        } else if (nested === NestedState.Hint && closesHintBlock()) {
+            closeMarkdown();
+            nested = NestedState.None;
+            const range = { from: getRangeStart(), to: i + hintCloseLength };
+            const innerRange = { from: getInnerRangeStart(), to: i };
+            const hintBlock = new HintBlock(
+                document.slice(innerRange.from, innerRange.to),
+                hintTitle,
+                range, innerRange,
+                0,
+                innerBlocks);
+            pushBlock(hintBlock);
+            i += hintCloseLength; // Skip the </hint>
+            backToMarkdown(true);
+            hintTitle = "";
+        } else if (nested === NestedState.Input && closesInputAreaBlock()) {
+            closeMarkdown();
+            nested = NestedState.None;
+            const range = { from: getRangeStart(), to: i + inputAreaCloseLength };
+            const innerRange = { from: getInnerRangeStart(), to: i };
+            const inputAreaBlock = new InputAreaBlock(
+                document.slice(innerRange.from, innerRange.to),
+                range, innerRange,
+                0,
+                innerBlocks);
+            pushBlock(inputAreaBlock);
+            i += inputAreaCloseLength; // Skip the </input-area>
+            backToMarkdown(true);
+        } else {
+            checkNewlineAndIncrementI();
+        }
+    }
 
-                    innerRangeStartNested = i;
-                    rangeStartNested = i;
-                    nested = NestedState.Input;
-                    continue;
-                }
-                else if (nested === NestedState.Hint && closesHintBlock()) {
-                    closeMarkdown();
-                    
-                    nested = NestedState.None;
-                    const range = { from: getRangeStart(), to: i + hintCloseLength };
-                    const innerRange = { from: getInnerRangeStart(), to: i };
-                    const hintBlock = new HintBlock(
-                        document.slice(innerRange.from, innerRange.to),
-                        hintTitle,
-                        range, innerRange,
-                        0,
-                        innerBlocks);
-                    pushBlock(hintBlock);
+    function handleCodeCase(): void {
+        if (closesCodeBlock()) {
+            // End of this code block
+            newlineCounter++;
 
-                    i += hintCloseLength; // Skip the </hint>
-                    backToMarkdown(true);
-                    hintTitle = "";
-                    continue;
-                }
-                else if (nested === NestedState.Input && closesInputAreaBlock()) {
-                    closeMarkdown();
-                    nested = NestedState.None;
+            // Check if we have a newline before this block
+            const newlineBefore = document[getRangeStart()] === '\n';
+            const range = { from: getRangeStart() + (newlineBefore ? 1 : 0), to: i + codeBlockCloseLength };
+            const innerRange = { from: getInnerRangeStart(), to: i };
+            const codeBlock = new CodeBlock(
+                document.slice(innerRange.from, innerRange.to),
+                range,
+                innerRange,
+                getLineStart());
 
-                    const range = { from: getRangeStart(), to: i + inputAreaCloseLength };
-                    const innerRange = { from: getInnerRangeStart(), to: i};
-                    const inputAreaBlock = new InputAreaBlock(
-                        document.slice(innerRange.from, innerRange.to),
-                        range, innerRange,
-                        0,
-                        innerBlocks);
-                    pushBlock(inputAreaBlock);
-
-                    i += inputAreaCloseLength; // Skip the </input-area>
-                    backToMarkdown(true);
-                    continue;
-                }
-                else {
-                    checkNewlineAndIncrementI();
-                    continue;
-                }
+            // Add a newline block before the block if needed
+            if (newlineBefore) {
+                pushBlock(new NewlineBlock({ from: getRangeStart(), to: getRangeStart() + 1 }, { from: getRangeStart(), to: getRangeStart() + 1 }, 0));
             }
-            case ParserState.Code: {
-                if (closesCodeBlock()) {
-                    // End of this code block
-                    newlineCounter++;
-
-                    // Check if we have a newline before this block
-                    const newlineBefore = document[getRangeStart()] === '\n';
-                    const range = { from: getRangeStart() + (newlineBefore ? 1 : 0), to: i + codeBlockCloseLength };
-                    const innerRange = { from: getInnerRangeStart(), to: i };
-                    const codeBlock = new CodeBlock(
-                        document.slice(innerRange.from, innerRange.to),
-                        range,
-                        innerRange,
-                        getLineStart());
-
-                    // Add a newline block before the block if needed 
-                    if (newlineBefore) {
-                        pushBlock(new NewlineBlock({ from: getRangeStart(), to: getRangeStart() + 1 }, { from: getRangeStart(), to: getRangeStart() + 1 }, 0));
-                    }
-                    pushBlock(codeBlock);
-                    // Add a newline block after the block if needed
-                    if (codeBlockOffset) {
-                        newlineCounter++;
-                        pushBlock(new NewlineBlock({ from: range.to, to: range.to + 1 }, { from: range.to, to: range.to + 1 }, 0));
-                    }
-
-                    i += codeBlockCloseLength + codeBlockOffset; // Skip the closing ``` and possible \n
-                    backToMarkdown();
-                    continue;
-                } else {
-                    checkNewlineAndIncrementI();
-                    continue;
-                }
+            pushBlock(codeBlock);
+            // Add a newline block after the block if needed
+            if (codeBlockOffset) {
+                newlineCounter++;
+                pushBlock(new NewlineBlock({ from: range.to, to: range.to + 1 }, { from: range.to, to: range.to + 1 }, 0));
             }
-            case ParserState.LaTeX: {
-                if (closesLaTeXBlock()) {
-                    // End of this LaTeX block
-                    const range = { from: getRangeStart(), to: i + latexBlockOpenCloseLength };
-                    const innerRange = { from: getInnerRangeStart(), to: i };
-                    const mathBlock = new MathDisplayBlock(
-                        document.slice(getInnerRangeStart(), i),
-                        range,
-                        innerRange,
-                        0);
-                    pushBlock(mathBlock);
-                    i += latexBlockOpenCloseLength; // Skip the closing $$
-                    backToMarkdown();
-                    continue;
-                } else {
-                    checkNewlineAndIncrementI();
-                    continue;
-                }
-            }
-            case ParserState.HintTitle: {
-                // Parse until we find the closing quote and >
-                while (i < document.length) {
-                    const char = document[i];
-                    if (char === '"' && document[i + 1] === '>') {
-                        i += 2; // Skip the closing quote and >
-                        // Back to parsing markdown
-                        backToMarkdown();
-                        // The inner range of the hint starts here.
-                        innerRangeStart = i;
-                        break;
-                    } else {
-                        hintTitle += char;
-                        checkNewlineAndIncrementI();
-                    }
-                }
+
+            i += codeBlockCloseLength + codeBlockOffset; // Skip the closing ``` and possible \n
+            backToMarkdown();
+        } else {
+            checkNewlineAndIncrementI();
+        }
+    }
+
+    function handleLaTeXCase(): void {
+        if (closesLaTeXBlock()) {
+            // End of this LaTeX block
+            const range = { from: getRangeStart(), to: i + latexBlockOpenCloseLength };
+            const innerRange = { from: getInnerRangeStart(), to: i };
+            const mathBlock = new MathDisplayBlock(
+                document.slice(getInnerRangeStart(), i),
+                range,
+                innerRange,
+                0);
+            pushBlock(mathBlock);
+            i += latexBlockOpenCloseLength; // Skip the closing $$
+            backToMarkdown();
+        } else {
+            checkNewlineAndIncrementI();
+        }
+    }
+
+    function handleHintTitleCase(): void {
+        // Parse until we find the closing quote and >
+        while (i < document.length) {
+            const char = document[i];
+            if (char === '"' && document[i + 1] === '>') {
+                i += 2; // Skip the closing quote and >
+                // Back to parsing markdown
+                backToMarkdown();
+                // The inner range of the hint starts here.
+                innerRangeStart = i;
                 break;
+            } else {
+                hintTitle += char;
+                checkNewlineAndIncrementI();
             }
+        }
+    }
+
+    while (i < stopParsingAt) {
+        switch (state as ParserState) {
+            case ParserState.Markdown:   handleMarkdownCase();   break;
+            case ParserState.Code:       handleCodeCase();       break;
+            case ParserState.LaTeX:      handleLaTeXCase();      break;
+            case ParserState.HintTitle:  handleHintTitleCase();  break;
         }
     }
 
