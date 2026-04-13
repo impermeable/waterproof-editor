@@ -127,8 +127,8 @@ export class Mapping {
 
         if ('finalText' in result.result) {
             if (this.checkDocChange(result.result)) this._version++;
-        } else {
-            if (this.checkDocChange(result.result.firstEdit) || this.checkDocChange(result.result.secondEdit)) this._version++;
+        } else if (this.checkDocChange(result.result.firstEdit) || this.checkDocChange(result.result.secondEdit)) {
+            this._version++;
         }
 
         return result.result;
