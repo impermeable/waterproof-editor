@@ -4,7 +4,7 @@ import { configuration } from "../../src/markdown-defaults";
 import { ReplaceAroundStep, ReplaceStep } from "prosemirror-transform";
 import { WaterproofSchema } from "../../src/schema";
 import { NodeUpdate } from "../../src/mapping/nodeUpdate";
-import { CodeBlock, HintBlock, InputAreaBlock, MarkdownBlock, NewlineBlock } from "../../src/document";
+import { CodeBlock, ContainerBlock, HintBlock, InputAreaBlock, MarkdownBlock, NewlineBlock } from "../../src/document";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 import { sanityCheckTree } from "./util";
 import { Node } from "prosemirror-model";
@@ -17,6 +17,22 @@ const nodeMock : Node = new Node();
 function createMapping(blocks: WaterproofDocument) {
   const mapping = new Mapping(blocks, 0, config, serializer);
   return mapping;
+}
+
+// Lean-like tag configuration with meaningful container tags (::::name\n / \n::::)
+// so that wrapping/lifting a multilean cell actually changes line numbers.
+const leanConfig = {
+    code:     { openTag: "```lean\n",                        closeTag: "\n```",  openRequiresNewline: true,  closeRequiresNewline: true  },
+    hint:     { openTag: (t: string) => `:::hint "${t}"\n`, closeTag: "\n:::",  openRequiresNewline: true,  closeRequiresNewline: true  },
+    input:    { openTag: ":::input\n",                       closeTag: "\n:::",  openRequiresNewline: true,  closeRequiresNewline: true  },
+    markdown: { openTag: "",                                 closeTag: "",       openRequiresNewline: false, closeRequiresNewline: false },
+    math:     { openTag: "$$`",                              closeTag: "`",      openRequiresNewline: false, closeRequiresNewline: false },
+    container:{ openTag: (n: string) => `::::${n}\n`,        closeTag: "\n::::", openRequiresNewline: true,  closeRequiresNewline: true  },
+};
+const leanSerializer = new DefaultTagSerializer(leanConfig);
+
+function createLeanMapping(blocks: WaterproofDocument) {
+    return new Mapping(blocks, 0, leanConfig, leanSerializer);
 }
 
 test("Insert code underneath markdown", () => {
@@ -607,4 +623,99 @@ test("Undo deletion of first codeblock (without newline)", () => {
         startInFile: 0,
         endInFile: 0
     });
+});
+
+// ── multilean (container) wrap / lift ─────────────────────────────────────────
+//
+// The Lean container tag is  "::::multilean\n"  (14 chars, 1 newline) open and
+// "\n::::" (5 chars, 1 newline) close, so these tests verify that the code
+// block's lineStart is updated correctly when the container tags are added or
+// removed.
+
+test("Wrap code cell in multilean container shifts lineStart", () => {
+    // Document (Lean format): ```lean\nLemma.\n```  (18 chars)
+    // Line 0: ```lean  Line 1: Lemma.  ← code content starts at line 1
+    const codeBlock = new CodeBlock(
+        "Lemma.",
+        { from: 0, to: 18 },   // "```lean\nLemma.\n```"
+        { from: 8, to: 14 },   // content (after "```lean\n")
+        1                       // lineStart: 1 newline in open tag
+    );
+    const mapping = createLeanMapping([codeBlock]);
+
+    expect(mapping.getMapping().computeLineNumbers()).toStrictEqual([1]);
+
+    // The code node occupies pmRange {0, 8} (nodeSize = 1+6+1 = 8).
+    // wrap(blockRange, [{type: container, attrs:{name:"multilean"}}]) produces:
+    //   ReplaceAroundStep(from=0, to=8, gapFrom=0, gapTo=8, slice=container, insert=1)
+    const wrapSlice = new Slice(
+        Fragment.from([WaterproofSchema.nodes.container.create({ name: "multilean" })]),
+        0, 0
+    );
+    const wrapStep = new ReplaceAroundStep(0, 8, 0, 8, wrapSlice, 1);
+
+    const nodeUpdate = new NodeUpdate(leanConfig, leanSerializer);
+    const { newTree, result } = nodeUpdate.nodeUpdate(wrapStep, mapping, leanSerializer, nodeMock);
+
+    sanityCheckTree(newTree.root);
+
+    // The container tags "::::multilean\n" and "\n::::" are inserted at the
+    // boundaries of the code block's original file range.
+    expect(result).toStrictEqual<WrappingDocChange>({
+        firstEdit:  { finalText: "::::multilean\n", startInFile: 0,  endInFile: 0  },
+        secondEdit: { finalText: "\n::::",           startInFile: 18, endInFile: 18 },
+    });
+
+    // The container open tag adds 1 newline, so the code content now starts at
+    // line 2: line 0 = "::::multilean", line 1 = "```lean", line 2 = "Lemma."
+    expect(newTree.computeLineNumbers()).toStrictEqual([2]);
+});
+
+test("Lift code cell from multilean container restores lineStart", () => {
+    // Document (Lean format):
+    //   ::::multilean\n```lean\nLemma.\n```\n::::
+    //   0             14       22     28   32  37
+    // Line 0: ::::multilean  Line 1: ```lean  Line 2: Lemma.  ← lineStart = 2
+    const innerCode = new CodeBlock(
+        "Lemma.",
+        { from: 14, to: 32 },  // tagRange inside container
+        { from: 22, to: 28 },  // content range
+        2                       // lineStart inside container
+    );
+    const containerBlock = new ContainerBlock(
+        "```lean\nLemma.\n```",
+        "multilean",
+        { from: 0,  to: 37 },  // full range incl. container tags
+        { from: 14, to: 32 },  // inner range (just the code block)
+        0,                      // container's own lineStart
+        [innerCode]
+    );
+    const mapping = createLeanMapping([containerBlock]);
+
+    expect(mapping.getMapping().computeLineNumbers()).toStrictEqual([2]);
+
+    // ProseMirror layout for container(code("Lemma.")):
+    //   container.pmRange = {0, 10},  prosemirrorStart=1, prosemirrorEnd=9
+    //   code.pmRange      = {1,  9},  prosemirrorStart=2, prosemirrorEnd=8
+    // wpLift generates:
+    //   ReplaceAroundStep(from=container.pmRange.from, to=container.pmRange.to,
+    //                     gapFrom=container.prosemirrorStart, gapTo=container.prosemirrorEnd,
+    //                     slice=empty, insert=0)
+    const liftStep = new ReplaceAroundStep(0, 10, 1, 9, Slice.empty, 0);
+
+    const nodeUpdate = new NodeUpdate(leanConfig, leanSerializer);
+    const { newTree, result } = nodeUpdate.nodeUpdate(liftStep, mapping, leanSerializer, nodeMock);
+
+    sanityCheckTree(newTree.root);
+
+    // The container open tag "::::multilean\n" (positions 0–13) and close tag
+    // "\n::::" (positions 32–36) are deleted.
+    expect(result).toStrictEqual<WrappingDocChange>({
+        firstEdit:  { finalText: "", startInFile: 0,  endInFile: 14 },
+        secondEdit: { finalText: "", startInFile: 32, endInFile: 37 },
+    });
+
+    // After lifting, the code block is directly at the top level:
+    //   ```lean\nLemma.\n```  →  line 1 = "Lemma."  →  lineStart = 1
+    expect(newTree.computeLineNumbers()).toStrictEqual([1]);
 });

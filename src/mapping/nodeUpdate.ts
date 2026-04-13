@@ -361,6 +361,10 @@ export class NodeUpdate {
         nodesInRange.forEach(n => {
             // We update their positions
             n.shiftOffsets(-wrappedOpenTag.length, -1);
+            // The open tag may contain newlines (e.g. "::::multilean\n") that were
+            // counted towards the children's lineStart when wrapping happened.
+            // Lifting removes those newlines, so subtract them here.
+            n.shiftLineStart(-countNewlines(wrappedOpenTag));
             // and add them to the parent of the wrapper node
             wrapperParent.addChild(n);
         });
@@ -368,7 +372,7 @@ export class NodeUpdate {
         return { result: docChange, newTree: tree, lineDelta: 0 };
     }
     
-    replaceAroundReplace(step: ReplaceAroundStep, tree: Tree): ParsedStep {        
+    replaceAroundReplace(step: ReplaceAroundStep, tree: Tree): ParsedStep {
         // We start by checking what kind of node we are wrapping with
         const wrappingNode = step.slice.content.firstChild;
         if (!wrappingNode) {
@@ -402,6 +406,9 @@ export class NodeUpdate {
         const nodesBeingWrappedEnd = tree.findNodeByProsePos(step.gapTo);
         // If one of the two doesn't exist we error
         if (!nodesBeingWrappedStart || !nodesBeingWrappedEnd) throw new NodeUpdateError(" Could not find node in mapping ");
+        
+        const openTagLines = countNewlines(openTag);
+        const closeTagLines = countNewlines(closeTag);
 
         // findNodeByProsePos is biased: at a boundary position it returns the node ENDING there.
         // If gapFrom equals nodesBeingWrappedStart.pmRange.to, we got the preceding node instead
@@ -469,6 +476,9 @@ export class NodeUpdate {
         tree.traverseDepthFirst((thisNode: TreeNode) => {
             if (thisNode.pmRange.from >= positions.proseEnd) {
                 thisNode.shiftOffsets(openTag.length + closeTag.length, 2);
+                /////// NEW ////////
+                thisNode.shiftLineStart(openTagLines + closeTagLines);
+                /////// END NEW ///////
             }
         });
 
@@ -478,11 +488,12 @@ export class NodeUpdate {
         nodesInRange.forEach(n => {
             newNode.addChild(n);
             n.shiftOffsets(openTag.length, 1);
+            n.shiftLineStart(openTagLines);
         });
 
         tree.root.shiftCloseOffsets(openTag.length + closeTag.length, 2);
 
-        return {result: docChange, newTree: tree, lineDelta: 0};
+        return {result: docChange, newTree: tree, lineDelta: openTagLines + closeTagLines};
     }
 
 }
