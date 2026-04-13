@@ -169,7 +169,7 @@ function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfigurat
 
     // Create the list of menu entries.
     const items: MenuEntry[] = [
-        // Insert Coq command
+        // Insert Code Block
         createMenuItem("Math↓", `Insert new verified math block underneath (${keyBinding("q")})`, getCmdInsertCode(InsertionPlace.Below, tagConf)),
         createMenuItem("Math↑", `Insert new verified math block above (${keyBinding("Q")})`, getCmdInsertCode(InsertionPlace.Above, tagConf)),
         // Insert Markdown

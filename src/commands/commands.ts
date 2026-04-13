@@ -127,7 +127,7 @@ export function wrapInContainer(tagConf: TagConfiguration, name: string): Comman
         const sel = state.selection;
         if (!(sel instanceof NodeSelection)) return false;
         // Nesting containers is not allowed for now, because we want to disallow it for multilean
-        // TODO: Make this configurable
+        // TODO: Possibly make this configurable if future usecases for containers do want nesting
         if (sel.node.type === WaterproofSchema.nodes.container) return false; 
 
         return wpWrapIn(WaterproofSchema.nodes.container, tagConf, {name})(state, dispatch)

@@ -121,7 +121,7 @@ test("Insert code underneath markdown inside input area", () => {
     const nodeUpdate = new NodeUpdate(config, serializer);
     jest.spyOn(serializer, "serializeDocument").mockReturnValue("<input-area># Hello</input-area>")
     const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
-    console.log(JSON.stringify(newTree.root, null, " "))
+
     sanityCheckTree(newTree.root);
     expect(result).toStrictEqual<DocChange>({
         finalText: "\n```coq\n\n```",

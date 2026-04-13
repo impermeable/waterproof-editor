@@ -37,8 +37,7 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
         // To and from point directly to beginning and end of node.
         pos = sel.from;
     } else if (sel instanceof TextSelection) {
-        // TODO: This -1 is here to make sure that we do not insert 3 random code cells.
-        // I can't fully wrap my head around why it is needed at the moment though.
+        // This -1 is here to make sure we select the parent node
         pos = sel.from - sel.$from.parentOffset - 1;
     } else {
         return;
