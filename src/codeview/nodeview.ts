@@ -16,6 +16,7 @@ import { LanguageConfiguration, ThemeStyle } from "../api";
 import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
 import { CodeBlockBusyIndicator } from "./busy-indicator";
+import { createSymbolCompletionSource } from "../autocomplete";
 
 
 /**
@@ -106,18 +107,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			return null;
   		}
 
-		// inline definition of the symbol completion source. (Used for completions of the form `\reals` for ℝ).
-		const symbolCompletionSource: CompletionSource = (context: CompletionContext) => {
-			const before = context.matchBefore(/\\[^ ]*/);
-			// If completion wasn't explicitly started and there
-			// is no word before the cursor, don't open completions.
-			if (!context.explicit && !before) return null;
-			return {
-				from: before ? before.from : context.pos,
-				options: symbols,
-				validFor: /\\[^ ]*/
-			};
-		}
+		const symbolCompletionSource = createSymbolCompletionSource(symbols);
 
 		// Shadow this._outerView for use in the next function.
 		const outerView = this._outerView;
