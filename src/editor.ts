@@ -423,19 +423,21 @@ export class WaterproofEditor {
 		func(view.state, view.dispatch, view);
 	}
 
-		public handleScroll(innerHeight: number) {
+	public handleScroll(innerHeight: number) {
 		if (!this._view) return;
-		const posTop = this._view.posAtCoords({left: 10, top: 80}) ?? {pos : 0, inside : -1};
-		const posBottom = this._view.posAtCoords({left: 10, top: innerHeight}) ?? {pos : this._view.state.doc.content.size, inside : -1};
+		const posTop = this._view.posAtCoords({left: 10, top: 80});
+		const posBottom = this._view.posAtCoords({left: 10, top: innerHeight});
 
 		if (posBottom == null || posTop == null) {
-			console.log("Invalid positions, skipping viewport hint.", posTop, posBottom)
+			console.log("Invalid positions, skipping viewport hint.", posTop, posBottom);
 			return;
 		}
 		
 		// Get the offset before/after the node to overestimate the viewport
-		const pmOffsetStart = this._view.state.doc.resolve(posTop.pos).start()
-		const pmOffsetEnd = this._view.state.doc.resolve(posBottom.pos).end()
+		const $top = this._view.state.doc.resolve(posTop.pos);
+		const $bot = this._view.state.doc.resolve(posBottom.pos);
+		const pmOffsetStart = posTop.inside === -1 ? posTop.pos : ($top.depth === 0 ? posTop.pos : $top.start());
+		const pmOffsetEnd = posBottom.inside === -1 ? posBottom.pos : ($bot.depth === 0 ? posBottom.pos : $bot.end());
 
 		// Translate postions to line/offset
 		let offsetStart;
