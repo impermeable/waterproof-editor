@@ -1,3 +1,11 @@
+## Installing dependencies
+
+Run
+
+```
+npm ci
+```
+
 ## Compiling
 
 Run
