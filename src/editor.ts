@@ -8,7 +8,7 @@ import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { constructDocument } from "./document/construct-document";
 
-import { DocChange, InputAreaStatus, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ThemeStyle, WaterproofEditorConfig, TextContentOfSpecifier } from "./api";
+import { DocChange, InputAreaStatus, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ThemeStyle, WaterproofEditorConfig, TextContentOfSpecifier, MessageHandlerEditor } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
@@ -40,7 +40,7 @@ export type DiagnosticObjectProse = {message: string, start: number, end: number
 /**
  * WaterproofEditor class. Configured via the WaterproofEditorConfig object.
  */
-export class WaterproofEditor {
+export class WaterproofEditor implements MessageHandlerEditor {
 
 	private readonly _editorConfig: WaterproofEditorConfig;
 
