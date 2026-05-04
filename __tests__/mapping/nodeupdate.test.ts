@@ -553,6 +553,72 @@ test("Insert code after markdown-newline-markdown: linecount reflects prior newl
     expect(newTree.computeLineNumbers()).toStrictEqual([3]);
 });
 
+test("Deleting code cell above input area does not throw (Rocq config)", () => {
+    // Reproduces bug: deleting a code cell directly above an input area causes
+    // TextUpdateError("Step does not happen within cell").
+    //
+    // Root cause: deleteSelection branch 2 fires and produces a step that starts at
+    // the newline's position (pos 7). findNodeByProsePos(7) has a left-bias and
+    // returns the markdown node (pmRange {0,7}) instead of the newline (pmRange {7,8}),
+    // so isText=true and the node deletion is misrouted to textUpdate. textUpdate
+    // then throws because markdown.prosemirrorEnd=6 < step.from=7.
+    //
+    // Text layout (coq config):
+    //   [0,5]   "Hello"              markdown
+    //   [5,6]   "\n"                 newline
+    //   [6,23]  "```coq\ntactic\n```"  code block (tagRange); content at [13,19]
+    //   [23,24] "\n"                 newline
+    //   [24,62] "<input-area>...</input-area>"  input area
+    //     [36,49] inner content
+    //       [36,37] "\n"             inner newline
+    //       [37,48] "```coq\n\n```"  inner empty code block; content at [44,44]
+    //       [48,49] "\n"             inner newline
+    const blocks: WaterproofDocument = [
+        new MarkdownBlock("Hello", {from: 0, to: 5}, {from: 0, to: 5}, 0),
+        new NewlineBlock({from: 5, to: 6}, {from: 5, to: 6}, 0),
+        new CodeBlock("tactic", {from: 6, to: 23}, {from: 13, to: 19}, 1),
+        new NewlineBlock({from: 23, to: 24}, {from: 23, to: 24}, 0),
+        new InputAreaBlock(
+            "\n```coq\n\n```\n",
+            {from: 24, to: 62},
+            {from: 36, to: 49},
+            0,
+            [
+                new NewlineBlock({from: 36, to: 37}, {from: 36, to: 37}, 0),
+                new CodeBlock("", {from: 37, to: 48}, {from: 44, to: 44}, 0),
+                new NewlineBlock({from: 48, to: 49}, {from: 48, to: 49}, 0),
+            ]
+        ),
+    ];
+
+    // ProseMirror layout:
+    //   markdown("Hello"): pmRange {0, 7}   (nodeSize = 1+5+1 = 7)
+    //   newline:            pmRange {7, 8}   (nodeSize = 1)
+    //   code("tactic"):    pmRange {8, 16}  (nodeSize = 1+6+1 = 8)
+    //   newline:            pmRange {16, 17} (nodeSize = 1)
+    //   input:              pmRange {17, 23} (nodeSize = 1+(1+2+1)+1 = 6)
+    //
+    // deleteSelection branch 2 fires for a NodeSelection of code("tactic"):
+    //   selection.from=8, selection.to=16, beforeSize=1 (preceding newline nodeSize)
+    //   → produces ReplaceStep(8−1=7, 16, Slice.empty)
+    const proseDoc = WaterproofSchema.nodes.doc.create(null, [
+        WaterproofSchema.nodes.markdown.create(null, WaterproofSchema.text("Hello")),
+        WaterproofSchema.nodes.newline.create(),
+        WaterproofSchema.nodes.code.create(null, WaterproofSchema.text("tactic")),
+        WaterproofSchema.nodes.newline.create(),
+        WaterproofSchema.nodes.input.create(null, [
+            WaterproofSchema.nodes.newline.create(),
+            WaterproofSchema.nodes.code.create(),
+            WaterproofSchema.nodes.newline.create()
+        ])
+    ]);
+
+    const mapping = createMapping(blocks);
+    const step = new ReplaceStep(7, 16, Slice.empty);
+
+    expect(() => mapping.update(step, proseDoc)).not.toThrow();
+});
+
 test("Insert code after existing code block: linecount accounts for all prior tags", () => {
     // Document: "Hello\n```coq\nCode\n```" — three newlines before the insertion point
     const mapping = createMapping([
