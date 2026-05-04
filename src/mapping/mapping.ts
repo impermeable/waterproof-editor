@@ -119,12 +119,16 @@ export class Mapping {
         } else {
             const nodeAtPos = this.tree.findNodeByProsePos(step.from);
 
-            // This last condition has been introduced for the case where we're deleting the first node among children.
+            // The lower bound excludes deletions of the node itself (step.from = pmRange.from
+            // < prosemirrorStart). The upper bound excludes the case where findNodeByProsePos
+            // returns a node whose pmRange.to equals step.from due to its left-bias — in that
+            // situation step.from is past the node's content and belongs to nodeUpdate.
             isText = (step.slice.content.childCount === 0 &&
                 (nodeAtPos?.type === "markdown" ||
                  nodeAtPos?.type === "code" ||
                  nodeAtPos?.type === "math_display") &&
-                step.from >= nodeAtPos.prosemirrorStart);
+                step.from >= nodeAtPos.prosemirrorStart &&
+                step.from <= nodeAtPos.prosemirrorEnd);
         }
 
         let result: ParsedStep;
