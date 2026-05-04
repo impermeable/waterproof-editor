@@ -188,6 +188,8 @@ export interface OffsetDiagnostic {
     severity: Severity;
     startOffset: number;
     endOffset: number;
+    // If true, keep the red squiggle but suppress this entry from the lint panel.
+    hideFromBottomPanel?: boolean;
 }
 
 export enum ThemeStyle {

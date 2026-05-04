@@ -35,7 +35,13 @@ import { Mapping } from "./mapping";
 import { ProgressBar } from "./progressBar";
 
 /** Type that contains a coq diagnostics object fit for use in the ProseMirror editor context. */
-export type DiagnosticObjectProse = {message: string, start: number, end: number, severity: Severity};
+export type DiagnosticObjectProse = {
+	message: string,
+	start: number,
+	end: number,
+	severity: Severity,
+	hideFromBottomPanel?: boolean,
+};
 
 /**
  * WaterproofEditor class. Configured via the WaterproofEditorConfig object.
@@ -632,8 +638,7 @@ export class WaterproofEditor {
 			const end = map.textOffsetToPmIndex(d.endOffset);
 
 			return {
-				message: d.message,
-				severity: d.severity,
+				...d,
 				start,
 				end
 			}
@@ -660,9 +665,9 @@ export class WaterproofEditor {
 		const end = map.textOffsetToPmIndex(toRemove.endOffset);
 
 		const proseDiag: DiagnosticObjectProse = {
-			start, end,
-			message: toRemove.message,
-			severity: toRemove.severity
+			...toRemove,
+			start,
+			end
 		}
 
 		const oldLength = this.currentProseDiagnostics.length;
@@ -705,10 +710,9 @@ export class WaterproofEditor {
 			const end = map.textOffsetToPmIndex(diag.endOffset);
 			if (start >= end) continue;
 			this.currentProseDiagnostics[i] = {
-				message: diag.message,
+				...diag,
 				start,
 				end,
-				severity: diag.severity
 			};
 		}
 		// diagnostics have changed
@@ -750,10 +754,9 @@ export class WaterproofEditor {
 			return (value.start <= high && value.end >= low && value.severity <= truncationLevel);
 		}).map(d => {
 			return {
-				message: d.message,
+				...d,
 				start: Math.max(d.start, low),
 				end: Math.min(d.end, high),
-				severity: d.severity
 			}
 		});
 	}
