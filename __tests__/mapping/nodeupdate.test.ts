@@ -557,12 +557,6 @@ test("Deleting code cell above input area does not throw (Rocq config)", () => {
     // Reproduces bug: deleting a code cell directly above an input area causes
     // TextUpdateError("Step does not happen within cell").
     //
-    // Root cause: deleteSelection branch 2 fires and produces a step that starts at
-    // the newline's position (pos 7). findNodeByProsePos(7) has a left-bias and
-    // returns the markdown node (pmRange {0,7}) instead of the newline (pmRange {7,8}),
-    // so isText=true and the node deletion is misrouted to textUpdate. textUpdate
-    // then throws because markdown.prosemirrorEnd=6 < step.from=7.
-    //
     // Text layout (coq config):
     //   [0,5]   "Hello"              markdown
     //   [5,6]   "\n"                 newline
