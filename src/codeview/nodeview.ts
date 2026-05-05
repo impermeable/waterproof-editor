@@ -402,8 +402,10 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		if (startPos === undefined) return [];
 
 		// We use the outer editor instance to query for diagnostics in the range of this codemirror instance.
+		const inInputArea = this.partOfInputArea();
+
 		const diags = this.editorInstance.getPartialDiagnosticsInRange(startPos, startPos + _view.state.doc.length + 1)
-			.filter(d => !(d.hideFromBottomPanel ?? false))
+			.filter(d => !(inInputArea && (d.hideFromBottomPanel ?? false)))
 			.map(d => {
 				// The codemirror range is from 0 to _view.state.doc.length + 1.
 				// We need to translate the position that we get from the diagnostic object into this range by subtracting the starting
