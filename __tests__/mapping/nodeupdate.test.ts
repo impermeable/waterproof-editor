@@ -297,6 +297,33 @@ function configureNodeMock (deletedString : string) {
     jest.spyOn(nodeMock, 'slice').mockReturnValue({} as Slice)
     jest.spyOn(serializer, 'serializeFragment').mockReturnValue(deletedString)
 }
+test("Wrap input in hint area after deletion", () => {
+    // <input-area>\n```coq\n\n```\n```coq\n\n```\n</input-area>\n```coq\nQed.\n```\n
+    // Generated with ./scripts/file-to-mapping.ts
+    const mapping = createMapping([
+        new InputAreaBlock("\n```coq\n\n```\n```coq\n\n```\n", {from: 0, to: 50}, {from: 12, to: 37}, 0, [
+            new NewlineBlock({from: 12, to: 13}, {from: 12, to: 13}, 0),
+            new CodeBlock("", {from: 13, to: 24}, {from: 20, to: 20}, 2),
+            new NewlineBlock({from: 24, to: 25}, {from: 24, to: 25}, 0),
+            new CodeBlock("", {from: 25, to: 36}, {from: 32, to: 32}, 5),
+            new NewlineBlock({from: 36, to: 37}, {from: 36, to: 37}, 0)
+        ]),
+        new NewlineBlock({from: 50, to: 51}, {from: 50, to: 51}, 0),
+        new CodeBlock("Qed.", {from: 51, to: 66}, {from: 58, to: 62}, 9)
+    ]);
+
+    const slice: Slice = new Slice(Fragment.from([]), 0, 0);
+    const step = new ReplaceStep(5, 8, slice);
+
+    configureNodeMock("```coq\n\n```\n")
+    const nodeUpdate = new NodeUpdate(config, serializer);
+    const {newTree, result} = nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock);
+    sanityCheckTree(newTree.root);
+
+
+
+})
+
 
 test("Delete a code block between markdown blocks", () => {
     // Document: Hello```coq\nLemma.\n```Bye
