@@ -4,6 +4,7 @@ import { WaterproofSchema } from "../../src/schema";
 import { wrapInInput, wrapInHint } from "../../src/commands";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 import { TagConfiguration } from "../../src/api";
+import { configuration } from "../../src/markdown-defaults";
 
 // Lean-like tag configuration: input, hint, and code all require surrounding newlines.
 const leanConfig: TagConfiguration = {
@@ -277,5 +278,31 @@ describe("wrapInHint on markdown after code (no preceding newline)", () => {
         expect(doc.child(2).type.name).toBe("hint");
         expect(doc.child(2).childCount).toBe(1);
         expect(doc.child(2).child(0).type.name).toBe("markdown");
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rocq / coq config regression: code cell inside hint must be on its own line
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("wrapInHint serialization (Rocq/coq config)", () => {
+    const rocqConfig = configuration("coq");
+    const rocqSerializer = new DefaultTagSerializer(rocqConfig);
+
+    test("code cell is NOT placed on the same line as the hint opening tag", () => {
+        // Document with a single code cell — the minimal Rocq document that triggers the bug.
+        const state = makeStateWithSelection([code("example")], 0);
+
+        let newState: EditorState | null = null;
+        wrapInHint(rocqConfig)(state, (tr) => { newState = state.apply(tr); });
+
+        expect(newState).not.toBeNull();
+        const result = rocqSerializer.serializeDocument(newState!.doc);
+
+        // The hint opening tag must be followed by a newline before the code fence.
+        // Buggy output: '<hint title="💡 Hint">```coq\nexample\n```</hint>'
+        // Expected:     '<hint title="💡 Hint">\n```coq\nexample\n```\n</hint>'
+        //               (or similar — the key invariant is no code fence on the same line as the tag)
+        expect(result).not.toMatch(/^<hint[^>]*>```/);
     });
 });
