@@ -42,7 +42,6 @@ export class NodeUpdate {
     
     // Handle a node update step
     public nodeUpdate(step: ReplaceStep | ReplaceAroundStep, mapping: Mapping, serializer: DocumentSerializer, proseDoc: Node) : ParsedStep {
-        console.log("Handling nodeupdate with step", step)
         let parsedStep;
         if (step instanceof ReplaceStep) {
             // The step is a ReplaceStep
