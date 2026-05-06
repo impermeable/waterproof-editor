@@ -806,3 +806,51 @@ test("Lift code cell from multilean container restores lineStart", () => {
     //   ```lean\nLemma.\n```  →  line 1 = "Lemma."  →  lineStart = 1
     expect(newTree.computeLineNumbers()).toStrictEqual([1]);
 });
+
+test("Lift container: code block after container gets lineStart corrected", () => {
+    // Document (Lean format):
+    //   ::::multilean\n```lean\nLemma.\n```\n::::\n```lean\nAfter.\n```
+    //   0              14      22     28  32  37  38      46     52  56
+    // Line 0: ::::multilean  Line 1: ```lean  Line 2: Lemma.
+    // Line 3: ``` (from \n in code close tag)  Line 4: :::: (from \n in container close tag)
+    // Line 5: ```lean (from \n newline block)  Line 6: After. (from \n in code open tag)
+    // Newlines before afterCode open tag (pos 38): at 13,21,28,32,37 = 5 → lineStart = 5+1 = 6
+    const innerCode = new CodeBlock(
+        "Lemma.",
+        { from: 14, to: 32 },  // tagRange inside container
+        { from: 22, to: 28 },  // content range
+        2                       // lineStart inside container
+    );
+    const containerBlock = new ContainerBlock(
+        "```lean\nLemma.\n```",
+        "multilean",
+        { from: 0,  to: 37 },
+        { from: 14, to: 32 },
+        0,
+        [innerCode]
+    );
+    // Newline block between the container and the following code block
+    const newlineBlock = new NewlineBlock({ from: 37, to: 38 }, { from: 37, to: 38 }, 0);
+    // After code: "```lean\n" (8) + "After." (6) + "\n```" (4) = 18 chars starting at 38
+    const afterCode = new CodeBlock(
+        "After.",
+        { from: 38, to: 56 },
+        { from: 46, to: 52 },
+        6                       // lineStart: 5 newlines before + 1 in open tag
+    );
+    const mapping = createLeanMapping([containerBlock, newlineBlock, afterCode]);
+
+    expect(mapping.getMapping().computeLineNumbers()).toStrictEqual([2, 6]);
+
+    // Lift: remove container tags (open = 14 chars / 1 newline, close = 5 chars / 1 newline)
+    const liftStep = new ReplaceAroundStep(0, 10, 1, 9, Slice.empty, 0);
+
+    const nodeUpdate = new NodeUpdate(leanConfig, leanSerializer);
+    const { newTree } = nodeUpdate.nodeUpdate(liftStep, mapping, leanSerializer, nodeMock);
+
+    sanityCheckTree(newTree.root);
+
+    // Inner code: lineStart reduced by countNewlines(openTag)=1 → lineStart=1
+    // After code: lineStart reduced by countNewlines(openTag)+countNewlines(closeTag)=2 → lineStart=4
+    expect(newTree.computeLineNumbers()).toStrictEqual([1, 4]);
+});

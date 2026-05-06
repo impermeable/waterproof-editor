@@ -350,6 +350,8 @@ export class NodeUpdate {
             }
         };
 
+        const removedNewlines = countNewlines(wrappedOpenTag) + countNewlines(wrappedCloseTag);
+
         // First we update all nodes that come totally after the unwrapped node
         tree.traverseDepthFirst((thisNode: TreeNode) => {
             if (thisNode.pmRange.from >= wrapperNode.pmRange.to) {
@@ -358,6 +360,7 @@ export class NodeUpdate {
                 // The prosemirror positions shift by 2 (1 for the opening and 1 for the closing tag)
                 const proseOffset = -2;
                 thisNode.shiftOffsets(textOffset, proseOffset);
+                thisNode.shiftLineStart(-removedNewlines);
             }
         });
 
