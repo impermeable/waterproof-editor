@@ -42,6 +42,7 @@ export class NodeUpdate {
     
     // Handle a node update step
     public nodeUpdate(step: ReplaceStep | ReplaceAroundStep, mapping: Mapping, serializer: DocumentSerializer, proseDoc: Node) : ParsedStep {
+        console.log("Handling nodeupdate with step", step)
         let parsedStep;
         if (step instanceof ReplaceStep) {
             // The step is a ReplaceStep
@@ -296,8 +297,14 @@ export class NodeUpdate {
         
         // Update positions of nodes after the deleted nodes
         tree.traverseDepthFirst((thisNode: TreeNode) => {
-            // only shift nodes that come after the deleted nodes
-            if (thisNode.prosemirrorStart >= step.to) {
+            if (thisNode === tree.root) return;
+
+            if (thisNode.pmRange.from < step.from && thisNode.pmRange.to > step.to) {
+                // This node is an ancestor that strictly contains the deleted range —
+                // only shrink its closing offsets (its opening is unaffected).
+                thisNode.shiftCloseOffsets(-originalRemovedLength, -proseRemovedLength);
+            } else if (thisNode.prosemirrorStart >= step.to) {
+                // This node comes entirely after the deleted range.
                 thisNode.shiftOffsets(-originalRemovedLength, -proseRemovedLength);
                 thisNode.shiftLineStart(-deletedNewlines);
             }
