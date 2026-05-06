@@ -3,7 +3,6 @@ import { Node as PNode, Schema } from "prosemirror-model";
 import { TextSelection } from "prosemirror-state";
 import { Decoration, DecorationSource, EditorView, NodeView } from "prosemirror-view";
 import { MovementDirection, MovementUnit } from "./types";
-import { exitCode } from "prosemirror-commands";
 import { keybindings } from "./embedded-codemirror-keymap";
 
 /**
@@ -242,22 +241,13 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 
     // Setup codemirror keymap
 	embeddedCodeMirrorKeymap(): KeyBinding[] {
-		const view = this._outerView;
 
-		// 'Mod' is a platform independent 'Ctrl'/'Cmd'
 		return [
 			...keybindings,
 			{ key: "ArrowUp", run: this.maybeEscape(MovementUnit.line, MovementDirection.backward) },
 			{ key: "ArrowLeft", run: this.maybeEscape(MovementUnit.character, MovementDirection.backward) },
 			{ key: "ArrowDown", run: this.maybeEscape(MovementUnit.line, MovementDirection.forward) },
 			{ key: "ArrowRight", run: this.maybeEscape(MovementUnit.character, MovementDirection.forward) },
-			{
-				key: "Mod-Enter", run: () => {
-					if (!exitCode(view.state, view.dispatch)) return false
-					view.focus()
-					return true
-				}
-			},
 		]
 	}
 }

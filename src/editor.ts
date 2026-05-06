@@ -141,6 +141,28 @@ export class WaterproofEditor {
 		this._editorConfig.api.editorReady();
 	}
 
+	refreshDocument(content: string, version: number = 1) {
+		if (!this._view) return;
+		if (this._mapping && this._mapping.version == version) return;
+
+		const blocks = this._editorConfig.documentConstructor(content);
+		const proseDoc = constructDocument(blocks);
+
+		this._mapping = new Mapping(blocks, version, this._editorConfig.tagConfiguration, this._serializer);
+		const newState = EditorState.create({
+			doc: proseDoc,
+			plugins: this._view.state.plugins,
+			schema: WaterproofSchema
+		});
+
+		this._view.updateState(newState);
+
+		/** Ask for line numbers */
+		this.updateLineNumbers();
+		this.handleScroll(window.innerHeight);
+
+	}
+
 	private get state(): EditorState | undefined {
 		return this._view?.state;
 	}
