@@ -289,7 +289,7 @@ describe("wrapInHint serialization (Rocq/coq config)", () => {
     const rocqConfig = configuration("coq");
     const rocqSerializer = new DefaultTagSerializer(rocqConfig);
 
-    test("code cell is NOT placed on the same line as the hint opening tag", () => {
+    test("code cell is NOT placed on the same line as the hint opening or closing tag", () => {
         // Document with a single code cell — the minimal Rocq document that triggers the bug.
         const state = makeStateWithSelection([code("example")], 0);
 
@@ -299,10 +299,8 @@ describe("wrapInHint serialization (Rocq/coq config)", () => {
         expect(newState).not.toBeNull();
         const result = rocqSerializer.serializeDocument(newState!.doc);
 
-        // The hint opening tag must be followed by a newline before the code fence.
-        // Buggy output: '<hint title="💡 Hint">```coq\nexample\n```</hint>'
-        // Expected:     '<hint title="💡 Hint">\n```coq\nexample\n```\n</hint>'
-        //               (or similar — the key invariant is no code fence on the same line as the tag)
-        expect(result).not.toMatch(/^<hint[^>]*>```/);
+        // The hint opening tag must be followed by a newline before the code fence
+        // The hint closing tag must be preceded by a newline after the code fence
+        expect(result).toStrictEqual('<hint title="💡 Hint">\n```coq\nexample\n```\n</hint>')
     });
 });

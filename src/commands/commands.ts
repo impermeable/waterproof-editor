@@ -180,7 +180,7 @@ function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration, attrs? : Attrs)
 
             // Symmetrically for the closing tag.
             if (!closingTagStartsWithNewline(nodeType, tagConf) && needsAfter && !consumeAfter) {
-                const wrapperContentEnd = tr.mapping.map(blockRange.end);
+                const wrapperContentEnd = tr.mapping.map(blockRange.end) - 1;
                 tr.insert(wrapperContentEnd, WaterproofSchema.nodes.newline.create());
             }
 
