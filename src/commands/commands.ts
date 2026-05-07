@@ -170,6 +170,20 @@ function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration, attrs? : Attrs)
             const tr = state.tr;
             tr.wrap(blockRange, [{type: nodeType, attrs}]);
 
+            // If the wrapper's opening tag does not end with a newline, the wrapped node needs a
+            // newline before it, and no surrounding newline was consumed into the wrapper, insert a
+            // newline node as the first child of the wrapper so the content starts on its own line.
+            if (!openingTagEndsWithNewline(nodeType, tagConf) && needsBefore && !consumeBefore) {
+                const wrapperContentStart = tr.mapping.map(blockRange.start);
+                tr.insert(wrapperContentStart, WaterproofSchema.nodes.newline.create());
+            }
+
+            // Symmetrically for the closing tag.
+            if (!closingTagStartsWithNewline(nodeType, tagConf) && needsAfter && !consumeAfter) {
+                const wrapperContentEnd = tr.mapping.map(blockRange.end);
+                tr.insert(wrapperContentEnd, WaterproofSchema.nodes.newline.create());
+            }
+
             // We potentially have to insert newlines before or after the newly created input area.
             const nodeBefore = $start.nodeBefore;
             if (nodeBefore !== null && nodeBefore.type !== WaterproofSchema.nodes.newline && (needsNewlineAfter(nodeBefore.type, tagConf) || needsNewlineBefore(nodeType, tagConf))) {
