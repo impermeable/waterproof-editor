@@ -180,6 +180,14 @@ export class Tree {
         return node;
     }
     
+    /**
+     * This function returns the nodes fully contained in a range, descendant from a given node, but NOT transitively.
+     * i.e. if Node A is fully contained in Node B, and B is within the range, then A does not get returned.
+     * @param from Start of the range
+     * @param to End of range
+     * @param node TreeNode to start from
+     * @returns top-level TreeNodes contained in the range.
+     */
     nodesInProseRange(from: number, to: number, node: TreeNode | null = this.root): TreeNode[] {
         const result: TreeNode[] = [];
         if (!node) return result;
