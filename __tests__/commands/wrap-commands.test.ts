@@ -150,6 +150,82 @@ describe("wrapInContainer disallows container ancestors", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Bug: outer before-newline placed inside wrapper (default config)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("wrapInInput with default config — outer newline must be OUTSIDE the wrapper", () => {
+    const defaultConfig = configuration("");
+    const defaultSerializer = new DefaultTagSerializer(defaultConfig);
+
+    test("outer before-newline is placed before the input, not inside it", () => {
+        // Default config: input opening tag "<input-area>" has no trailing newline.
+        // code needs a newline before it (openRequiresNewline: true).
+        // With no preceding newline, wpWrapIn inserts BOTH an inner newline (first child of
+        // the wrapper) AND an outer newline (between the preceding node and the wrapper).
+        // The outer newline must end up OUTSIDE the wrapper.
+        const state = makeStateWithSelection([code("a"), code("b")], 1);
+
+        let newState: EditorState | null = null;
+        wrapInInput(defaultConfig)(state, (tr) => { newState = state.apply(tr); });
+
+        expect(newState).not.toBeNull();
+        const doc = newState!.doc;
+
+        // Expected: [code("a"), newline, input([newline, code("b"), newline])]
+        // Buggy:    [code("a"), input([newline_misplaced, newline, code("b"), newline])]
+        expect(doc.childCount).toBe(3);
+        expect(doc.child(0).type.name).toBe("code");
+        expect(doc.child(1).type.name).toBe("newline");
+        expect(doc.child(2).type.name).toBe("input");
+
+        const inputNode = doc.child(2);
+        expect(inputNode.childCount).toBe(3);
+        expect(inputNode.child(0).type.name).toBe("newline");
+        expect(inputNode.child(1).type.name).toBe("code");
+        expect(inputNode.child(2).type.name).toBe("newline");
+    });
+
+    test("serialized output is well-formed with no misplaced newline inside the tag", () => {
+        const state = makeStateWithSelection([code("a"), code("b")], 1);
+
+        let newState: EditorState | null = null;
+        wrapInInput(defaultConfig)(state, (tr) => { newState = state.apply(tr); });
+
+        const result = defaultSerializer.serializeDocument(newState!.doc);
+        // Expected: ```\na\n```\n<input-area>\n```\nb\n```\n</input-area>
+        expect(result).toStrictEqual("```\na\n```\n<input-area>\n```\nb\n```\n</input-area>");
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bug: wrapInHint / wrapInInput must also block container as selected node
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("wrapInHint / wrapInInput disallow container as selected node", () => {
+    test("wrapInHint returns false when a container node is selected", () => {
+        // container is not in hintinputcontent; wrapping it in a hint is schema-invalid
+        const state = makeStateWithSelectionAt([container([code()])], 0);
+        expect(wrapInHint(leanConfig)(state, undefined)).toBe(false);
+    });
+
+    test("wrapInInput returns false when a container node is selected", () => {
+        const state = makeStateWithSelectionAt([container([code()])], 0);
+        expect(wrapInInput(leanConfig)(state, undefined)).toBe(false);
+    });
+
+    test("wrapInHint returns true when code inside a container is selected", () => {
+        // hint IS in containercontent, so wrapping code (inside a container) in a hint is valid
+        const state = makeStateWithSelectionAt([container([code()])], 1);
+        expect(wrapInHint(leanConfig)(state, undefined)).toBe(true);
+    });
+
+    test("wrapInInput returns true when code inside a container is selected", () => {
+        const state = makeStateWithSelectionAt([container([code()])], 1);
+        expect(wrapInInput(leanConfig)(state, undefined)).toBe(true);
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Document structure after wrapping
 // ─────────────────────────────────────────────────────────────────────────────
 

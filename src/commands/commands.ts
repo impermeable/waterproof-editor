@@ -115,20 +115,24 @@ export function deleteSelection(tagConf: TagConfiguration): Command {
 }
 
 /**
- * Returns true if the selected node, any of its ancestors, or any of its descendants
- * is of one of the given node types. Used to determine whether a wrap operation would
- * create a forbidden nesting structure.
+ * Returns true if the selected node or any of its descendants is one of `descendantTypes`, or if
+ * any ancestor is one of `ancestorTypes`. Separating the two lists allows a type to be
+ * forbidden as the wrap target / descendant without also blocking it as a parent context.
  */
-function hasDisallowedParentOrChild(sel: NodeSelection, types: NodeType[]): boolean {
-    if (types.includes(sel.node.type)) return true;
+function hasDisallowedParentOrChild(
+    sel: NodeSelection,
+    descentdantTypes: NodeType[],
+    ancestorTypes: NodeType[]
+): boolean {
+    if (descentdantTypes.includes(sel.node.type)) return true;
 
     for (let d = sel.$from.depth; d >= 1; d--) {
-        if (types.includes(sel.$from.node(d).type)) return true;
+        if (ancestorTypes.includes(sel.$from.node(d).type)) return true;
     }
 
     let found = false;
     sel.node.descendants((child) => {
-        if (types.includes(child.type)) {
+        if (descentdantTypes.includes(child.type)) {
             found = true;
             return false;
         }
@@ -140,22 +144,37 @@ function hasDisallowedParentOrChild(sel: NodeSelection, types: NodeType[]): bool
  * Returns true when it is safe to wrap the current selection.
  * Requires a NodeSelection and checks that neither the selected node, its ancestors,
  * nor its descendants are of any of the given disallowed types.
+ * Pass a separate `disallowedAncestorTypes` to use a narrower list for the ancestor check.
  */
-function preWrapCheck(state: EditorState, disallowedTypes: NodeType[]): boolean {
+function preWrapCheck(
+    state: EditorState,
+    disallowedTypes: NodeType[],
+    disallowedAncestorTypes: NodeType[] = disallowedTypes
+): boolean {
     if (!(state.selection instanceof NodeSelection)) return false;
-    return !hasDisallowedParentOrChild(state.selection, disallowedTypes);
+    return !hasDisallowedParentOrChild(state.selection, disallowedTypes, disallowedAncestorTypes);
 }
 
 export function wrapInHint(tagConf: TagConfiguration): Command {
     return (state, dispatch) => {
-        if (!preWrapCheck(state, [WaterproofSchema.nodes.hint, WaterproofSchema.nodes.input])) return false;
+        // container is disallowed as the wrap target (not in hintinputcontent) but is fine as an
+        // ancestor — a hint can live inside a container.
+        if (!preWrapCheck(
+            state,
+            [WaterproofSchema.nodes.hint, WaterproofSchema.nodes.input, WaterproofSchema.nodes.container],
+            [WaterproofSchema.nodes.hint, WaterproofSchema.nodes.input]
+        )) return false;
         return wpWrapIn(WaterproofSchema.nodes.hint, tagConf)(state, dispatch);
     };
 }
 
 export function wrapInInput(tagConf: TagConfiguration): Command {
     return (state, dispatch) => {
-        if (!preWrapCheck(state, [WaterproofSchema.nodes.hint, WaterproofSchema.nodes.input])) return false;
+        if (!preWrapCheck(
+            state,
+            [WaterproofSchema.nodes.hint, WaterproofSchema.nodes.input, WaterproofSchema.nodes.container],
+            [WaterproofSchema.nodes.hint, WaterproofSchema.nodes.input]
+        )) return false;
         return wpWrapIn(WaterproofSchema.nodes.input, tagConf)(state, dispatch);
     };
 }
@@ -170,6 +189,7 @@ export function wrapInContainer(tagConf: TagConfiguration, name: string): Comman
 function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration, attrs? : Attrs): Command {
     return (state, dispatch) => {
         const sel = state.selection;
+        // Double check, but needed for typechecking
         if (!(sel instanceof NodeSelection)) return false;
         
         const before = sel.$from.nodeBefore;
@@ -203,12 +223,15 @@ function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration, attrs? : Attrs)
             const tr = state.tr;
             tr.wrap(blockRange, [{type: nodeType, attrs}]);
 
+            // Capture the wrapper boundary positions right after the wrap, before any inserts,
+            // so later insertions inside the wrapper don't shift the outer-before position.
+            const wrapperStart = tr.mapping.map(blockRange.start);
+
             // If the wrapper's opening tag does not end with a newline, the wrapped node needs a
             // newline before it, and no surrounding newline was consumed into the wrapper, insert a
             // newline node as the first child of the wrapper so the content starts on its own line.
             if (!openingTagEndsWithNewline(nodeType, tagConf) && needsBefore && !consumeBefore) {
-                const wrapperContentStart = tr.mapping.map(blockRange.start);
-                tr.insert(wrapperContentStart, WaterproofSchema.nodes.newline.create());
+                tr.insert(wrapperStart, WaterproofSchema.nodes.newline.create());
             }
 
             // Symmetrically for the closing tag.
@@ -221,7 +244,7 @@ function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration, attrs? : Attrs)
             const nodeBefore = $start.nodeBefore;
             if (nodeBefore !== null && nodeBefore.type !== WaterproofSchema.nodes.newline && (needsNewlineAfter(nodeBefore.type, tagConf) || needsNewlineBefore(nodeType, tagConf))) {
                 // Inserting newline before the input area
-                tr.insert(tr.mapping.map(blockRange.start) - 1, WaterproofSchema.nodes.newline.create());
+                tr.insert(wrapperStart - 1, WaterproofSchema.nodes.newline.create());
             }
             
             const nodeAfter = $end.nodeAfter;
