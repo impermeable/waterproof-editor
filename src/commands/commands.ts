@@ -114,24 +114,57 @@ export function deleteSelection(tagConf: TagConfiguration): Command {
     }
 }
 
+/**
+ * Returns true if the selected node, any of its ancestors, or any of its descendants
+ * is of one of the given node types. Used to determine whether a wrap operation would
+ * create a forbidden nesting structure.
+ */
+function hasDisallowedParentOrChild(sel: NodeSelection, types: NodeType[]): boolean {
+    if (types.includes(sel.node.type)) return true;
+
+    for (let d = sel.$from.depth; d >= 1; d--) {
+        if (types.includes(sel.$from.node(d).type)) return true;
+    }
+
+    let found = false;
+    sel.node.descendants((child) => {
+        if (types.includes(child.type)) {
+            found = true;
+            return false;
+        }
+    });
+    return found;
+}
+
+/**
+ * Returns true when it is safe to wrap the current selection.
+ * Requires a NodeSelection and checks that neither the selected node, its ancestors,
+ * nor its descendants are of any of the given disallowed types.
+ */
+function preWrapCheck(state: EditorState, disallowedTypes: NodeType[]): boolean {
+    if (!(state.selection instanceof NodeSelection)) return false;
+    return !hasDisallowedParentOrChild(state.selection, disallowedTypes);
+}
+
 export function wrapInHint(tagConf: TagConfiguration): Command {
-    return wpWrapIn(WaterproofSchema.nodes.hint, tagConf);
+    return (state, dispatch) => {
+        if (!preWrapCheck(state, [WaterproofSchema.nodes.hint, WaterproofSchema.nodes.input])) return false;
+        return wpWrapIn(WaterproofSchema.nodes.hint, tagConf)(state, dispatch);
+    };
 }
 
 export function wrapInInput(tagConf: TagConfiguration): Command {
-    return wpWrapIn(WaterproofSchema.nodes.input, tagConf);
+    return (state, dispatch) => {
+        if (!preWrapCheck(state, [WaterproofSchema.nodes.hint, WaterproofSchema.nodes.input])) return false;
+        return wpWrapIn(WaterproofSchema.nodes.input, tagConf)(state, dispatch);
+    };
 }
 
 export function wrapInContainer(tagConf: TagConfiguration, name: string): Command {
     return (state, dispatch) => {
-        const sel = state.selection;
-        if (!(sel instanceof NodeSelection)) return false;
-        // Nesting containers is not allowed for now, because we want to disallow it for multilean
-        // TODO: Possibly make this configurable if future usecases for containers do want nesting
-        if (sel.node.type === WaterproofSchema.nodes.container) return false; 
-
-        return wpWrapIn(WaterproofSchema.nodes.container, tagConf, {name})(state, dispatch)
-    }
+        if (!preWrapCheck(state, [WaterproofSchema.nodes.container])) return false;
+        return wpWrapIn(WaterproofSchema.nodes.container, tagConf, {name})(state, dispatch);
+    };
 }
 
 function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration, attrs? : Attrs): Command {

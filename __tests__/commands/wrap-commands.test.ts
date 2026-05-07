@@ -1,10 +1,11 @@
 import { EditorState, NodeSelection } from "prosemirror-state";
 import { Fragment } from "prosemirror-model";
 import { WaterproofSchema } from "../../src/schema";
-import { wrapInInput, wrapInHint } from "../../src/commands";
+import { wrapInInput, wrapInHint, wrapInContainer } from "../../src/commands";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 import { TagConfiguration } from "../../src/api";
 import { configuration } from "../../src/markdown-defaults";
+import { Node } from "prosemirror-model";
 
 // Lean-like tag configuration: input, hint, and code all require surrounding newlines.
 const leanConfig: TagConfiguration = {
@@ -18,7 +19,7 @@ const leanConfig: TagConfiguration = {
 const leanSerializer = new DefaultTagSerializer(leanConfig);
 
 /** Build a doc from an array of nodes and select the node at the given index. */
-function makeStateWithSelection(nodes: import("prosemirror-model").Node[], selectedIndex: number): EditorState {
+function makeStateWithSelection(nodes: Node[], selectedIndex: number): EditorState {
     const doc = WaterproofSchema.nodes.doc.create({}, Fragment.from(nodes));
     const pos = nodes.slice(0, selectedIndex).reduce((acc, n) => acc + n.nodeSize, 0);
     const state = EditorState.create({ doc });
@@ -26,13 +27,23 @@ function makeStateWithSelection(nodes: import("prosemirror-model").Node[], selec
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-const nl       = () => WaterproofSchema.nodes.newline.create();
-const code     = (text = "") => text
+const nl        = () => WaterproofSchema.nodes.newline.create();
+const code      = (text = "") => text
     ? WaterproofSchema.nodes.code.create({}, WaterproofSchema.text(text))
     : WaterproofSchema.nodes.code.create();
-const markdown = (text = "") => text
+const markdown  = (text = "") => text
     ? WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text(text))
     : WaterproofSchema.nodes.markdown.create();
+const input     = (children: Node[]) => WaterproofSchema.nodes.input.create({}, children);
+const hint      = (children: Node[]) => WaterproofSchema.nodes.hint.create({ title: "💡 Hint" }, children);
+const container = (children: Node[], name = "test") => WaterproofSchema.nodes.container.create({ name }, children);
+
+/** Build a doc from top-level nodes and select the node at the given absolute position. */
+function makeStateWithSelectionAt(nodes: Node[], pos: number): EditorState {
+    const doc = WaterproofSchema.nodes.doc.create({}, Fragment.from(nodes));
+    const state = EditorState.create({ doc });
+    return state.apply(state.tr.setSelection(NodeSelection.create(state.doc, pos)));
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dry-run correctness (no dispatch)
@@ -58,6 +69,12 @@ describe("wrapInInput dry-run with Lean config", () => {
         const state = makeStateWithSelection([markdown()], 0);
         expect(wrapInInput(leanConfig)(state, undefined)).toBe(true);
     });
+
+    test("returns false for wrapping a code cell inside a hint", () => {
+        // pos 1 selects the code node that sits inside the hint
+        const state = makeStateWithSelectionAt([hint([code()])], 1);
+        expect(wrapInInput(leanConfig)(state, undefined)).toBe(false);
+    })
 });
 
 describe("wrapInHint dry-run with Lean config", () => {
@@ -69,6 +86,66 @@ describe("wrapInHint dry-run with Lean config", () => {
     test("returns true when both surrounding newlines are present", () => {
         const state = makeStateWithSelection([nl(), code(), nl()], 1);
         expect(wrapInHint(leanConfig)(state, undefined)).toBe(true);
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// preWrapCheck: disallowed nesting (dry-run)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("wrapInHint / wrapInInput disallow hint or input ancestors", () => {
+    test("wrapInInput returns false when code is inside a hint", () => {
+        const state = makeStateWithSelectionAt([hint([code()])], 1);
+        expect(wrapInInput(leanConfig)(state, undefined)).toBe(false);
+    });
+
+    test("wrapInHint returns false when code is inside an input", () => {
+        const state = makeStateWithSelectionAt([input([code()])], 1);
+        expect(wrapInHint(leanConfig)(state, undefined)).toBe(false);
+    });
+
+    test("wrapInInput returns false when code is inside an input", () => {
+        const state = makeStateWithSelectionAt([input([code()])], 1);
+        expect(wrapInInput(leanConfig)(state, undefined)).toBe(false);
+    });
+
+    test("wrapInHint returns false when code is inside a hint", () => {
+        const state = makeStateWithSelectionAt([hint([code()])], 1);
+        expect(wrapInHint(leanConfig)(state, undefined)).toBe(false);
+    });
+
+    test("wrapInInput returns false when selected node is a hint (disallowed child)", () => {
+        // Wrapping the hint itself is blocked because the selected node type is disallowed.
+        const state = makeStateWithSelectionAt([hint([code()])], 0);
+        expect(wrapInInput(leanConfig)(state, undefined)).toBe(false);
+    });
+
+    test("wrapInHint returns false when selected node is an input (disallowed child)", () => {
+        const state = makeStateWithSelectionAt([input([code()])], 0);
+        expect(wrapInHint(leanConfig)(state, undefined)).toBe(false);
+    });
+});
+
+describe("wrapInContainer disallows container ancestors", () => {
+    test("returns false when code is inside a container", () => {
+        const state = makeStateWithSelectionAt([container([code()])], 1);
+        expect(wrapInContainer(leanConfig, "test")(state, undefined)).toBe(false);
+    });
+
+    test("returns false when the selected node is a container", () => {
+        const state = makeStateWithSelectionAt([container([code()])], 0);
+        expect(wrapInContainer(leanConfig, "test")(state, undefined)).toBe(false);
+    });
+
+    test("returns true when a top-level code node is selected", () => {
+        const state = makeStateWithSelectionAt([code()], 0);
+        expect(wrapInContainer(leanConfig, "test")(state, undefined)).toBe(true);
+    });
+
+    test("returns true when wrapping a hint inside a container", () => {
+        // hint is not a container, so nesting it in a container is allowed
+        const state = makeStateWithSelectionAt([hint([code()])], 0);
+        expect(wrapInContainer(leanConfig, "test")(state, undefined)).toBe(true);
     });
 });
 
