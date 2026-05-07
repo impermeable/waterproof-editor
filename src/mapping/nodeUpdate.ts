@@ -368,13 +368,15 @@ export class NodeUpdate {
 
         // Now we need to update the nodes that were children of the wrapper node
         nodesInRange.forEach(n => {
-            // We update their positions
-            n.shiftOffsets(-wrappedOpenTag.length, -1);
-            // The open tag may contain newlines (e.g. "::::multilean\n") that were
-            // counted towards the children's lineStart when wrapping happened.
-            // Lifting removes those newlines, so subtract them here.
-            n.shiftLineStart(-countNewlines(wrappedOpenTag));
-            // and add them to the parent of the wrapper node
+            // Shift the entire subtree: the open tag offset applies to this node and
+            // all its descendants (e.g. when lifting a container that itself contains a hint).
+            n.traverseDepthFirst(subNode => {
+                subNode.shiftOffsets(-wrappedOpenTag.length, -1);
+                // The open tag may contain newlines that were counted towards lineStart
+                // when wrapping happened; subtract them now.
+                subNode.shiftLineStart(-countNewlines(wrappedOpenTag));
+            });
+            // add to the parent of the wrapper node
             wrapperParent.addChild(n);
         });
         
@@ -494,8 +496,10 @@ export class NodeUpdate {
         
         nodesInRange.forEach(n => {
             newNode.addChild(n);
-            n.shiftOffsets(openTag.length, 1);
-            n.shiftLineStart(openTagLines);
+            n.traverseDepthFirst(subNode => {
+                subNode.shiftOffsets(openTag.length, 1);
+                subNode.shiftLineStart(openTagLines);
+            });
         });
 
         tree.root.shiftCloseOffsets(openTag.length + closeTag.length, 2);

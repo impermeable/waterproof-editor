@@ -239,8 +239,9 @@ test("insertBelow with a non-cursor TextSelection computes pos from sel.from, no
     const cmd = getCmdInsertCode(InsertionPlace.Below, tagConf);
 
     // Must not throw (with the bug it would throw a RangeError)
-    expect(() => cmd(view.state, view.dispatch, view)).not.toThrow();
-    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+    let result: boolean = false;
+    expect(() => { result = cmd(view.state, view.dispatch, view); }).not.toThrow();
+    expect(result).toBe(true);
 
     // The new code node must appear after the existing code block, not in the middle of it.
     const resultDoc = view.state.doc.toJSON();

@@ -102,7 +102,7 @@ export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeT
         // To and from point directly to beginning and end of node.
         pos = sel.to;
     } else if (sel instanceof TextSelection) {
-        pos = sel.to + (sel.$from.parent.nodeSize - sel.$from.parentOffset) - 1;
+        pos = sel.from + (sel.$from.parent.nodeSize - sel.$from.parentOffset) - 1;
     } else {
         return;
     }

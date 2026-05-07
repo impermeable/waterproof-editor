@@ -192,8 +192,9 @@ export class Tree {
         const result: TreeNode[] = [];
         if (!node) return result;
         if (node.pmRange.to < from || node.pmRange.from > to) return result;
-        if (node.pmRange.from >= from && node.pmRange.to <= to) {
+        if (node !== this.root && node.pmRange.from >= from && node.pmRange.to <= to) {
             result.push(node);
+            return result; // children travel with this node; don't add them separately
         }
         result.push(...node.children.flatMap(child => this.nodesInProseRange(from, to, child)));
         return result;
