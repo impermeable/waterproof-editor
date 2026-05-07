@@ -218,3 +218,34 @@ test("Insert code below twice (selection moves down)", () => {
         "selection":{"type":"text","anchor":28,"head":28}};
     expect(view.state.toJSON()).toStrictEqual(newState2);
 });
+
+test("insertBelow with a non-cursor TextSelection computes pos from sel.from, not sel.to (new bug #3)", () => {
+    // code("Goal True.") — nodeSize = 12.  Select positions 2–5 (3 chars, "oal").
+    // sel.from=2, sel.to=5, sel.$from.parentOffset = 2−1 = 1.
+    //
+    // Fix:   pos = sel.from + (nodeSize − parentOffset) − 1 = 2 + 11 − 1 = 12  (valid)
+    // Bug:   pos = sel.to  + (nodeSize − parentOffset) − 1 = 5 + 11 − 1 = 15  (past end of doc)
+    //
+    // With the bug, tr.insert(15, …) throws a RangeError because doc.content.size = 12.
+    const stateJSON = {
+        "doc": { "type": "doc", "content": [
+            { "type": "code", "content": [{ "type": "text", "text": "Goal True." }] }
+        ]},
+        // Non-cursor selection: anchor=2, head=5 selects "oal"
+        "selection": { "type": "text", "anchor": 2, "head": 5 }
+    };
+
+    const view = new EditorView(null, { state: EditorState.fromJSON({ schema: WaterproofSchema }, stateJSON) });
+    const cmd = getCmdInsertCode(InsertionPlace.Below, tagConf);
+
+    // Must not throw (with the bug it would throw a RangeError)
+    expect(() => cmd(view.state, view.dispatch, view)).not.toThrow();
+    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+    // The new code node must appear after the existing code block, not in the middle of it.
+    const resultDoc = view.state.doc.toJSON();
+    expect(resultDoc.content.length).toBe(3); // code | newline | code
+    expect(resultDoc.content[0].type).toBe("code");
+    expect(resultDoc.content[1].type).toBe("newline");
+    expect(resultDoc.content[2].type).toBe("code");
+});

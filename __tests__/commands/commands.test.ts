@@ -291,3 +291,49 @@ test("wrapInHint wraps a code node in a hint", () => {
     expect(resultDoc.content.length).toBe(5);
     expect(resultDoc.content[2].type).toBe("hint");
 });
+
+// ===================== deleteSelection — new bug #2 regression =====================
+
+test("deleteSelection: deleting markdown between newlines removes the before-newline when afteer=code needs one (new bug #2)", () => {
+    // Doc: markdown("A") | newline | markdown("B") | newline | code("C")
+    //
+    // NodeSelection is on markdown("B"). Neighbours:
+    //   before  = newline,      befoore = markdown("A")  (needsNewlineAfter = false)
+    //   after   = newline,      afteer  = code("C")      (needsNewlineBefore = true)
+    //
+    // Correct branch (condition 2 with the fix): afterIsNewline && afteer !== null &&
+    //   needsNewlineBefore(afteer.type=code) = true
+    //   → delete from sel.from−beforeSize to sel.to (removes the before-newline + selected markdown)
+    //   → result: markdown("A") | newline | code("C")   (3 nodes)
+    //
+    // With the bug the condition checks needsNewlineBefore(sel.node.type=markdown) = false,
+    // so no branch fires and only markdown("B") is deleted:
+    //   → result: markdown("A") | newline | newline | code("C")  (4 nodes, double newline)
+    const docJSON = {
+        "doc": { "type": "doc", "content": [
+            { "type": "markdown", "content": [{ "type": "text", "text": "A" }] },
+            { "type": "newline" },
+            { "type": "markdown", "content": [{ "type": "text", "text": "B" }] },
+            { "type": "newline" },
+            { "type": "code", "content": [{ "type": "text", "text": "C" }] }
+        ]},
+        "selection": { "type": "text", "anchor": 2, "head": 2 }
+    };
+
+    const view = viewFromJSON(docJSON);
+    // markdown("A") has nodeSize 3 (pmRange {0,3}), newline has nodeSize 1 (pmRange {3,4}).
+    // markdown("B") starts at pmRange.from = 4.
+    setNodeSelection(view, 4);
+
+    const cmd = deleteSelection(tagConf);
+    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+    const resultDoc = view.state.doc.toJSON();
+    // With the fix: before-newline and markdown("B") are deleted; after-newline is kept for code("C").
+    expect(resultDoc.content.length).toBe(3);
+    expect(resultDoc.content[0].type).toBe("markdown");
+    expect(resultDoc.content[0].content[0].text).toBe("A");
+    expect(resultDoc.content[1].type).toBe("newline");
+    expect(resultDoc.content[2].type).toBe("code");
+    expect(resultDoc.content[2].content[0].text).toBe("C");
+});

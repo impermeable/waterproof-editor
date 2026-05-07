@@ -179,7 +179,7 @@ export class Tree {
         // If no child contains pos, return current node
         return node;
     }
-
+    
     nodesInProseRange(from: number, to: number, node: TreeNode | null = this.root): TreeNode[] {
         const result: TreeNode[] = [];
         if (!node) return result;

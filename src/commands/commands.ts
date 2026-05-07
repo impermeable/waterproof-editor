@@ -90,7 +90,7 @@ export function deleteSelection(tagConf: TagConfiguration): Command {
                 // We need to keep one of the newlines, so we delete the node and the after newline
                 if (dispatch) dispatch(state.tr.delete(state.selection.from, state.selection.to + afterSize).scrollIntoView());
                 return true;
-            } else if (afterIsNewline && afteer !== null && needsNewlineBefore(sel.node.type, tagConf)) {
+            } else if (afterIsNewline && afteer !== null && needsNewlineBefore(afteer.type, tagConf)) {
                 // After is newline and afteer needs newline before
                 // We need to keep the after newline, so we delete the node and the before newline
                 if (dispatch) dispatch(state.tr.delete(state.selection.from - beforeSize, state.selection.to).scrollIntoView());

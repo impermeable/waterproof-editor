@@ -851,3 +851,96 @@ test("Lift container: code block after container gets lineStart corrected", () =
     // After code: lineStart reduced by countNewlines(openTag)+countNewlines(closeTag)=2 → lineStart=4
     expect(newTree.computeLineNumbers()).toStrictEqual([1, 4]);
 });
+
+test("Wrapping a hint (with tree-children) in a container does not corrupt the mapping tree (nodesInProseRange bug #4)", () => {
+    // Document (Lean format): :::hint "💡 Hint"\nHi\n:::
+    //
+    // The hint TreeNode has a markdown child in the mapping tree.
+    // When we wrap the hint in a container, replaceAroundReplace calls
+    //   nodesInProseRange(hint.pmRange.from, hint.pmRange.to)
+    // which — with the bug — returns [hint, markdown] because the markdown's
+    // pmRange is also fully inside the queried range.
+    //
+    // replaceAroundReplace then iterates nodesInRange and:
+    //   1. adds BOTH hint and markdown as direct children of the new container node
+    //   2. shifts BOTH by the container's openTag length
+    //
+    // The markdown (the same object that is hint's child) ends up:
+    //   - double-shifted in text space
+    //   - listed as a direct child of the container in addition to being hint's child
+    //
+    // This breaks sanityCheckTree's contiguous-tagRange invariant because
+    // the container's children are [hint (tagRange.to=33), markdown (tagRange.from=27)]
+    // and 27 ≠ 33.
+    //
+    // After the fix, nodesInProseRange returns only the top-level node [hint],
+    // so the tree is:  root → container → hint → markdown   (correct).
+
+    // leanConfig tags:
+    //   hint open:      :::hint "💡 Hint"\n   = 18 chars (💡 = 2 code units in JS)
+    //   hint close:     \n:::                 =  4 chars
+    //   container open: ::::test\n            =  9 chars
+    //   container close:\n::::                =  5 chars
+    //   markdown:       no tags
+    const hintTitle = "💡 Hint";
+    const hintOpenTag  = leanConfig.hint.openTag(hintTitle);   // 18 chars
+    const hintCloseTag = leanConfig.hint.closeTag;             //  4 chars
+    // "Hi" = 2 chars; total text = 18 + 2 + 4 = 24 chars
+    const hintBlock = new HintBlock(
+        "Hi", hintTitle,
+        { from: 0, to: hintOpenTag.length + 2 + hintCloseTag.length },   // tagRange  {0, 24}
+        { from: hintOpenTag.length, to: hintOpenTag.length + 2 },         // innerRange {18, 20}
+        0,
+        [new MarkdownBlock("Hi",
+            { from: hintOpenTag.length, to: hintOpenTag.length + 2 },
+            { from: hintOpenTag.length, to: hintOpenTag.length + 2 },
+            0)]
+    );
+
+    const mapping = createLeanMapping([hintBlock]);
+
+    // Verify the tree was built with hint → markdown as expected
+    const treeBeforeWrap = mapping.getMapping();
+    const hintNodeBefore = treeBeforeWrap.root.children.find(n => n.type === "hint");
+    expect(hintNodeBefore).toBeDefined();
+    expect(hintNodeBefore!.children.length).toBe(1);
+    expect(hintNodeBefore!.children[0].type).toBe("markdown");
+
+    // PM layout before wrap:
+    //   hint:     nodeSize = 1+4+1 = 6  →  pmRange {0, 6}
+    //   markdown: nodeSize = 1+2+1 = 4  →  pmRange {1, 5}  (child of hint)
+    //
+    // ProseMirror's tr.wrap(hint_blockRange, [{type: container, attrs:{name:"test"}}])
+    // produces ReplaceAroundStep(from=0, to=6, gapFrom=0, gapTo=6, slice=container, insert=1).
+    const containerSlice = new Slice(
+        Fragment.from([WaterproofSchema.nodes.container.create({ name: "test" })]),
+        0, 0
+    );
+    const wrapStep = new ReplaceAroundStep(0, 6, 0, 6, containerSlice, 1);
+
+    const nodeUpdate = new NodeUpdate(leanConfig, leanSerializer);
+    const { newTree } = nodeUpdate.nodeUpdate(wrapStep, mapping, leanSerializer, nodeMock);
+
+    // sanityCheckTree catches the structural corruption introduced by the bug:
+    // with the bug the container's child list is [hint (to=33), markdown (from=27)]
+    // and the contiguous-tagRange invariant (nextChild.from === child.to) fails.
+    sanityCheckTree(newTree.root);
+
+    // Structural assertions: root → container(1 child) → hint(1 child) → markdown
+    expect(newTree.root.children.length).toBe(1);
+    const container = newTree.root.children[0];
+    expect(container.type).toBe("container");
+
+    // With the bug the container ends up with 2 children (hint + spurious markdown).
+    expect(container.children.length).toBe(1);
+    const hint = container.children[0];
+    expect(hint.type).toBe("hint");
+
+    expect(hint.children.length).toBe(1);
+    expect(hint.children[0].type).toBe("markdown");
+
+    // Text-offset sanity: the markdown content sits at
+    //   container_open (9) + hint_open (18) = 27 chars into the file.
+    const containerOpenLen = leanConfig.container.openTag("test").length;  // 9
+    expect(hint.children[0].contentRange.from).toBe(containerOpenLen + hintOpenTag.length);
+});
