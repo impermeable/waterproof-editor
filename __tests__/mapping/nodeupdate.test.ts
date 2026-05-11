@@ -852,29 +852,9 @@ test("Lift container: code block after container gets lineStart corrected", () =
     expect(newTree.computeLineNumbers()).toStrictEqual([1, 4]);
 });
 
-test("Wrapping a hint (with tree-children) in a container does not corrupt the mapping tree (nodesInProseRange bug #4)", () => {
+test("Wrapping a hint (with tree-children) in a container does not corrupt the mapping tree", () => {
+    // Regression test for a bug where transitive children from a container were not updated in the mapping
     // Document (Lean format): :::hint "💡 Hint"\nHi\n:::
-    //
-    // The hint TreeNode has a markdown child in the mapping tree.
-    // When we wrap the hint in a container, replaceAroundReplace calls
-    //   nodesInProseRange(hint.pmRange.from, hint.pmRange.to)
-    // which — with the bug — returns [hint, markdown] because the markdown's
-    // pmRange is also fully inside the queried range.
-    //
-    // replaceAroundReplace then iterates nodesInRange and:
-    //   1. adds BOTH hint and markdown as direct children of the new container node
-    //   2. shifts BOTH by the container's openTag length
-    //
-    // The markdown (the same object that is hint's child) ends up:
-    //   - double-shifted in text space
-    //   - listed as a direct child of the container in addition to being hint's child
-    //
-    // This breaks sanityCheckTree's contiguous-tagRange invariant because
-    // the container's children are [hint (tagRange.to=33), markdown (tagRange.from=27)]
-    // and 27 ≠ 33.
-    //
-    // After the fix, nodesInProseRange returns only the top-level node [hint],
-    // so the tree is:  root → container → hint → markdown   (correct).
 
     // leanConfig tags:
     //   hint open:      :::hint "💡 Hint"\n   = 18 chars (💡 = 2 code units in JS)
