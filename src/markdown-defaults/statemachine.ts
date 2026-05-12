@@ -118,7 +118,6 @@ export function parse(document: string, config: {language?: string, startParsing
 
 
     function lookAhead(str: string): boolean {
-        // return document[i] === str[0] && document.slice(i, i + str.length) === str;
         return document.slice(i, i + str.length) === str;
     }
 
@@ -132,7 +131,6 @@ export function parse(document: string, config: {language?: string, startParsing
             return true;
         }
         return false;
-        // return lookAhead(codeBlockOpen) || lookAhead('\n' + codeBlockOpen);
     }
 
     function opensHintBlock(): boolean {
@@ -157,7 +155,6 @@ export function parse(document: string, config: {language?: string, startParsing
             return true;
         }
         return false;
-        // return lookAhead(codeBlockClose) || lookAhead(codeBlockClose + '\n');
     }
 
     function closesHintBlock(): boolean {
@@ -185,7 +182,6 @@ export function parse(document: string, config: {language?: string, startParsing
     function closeMarkdown() {
         // If there is content in the buffer range then we create a markdown block
         if (i > getRangeStart()) {
-            // const range = { from: getRangeStart(), to: i };
             const from = getRangeStart();
             const to = i;
             const markdownBlock = new MarkdownBlock(
@@ -198,7 +194,6 @@ export function parse(document: string, config: {language?: string, startParsing
     function checkNewlineAndIncrementI(): void {
         if (document[i] === "\n") newlineCounter++;
         i++;
-        return;
     }
 
     while (i < stopParsingAt) {

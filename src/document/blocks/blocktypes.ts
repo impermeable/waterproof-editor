@@ -145,7 +145,7 @@ export class CodeBlock implements Block {
 
     // Debug print function.
     debugPrint(level: number): void {
-        console.log(`${indentation(level)}CodeBlock {${debugInfo(this)}}: {${this.stringContent.replaceAll("\n", "\\n")}}`);
+        console.log(`${indentation(level)}CodeBlock {${debugInfo(this)}}: {${this.stringContent.replaceAll("\n", String.raw`\n`)}}`);
     }
 }
 

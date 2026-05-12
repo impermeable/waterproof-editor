@@ -10,8 +10,8 @@ import { ReplaceAroundStep, ReplaceStep } from "prosemirror-transform";
 
 function countNewlines(s: string): number {
     let count = 0;
-    for (let i = 0; i < s.length; i++) {
-        if (s[i] === '\n') count++;
+    for (const char of s) {
+        if (char === '\n') count++;
     }
     return count;
 }

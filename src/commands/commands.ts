@@ -68,7 +68,6 @@ export function deleteSelection(tagConf: TagConfiguration): Command {
             if (dispatch) dispatch(state.tr.deleteSelection().scrollIntoView());
             return true;
         } else if (sel instanceof NodeSelection) {
-            // const {parent, index} = getParentAndIndex(state.selection.$from);
             const parentAndIndex = getParentAndIndex(sel);
             if (!parentAndIndex) return false;
             const {parent, index} = parentAndIndex;

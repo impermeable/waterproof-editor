@@ -120,7 +120,7 @@ export class WaterproofEditor {
 	init(content: string, version: number = 1) {
 		// Initialize the file translator given the fileformat.
 		if(this._view) {
-			if (this._mapping && this._mapping.version == version) return;
+			if (this._mapping?.version == version) return;
 			// Hack to forcefully remove the 'old' menubar
 			document.querySelector(".progress-bar")?.remove();
 			this._view.dom.remove();
@@ -143,7 +143,7 @@ export class WaterproofEditor {
 
 	refreshDocument(content: string, version: number = 1) {
 		if (!this._view) return;
-		if (this._mapping && this._mapping.version == version) return;
+		if (this._mapping?.version == version) return;
 
 		const blocks = this._editorConfig.documentConstructor(content);
 		const proseDoc = constructDocument(blocks);

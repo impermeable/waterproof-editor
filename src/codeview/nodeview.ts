@@ -31,11 +31,11 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _dynamicCompletions: Completion[] = [];
 	private _readOnlyCompartment: Compartment;
 	private _themeCompartment: Compartment;
-	private _languageCompartment: Compartment;
-	private _diags : Diagnostic[];
+	private readonly _languageCompartment: Compartment;
+	private readonly _diags: Diagnostic[];
 	private lastUsedDiagnosticsVersion: number = 0;
 
-	private busyIndicator: CodeBlockBusyIndicator;
+	private readonly busyIndicator: CodeBlockBusyIndicator;
 
 	constructor(
 		node: Node,
