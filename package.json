@@ -84,8 +84,11 @@
   },
   "overrides": {
     "mocha": {
-      "serialize-javascript": "7.0.4",
+      "serialize-javascript": "7.0.5",
       "diff": "8.0.3"
+    },
+    "eslint": {
+      "brace-expansion": "2.1.0"
     }
   },
   "peerDependencies": {
