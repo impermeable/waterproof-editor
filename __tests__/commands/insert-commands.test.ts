@@ -250,3 +250,57 @@ test("insertBelow with a non-cursor TextSelection computes pos from sel.from, no
     expect(resultDoc.content[1].type).toBe("newline");
     expect(resultDoc.content[2].type).toBe("code");
 });
+
+// State: input area containing a single empty markdown node.
+// Positions: input opens at 0, markdown opens at 1, cursor at 2 (inside markdown), markdown closes at 2, input closes at 3.
+const stateInputWithMarkdown = {
+    "doc": {"type": "doc", "content": [{"type": "input", "content": [{"type": "markdown"}]}]},
+    "selection": {"type": "text", "anchor": 2, "head": 2}
+};
+
+test("Insert code below markdown inside input area adds trailing newline after code cell (rocq version)", () => {
+    // AI generated regression test
+    // Reproduces bug: in the rocq version, inserting a code cell below a markdown cell
+    // (both inside an input area) produces [markdown][newline][code] without a trailing
+    // newline. The code node has closeRequiresNewline: true, so the missing newline
+    // causes the serializer to emit the closing fence "```" without the required preceding
+    // newline separator, breaking the document.
+    const rocqConf = configuration("coq");
+    const view = new EditorView(null, {state: EditorState.fromJSON({schema: WaterproofSchema}, stateInputWithMarkdown)});
+
+    const cmd = getCmdInsertCode(InsertionPlace.Below, rocqConf);
+    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+    // Expected: [markdown][newline][code][newline]
+    // Actual (bug): [markdown][newline][code]  ← missing trailing newline
+    const content = view.state.toJSON().doc.content[0].content;
+    expect(content).toStrictEqual([
+        {"type": "markdown"},
+        {"type": "newline"},
+        {"type": "code"},
+        {"type": "newline"}
+    ]);
+});
+
+test("Insert code above markdown inside input area adds leading newline before code cell (rocq version)", () => {
+    // AI generated regression test
+    // Symmetric to the insertBelow bug: when the new code cell becomes the first child of
+    // an input area, no leading newline was added before it.  The code node has
+    // openRequiresNewline: true, so the missing newline causes the serializer to emit the
+    // opening fence "```coq" directly after "<input-area>" on the same line, breaking the
+    // document.
+    const rocqConf = configuration("coq");
+    const view = new EditorView(null, {state: EditorState.fromJSON({schema: WaterproofSchema}, stateInputWithMarkdown)});
+
+    const cmd = getCmdInsertCode(InsertionPlace.Above, rocqConf);
+    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+    // Expected: [newline][code][newline][markdown]
+    const content = view.state.toJSON().doc.content[0].content;
+    expect(content).toStrictEqual([
+        {"type": "newline"},
+        {"type": "code"},
+        {"type": "newline"},
+        {"type": "markdown"}
+    ]);
+});

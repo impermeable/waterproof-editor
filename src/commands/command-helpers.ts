@@ -5,7 +5,7 @@ import { EditorState, TextSelection, Transaction, Selection, NodeSelection } fro
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { WaterproofSchema } from "../schema";
 import { newline } from "../document/blocks/schema";
-import { getParentAndIndex, needsNewlineAfter, needsNewlineBefore } from "./utils";
+import { closingTagStartsWithNewline, getParentAndIndex, needsNewlineAfter, needsNewlineBefore, openingTagEndsWithNewline } from "./utils";
 import { TagConfiguration } from "../api";
 
 /////// Helper functions /////////
@@ -62,7 +62,11 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
     const aboveNeedsNewlineAfter = nodeAboveInsertion !== null && needsNewlineAfter(nodeAboveInsertion.type, tagConf);
 
     if ((insertNewlineBeforeIfNotExists && !hasNewlineBefore && beforeIsNewline) ||
-        (aboveNeedsNewlineAfter && !newlineAlreadyAbove)) {
+        (aboveNeedsNewlineAfter && !newlineAlreadyAbove) ||
+        // The new node becomes the first child of a non-doc container. A leading newline is
+        // required when the node's open tag needs one before it and the container's own opening
+        // tag does not already end with a newline (which would otherwise provide that separator).
+        (insertNewlineBeforeIfNotExists && !beforeIsNewline && parent.type !== WaterproofSchema.nodes.doc && !openingTagEndsWithNewline(parent.type, tagConf))) {
         toInsert.push(newline());
     }
     toInsert.push(nodeType.create());
@@ -128,8 +132,15 @@ export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeT
         toInsert.push(newline());
     }
     toInsert.push(nodeType.create());
+    // A trailing newline is needed when:
+    // 1. The node is inserted after an existing newline and there is no newline further down, OR
+    // 2. The node below the insertion point needs a newline before it, OR
+    // 3. The new node becomes the last child of a non-doc container and requires a newline after
+    //    its closing tag. The newline is only needed when the container's own closing tag does not
+    //    already start with a newline (which would otherwise provide that separator).
     if ((insertNewlineAfterIfNotExists && !hasNewlineAfter && afterIsNewline) ||
-        (belowNeedsNewlineBefore && !newlineAlreadyBelow)) {
+        (belowNeedsNewlineBefore && !newlineAlreadyBelow) ||
+        (insertNewlineAfterIfNotExists && !afterIsNewline && parent.type !== WaterproofSchema.nodes.doc && !closingTagStartsWithNewline(parent.type, tagConf))) {
         toInsert.push(newline());
     }
 
