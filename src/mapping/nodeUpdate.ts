@@ -509,11 +509,13 @@ export class NodeUpdate {
         parent.addChild(newNode);
         
         nodesInRange.forEach(n => {
-            newNode.addChild(n);
+            // Shift before adding: addChild sorts by pmRange.from, so all positions
+            // must be final before insertion to avoid sort-order corruption on ties.
             n.traverseDepthFirst(subNode => {
                 subNode.shiftOffsets(openTag.length, 1);
                 subNode.shiftLineStart(openTagLines);
             });
+            newNode.addChild(n);
         });
 
         tree.root.shiftCloseOffsets(openTag.length + closeTag.length, 2);

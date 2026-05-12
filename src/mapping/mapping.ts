@@ -106,6 +106,15 @@ export class Mapping {
         
     }
 
+    /**
+     * Resets the internally-evolved document to null so the next transaction
+     * starts fresh from the document passed by the caller.
+     * Call this at the beginning of each ProseMirror dispatchTransaction.
+     */
+    public resetCurrentDoc(): void {
+        this._currentDoc = null;
+    }
+
     public update(step: Step, doc: Node): DocChange | WrappingDocChange {
         if (!(step instanceof ReplaceStep || step instanceof ReplaceAroundStep))
             throw new MappingError("Step update (in textDocMapping) should not be called with a non document changing step");
@@ -141,6 +150,11 @@ export class Mapping {
         if (step instanceof ReplaceStep && isText) {
             result = this.textUpdate.textUpdate(step, this);
         } else {
+            // A structural (node-level) update may remove nodes from the tree, leaving
+            // any cached TextUpdate node as a stale orphan. Invalidate before delegating.
+            // The main function of the cache is performance speedup for students editing documents,
+            // and they will never hit this branch
+            this.textUpdate.invalidateCache();
             // The entire document is serialized here. This is done to be able to produce an accurate linecount
             // If this leads to performance issues, this could likely be resolved by being smarter about this.
             result = this.nodeUpdate.nodeUpdate(step, this, this.serializer, currentDoc);

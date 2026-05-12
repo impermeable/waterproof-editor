@@ -14,6 +14,10 @@ export class TextUpdate {
      */
     private cachedNode: TreeNode | null = null;
 
+    public invalidateCache(): void {
+        this.cachedNode = null;
+    }
+
     getNodeFromCacheOrSearch(step: ReplaceStep, tree: Tree): TreeNode | null {
         // These checks should be okay as the tree is updated after every text update,
         // therefore we can use the cached node bounds to check if the next text update is happening in the same node

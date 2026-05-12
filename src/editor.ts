@@ -175,6 +175,9 @@ export class WaterproofEditor {
 			clipboardTextSerializer: (slice) => { return mathSerializer.serializeSlice(slice) },
 			dispatchTransaction: ((tr) => {
 				// Called on every transaction.
+				// Reset _currentDoc so stale state from a previous (possibly failed)
+				// transaction cannot bleed into this one.
+				this._mapping?.resetCurrentDoc();
 
 				let step : Step | undefined = undefined;
 				for (step of tr.steps) {
