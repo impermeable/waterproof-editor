@@ -262,7 +262,7 @@ export class NodeUpdate {
 
         // First pass: identify nodes to delete
         tree.traverseDepthFirst((node: TreeNode) => {
-            if (node.prosemirrorStart >= step.from && node.prosemirrorEnd < step.to) {
+            if (node !== tree.root && node.pmRange.from >= step.from && node.pmRange.to <= step.to) {
                 nodesToDelete.push(node);
 
                 if (node.tagRange.from < from) from = node.tagRange.from;
@@ -351,20 +351,24 @@ export class NodeUpdate {
 
         const removedNewlines = countNewlines(wrappedOpenTag) + countNewlines(wrappedCloseTag);
 
-        // First we update all nodes that come totally after the unwrapped node
+        // First we update all nodes that come totally after the unwrapped node,
+        // and all intermediate ancestors that contain the wrapper.
+        const tagTextOffset  = -wrappedOpenTag.length - wrappedCloseTag.length;
+        const tagProseOffset = -2;
         tree.traverseDepthFirst((thisNode: TreeNode) => {
-            if (thisNode.pmRange.from >= wrapperNode.pmRange.to) {
-                // The text positions shift by the length of the open and close tags that have just been removed
-                const textOffset = -wrappedOpenTag.length - wrappedCloseTag.length;
-                // The prosemirror positions shift by 2 (1 for the opening and 1 for the closing tag)
-                const proseOffset = -2;
-                thisNode.shiftOffsets(textOffset, proseOffset);
+            if (thisNode === tree.root) return;
+            if (thisNode.pmRange.from < wrapperNode.pmRange.from && thisNode.pmRange.to > wrapperNode.pmRange.to) {
+                // Ancestor of the wrapper (e.g. a container): shrink close offsets only.
+                thisNode.shiftCloseOffsets(tagTextOffset, tagProseOffset);
+            } else if (thisNode.pmRange.from >= wrapperNode.pmRange.to) {
+                // Node entirely after the wrapper: shift all offsets.
+                thisNode.shiftOffsets(tagTextOffset, tagProseOffset);
                 thisNode.shiftLineStart(-removedNewlines);
             }
         });
 
         // Update the root node separately
-        tree.root.shiftCloseOffsets(-wrappedOpenTag.length - wrappedCloseTag.length, -2);
+        tree.root.shiftCloseOffsets(tagTextOffset, tagProseOffset);
 
         // Now we need to update the nodes that were children of the wrapper node
         nodesInRange.forEach(n => {
@@ -483,9 +487,14 @@ export class NodeUpdate {
             parent.removeChild(n);
         });
         
-        // Finally we need to update all nodes that come after the inserted wrapping node
+        // Update nodes after the inserted wrapping node and intermediate ancestors.
         tree.traverseDepthFirst((thisNode: TreeNode) => {
-            if (thisNode.pmRange.from >= positions.proseEnd) {
+            if (thisNode === tree.root) return;
+            if (thisNode.pmRange.from < positions.proseStart && thisNode.pmRange.to > positions.proseEnd) {
+                // Ancestor of the wrapped range (e.g. a container): expand close offsets only.
+                thisNode.shiftCloseOffsets(openTag.length + closeTag.length, 2);
+            } else if (thisNode.pmRange.from >= positions.proseEnd) {
+                // Node entirely after the wrapped range: shift all offsets.
                 thisNode.shiftOffsets(openTag.length + closeTag.length, 2);
                 thisNode.shiftLineStart(openTagLines + closeTagLines);
             }

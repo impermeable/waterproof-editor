@@ -1,5 +1,5 @@
 import { Fragment, ResolvedPos, Slice } from "prosemirror-model";
-import { DocChange, Mapping, WaterproofDocument, WrappingDocChange } from "../../src/api";
+import { DocChange, Mapping, NodeUpdateError, WaterproofDocument, WrappingDocChange } from "../../src/api";
 import { configuration } from "../../src/markdown-defaults";
 import { ReplaceAroundStep, ReplaceStep } from "prosemirror-transform";
 import { WaterproofSchema } from "../../src/schema";
@@ -923,4 +923,188 @@ test("Wrapping a hint (with tree-children) in a container does not corrupt the m
     //   container_open (9) + hint_open (18) = 27 chars into the file.
     const containerOpenLen = leanConfig.container.openTag("test").length;  // 9
     expect(hint.children[0].contentRange.from).toBe(containerOpenLen + hintOpenTag.length);
+});
+
+test("regression test: replaceAroundReplace – wrapping a node inside a container updates container close offsets", () => {
+    // AI generated test
+    // Document (leanConfig):  ::::test\nHi\n::::
+    //   [0..8]  containerOpen  "::::test\n"   9 chars
+    //   [9..10] "Hi"                           2 chars
+    //   [11..15] containerClose "\n::::"       5 chars
+    //   total 16 chars
+    //
+    // PM layout after computeProsemirrorOffsets:
+    //   container  pmRange={0,6}  prosemirrorStart=1  prosemirrorEnd=5
+    //   markdown   pmRange={1,5}  prosemirrorStart=2  prosemirrorEnd=4
+    const hintTitle      = "💡 Hint";
+    const containerName  = "test";
+    const containerOpen  = leanConfig.container.openTag(containerName); // "::::test\n"  9 chars
+    const containerClose = leanConfig.container.closeTag;               // "\n::::"      5 chars
+    const hintOpen       = leanConfig.hint.openTag(hintTitle);          // 18 chars
+    const hintClose      = leanConfig.hint.closeTag;                    // "\n:::"       4 chars
+    const mdContent      = "Hi";                                        // 2 chars
+
+    const containerBlock = new ContainerBlock(
+        mdContent, containerName,
+        { from: 0, to: containerOpen.length + mdContent.length + containerClose.length },
+        { from: containerOpen.length, to: containerOpen.length + mdContent.length },
+        0,
+        [new MarkdownBlock(mdContent,
+            { from: containerOpen.length, to: containerOpen.length + mdContent.length },
+            { from: containerOpen.length, to: containerOpen.length + mdContent.length },
+            0)]
+    );
+
+    const mapping           = createLeanMapping([containerBlock]);
+    const tree              = mapping.getMapping();
+    const containerNode     = tree.root.children[0];
+    const markdownNode      = containerNode.children[0];
+    const containerPmToOrig = containerNode.pmRange.to; // capture before mutation (tree is mutated in-place)
+
+    // Wrap the markdown in a hint.
+    // ProseMirror's tr.wrap generates ReplaceAroundStep(from, to, gapFrom, gapTo, slice, insert).
+    const wrapSlice = new Slice(
+        Fragment.from([WaterproofSchema.nodes.hint.create({ title: hintTitle })]),
+        0, 0
+    );
+    const wrapStep = new ReplaceAroundStep(
+        markdownNode.pmRange.from, markdownNode.pmRange.to,
+        markdownNode.pmRange.from, markdownNode.pmRange.to,
+        wrapSlice, 1
+    );
+
+    const nodeUpdate    = new NodeUpdate(leanConfig, leanSerializer);
+    const { newTree }   = nodeUpdate.nodeUpdate(wrapStep, mapping, leanSerializer, nodeMock);
+
+    // The hint's tags (18 + 4 = 22 chars text, 2 prose tokens) were inserted inside
+    // the container.  The container's close offsets must be updated accordingly.
+    // Bug: container.pmRange.to stays at 6 while hint.pmRange.to becomes 7 → sanityCheckTree fails.
+    sanityCheckTree(newTree.root);
+
+    const updatedContainer = newTree.root.children[0];
+    expect(updatedContainer.contentRange.to).toBe(
+        containerOpen.length + hintOpen.length + mdContent.length + hintClose.length  // 9+18+2+4=33
+    );
+    expect(updatedContainer.pmRange.to).toBe(containerPmToOrig + 2);
+});
+
+test("regression test: replaceAroundDelete – unwrapping a hint inside a container updates container close offsets", () => {
+    // AI-generated test
+    // Document (leanConfig):  ::::test\n:::hint "💡 Hint"\nHi\n:::\n::::
+    //   [0..8]   containerOpen  "::::test\n"            9 chars
+    //   [9..26]  hintOpen       ":::hint \"💡 Hint\"\n" 18 chars
+    //   [27..28] "Hi"                                    2 chars
+    //   [29..32] hintClose      "\n:::"                  4 chars
+    //   [33..37] containerClose "\n::::"                  5 chars
+    //   total 38 chars
+    //
+    // PM layout:
+    //   container  pmRange={0,8}  prosemirrorStart=1  prosemirrorEnd=7
+    //   hint       pmRange={1,7}  prosemirrorStart=2  prosemirrorEnd=6
+    //   markdown   pmRange={2,6}  prosemirrorStart=3  prosemirrorEnd=5
+    const hintTitle      = "💡 Hint";
+    const containerName  = "test";
+    const containerOpen  = leanConfig.container.openTag(containerName); // 9 chars
+    const containerClose = leanConfig.container.closeTag;               // 5 chars
+    const hintOpen       = leanConfig.hint.openTag(hintTitle);          // 18 chars
+    const hintClose      = leanConfig.hint.closeTag;                    //  4 chars
+    const mdContent      = "Hi";                                        //  2 chars
+
+    const hintTagFrom     = containerOpen.length;                                                       // 9
+    const hintContentFrom = containerOpen.length + hintOpen.length;                                     // 27
+    const hintContentTo   = hintContentFrom + mdContent.length;                                         // 29
+    const hintTagTo       = hintContentTo + hintClose.length;                                           // 33
+    const containerTagTo  = hintTagTo + containerClose.length;                                          // 38
+
+    const markdownBlock = new MarkdownBlock(
+        mdContent,
+        { from: hintContentFrom, to: hintContentTo },
+        { from: hintContentFrom, to: hintContentTo },
+        0
+    );
+    const hintBlock = new HintBlock(
+        mdContent, hintTitle,
+        { from: hintTagFrom,       to: hintTagTo       },
+        { from: hintContentFrom,   to: hintContentTo   },
+        0, [markdownBlock]
+    );
+    const containerBlock = new ContainerBlock(
+        hintOpen + mdContent + hintClose, containerName,
+        { from: 0,                       to: containerTagTo           },
+        { from: containerOpen.length,    to: hintTagTo                },
+        0, [hintBlock]
+    );
+
+    const mapping         = createLeanMapping([containerBlock]);
+    const tree            = mapping.getMapping();
+    const containerNode   = tree.root.children[0];
+    const hintNode        = containerNode.children[0];
+    const containerPmTo   = containerNode.pmRange.to; // 8 – capture before mutation
+
+    expect(hintNode.type).toBe("hint");
+
+    // wpLift generates ReplaceAroundStep(from, to, gapFrom=prosemirrorStart, gapTo=prosemirrorEnd, empty, 0).
+    const liftStep = new ReplaceAroundStep(
+        hintNode.pmRange.from,      // 1
+        hintNode.pmRange.to,        // 7
+        hintNode.prosemirrorStart,  // 2
+        hintNode.prosemirrorEnd,    // 6
+        Slice.empty, 0
+    );
+
+    const nodeUpdate          = new NodeUpdate(leanConfig, leanSerializer);
+    const { newTree, result } = nodeUpdate.nodeUpdate(liftStep, mapping, leanSerializer, nodeMock);
+
+    // After lifting, the container shrinks by the hint's tag sizes (22 chars / 2 prose tokens).
+    // Bug: container's contentRange.to / pmRange.to are not decremented → sanityCheckTree fails.
+    sanityCheckTree(newTree.root);
+
+    const updatedContainer = newTree.root.children[0];
+    expect(updatedContainer.contentRange).toStrictEqual({
+        from: containerOpen.length,
+        to:   containerOpen.length + mdContent.length,   // 9..11
+    });
+    expect(updatedContainer.tagRange.to).toBe(containerOpen.length + mdContent.length + containerClose.length); // 16
+    expect(updatedContainer.pmRange.to).toBe(containerPmTo - 2);  // 8-2=6
+
+    expect(result).toStrictEqual<WrappingDocChange>({
+        firstEdit:  { finalText: "", startInFile: hintTagFrom,     endInFile: hintContentFrom },
+        secondEdit: { finalText: "", startInFile: hintContentTo,   endInFile: hintTagTo       },
+    });
+});
+
+test("regression test: replaceDelete does not include a node whose opening tag lies outside the step range", () => {
+    // AI-generated test
+    // Setup: markdown (pmRange={0,7}) followed by a code block (pmRange={7,15}).
+    //   markdown  contentRange={0,5}  tagRange={0,5}
+    //   code      contentRange={12,18} tagRange={5,22}  (coq config: "```coq\n"=7 + "Lemma."=6 + "\n```"=4 = 17 chars → tagRange={5,22})
+    //
+    // PM layout:
+    //   markdown  pmRange={0,7}   prosemirrorStart=1   prosemirrorEnd=6
+    //   code      pmRange={7,15}  prosemirrorStart=8   prosemirrorEnd=14
+    //
+    // The step starts at code.prosemirrorStart=8 (one past code.pmRange.from=7).
+    // The code node's opening tag occupies positions [7,8) in prose / [5,12) in text.
+    // Since the opening tag is outside [step.from=8, step.to=15), the code node
+    // should NOT be considered fully contained in the deleted range.
+    //
+    // Bug:  prosemirrorStart(8) >= step.from(8) is true  → code is wrongly included.
+    // Fix:  pmRange.from(7)     >= step.from(8) is false → code is correctly excluded,
+    //       nodesToDelete is empty → NodeUpdateError is thrown.
+    const blocks: WaterproofDocument = [
+        new MarkdownBlock("Hello", { from: 0, to: 5 }, { from: 0, to: 5 }, 0),
+        new CodeBlock("Lemma.", { from: 5, to: 22 }, { from: 12, to: 18 }, 1),
+    ];
+
+    const mapping  = createMapping(blocks);
+    const tree     = mapping.getMapping();
+    const codeNode = tree.root.children.find(n => n.type === "code")!;
+
+    // step.from is deliberately set to prosemirrorStart, NOT pmRange.from
+    const step = new ReplaceStep(codeNode.prosemirrorStart, codeNode.pmRange.to, Slice.empty);
+
+    configureNodeMock("");
+    const nodeUpdate = new NodeUpdate(config, serializer);
+
+    expect(() => nodeUpdate.nodeUpdate(step, mapping, serializer, nodeMock)).toThrow(NodeUpdateError);
 });
