@@ -1,9 +1,9 @@
-import { NodeType } from "prosemirror-model";
+import { Attrs, NodeType } from "prosemirror-model";
 import { Command, EditorState, NodeSelection, TextSelection, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { liftTarget } from "prosemirror-transform";
 import { WaterproofSchema } from "../schema";
-import { getParentAndIndex, needsNewlineAfter, needsNewlineBefore } from "./utils";
+import { closingTagStartsWithNewline, getParentAndIndex, needsNewlineAfter, needsNewlineBefore, openingTagEndsWithNewline } from "./utils";
 import { TagConfiguration } from "../api";
 
 export function wpLift(_tagConf: TagConfiguration): Command {
@@ -17,8 +17,8 @@ export function wpLift(_tagConf: TagConfiguration): Command {
         const after = $to.nodeAfter;
         
         const {type} = node;
-        if (type !== WaterproofSchema.nodes.hint && type !== WaterproofSchema.nodes.input) {
-            // We can only lift hint or input area nodes.
+        if (type !== WaterproofSchema.nodes.hint && type !== WaterproofSchema.nodes.input && type !== WaterproofSchema.nodes.container) {
+            // We can only lift hint, input area, or container nodes.
             return false;
         }
 
@@ -29,28 +29,11 @@ export function wpLift(_tagConf: TagConfiguration): Command {
         const firstIsNewline = firstChild.type === WaterproofSchema.nodes.newline;
         const lastIsNewline = lastChild.type === WaterproofSchema.nodes.newline;
 
-
-
         const beforeIsNewline = before === null ? false : before.type === WaterproofSchema.nodes.newline;
         const afterIsNewline = after === null ? false : after.type === WaterproofSchema.nodes.newline;
-        // Can we assume that the newlines in the dcuments are always there for some node?
-        // const needsBefore = needsNewlineBefore(node.type, tagConf);
-        // const needsAfter = needsNewlineAfter(node.type, tagConf);
-
-        // console.log("first", firstIsNewline, "last", lastIsNewline, "before", beforeIsNewline, "after", afterIsNewline, "needsBefore", needsBefore, "needsAfter", needsAfter);
 
         const shouldRemoveNewlineBefore = beforeIsNewline && firstIsNewline;
         const shouldRemoveNewlineAfter = afterIsNewline && lastIsNewline && childCount > 1;
-
-        // if (beforeIsNewline && firstIsNewline) {
-        //     console.log("Both first child and before node are newlines");
-        //     console.log("We are going to remove the node before");
-        // }
-
-        // if (afterIsNewline && lastIsNewline && childCount > 1) {
-        //     console.log("Both the last node and the after node are newlines (and the first and last child are not the same)");
-        //     console.log("We are going to remove the node after");
-        // }
 
         // Create a block range that covers the content of the input/hint block
         const range = state.doc.resolve(from + 1).blockRange(state.doc.resolve(to - 1));
@@ -107,15 +90,15 @@ export function deleteSelection(tagConf: TagConfiguration): Command {
                 // We need to keep one of the newlines, so we delete the node and the after newline
                 if (dispatch) dispatch(state.tr.delete(state.selection.from, state.selection.to + afterSize).scrollIntoView());
                 return true;
-            } else if (afterIsNewline && afteer !== null && needsNewlineBefore(sel.node.type, tagConf)) {
+            } else if (afterIsNewline && afteer !== null && needsNewlineBefore(afteer.type, tagConf)) {
                 // After is newline and afteer needs newline before
-                // We need to keep the after newline, so we delete the node and the before newline
-                if (dispatch) dispatch(state.tr.delete(state.selection.from - beforeSize, state.selection.to).scrollIntoView());
+                // We need to keep the after newline, so we delete the node and the before newline (if any)
+                if (dispatch) dispatch(state.tr.delete(state.selection.from - (beforeIsNewline ? beforeSize : 0), state.selection.to).scrollIntoView());
                 return true;
             } else if (beforeIsNewline && befoore !== null && needsNewlineAfter(befoore.type, tagConf)) {
                 // Before is newline and befoore needs newline after
-                // We need to keep the before newline, so we delete the node and the after newline
-                if (dispatch) dispatch(state.tr.delete(state.selection.from, state.selection.to + afterSize).scrollIntoView());
+                // We need to keep the before newline, so we delete the node and the after newline (if any)
+                if (dispatch) dispatch(state.tr.delete(state.selection.from, state.selection.to + (afterIsNewline ? afterSize : 0)).scrollIntoView());
                 return true;
             } else if (beforeIsNewline && afterIsNewline && (befoore === null || (befoore !== null && !needsNewlineAfter(befoore.type, tagConf))) && (afteer === null || (afteer !== null && !needsNewlineBefore(afteer.type, tagConf)))) {
                 // Before and after are newlines, but befoore does not need newline after and afteer does not need newline before
@@ -131,17 +114,82 @@ export function deleteSelection(tagConf: TagConfiguration): Command {
     }
 }
 
+/**
+ * Returns true if the selected node or any of its descendants is one of `descendantTypes`, or if
+ * any ancestor is one of `ancestorTypes`. Separating the two lists allows a type to be
+ * forbidden as the wrap target / descendant without also blocking it as a parent context.
+ */
+function hasDisallowedParentOrChild(
+    sel: NodeSelection,
+    descentdantTypes: NodeType[],
+    ancestorTypes: NodeType[]
+): boolean {
+    if (descentdantTypes.includes(sel.node.type)) return true;
+
+    for (let d = sel.$from.depth; d >= 1; d--) {
+        if (ancestorTypes.includes(sel.$from.node(d).type)) return true;
+    }
+
+    let found = false;
+    sel.node.descendants((child) => {
+        if (descentdantTypes.includes(child.type)) {
+            found = true;
+            return false;
+        }
+    });
+    return found;
+}
+
+/**
+ * Returns true when it is safe to wrap the current selection.
+ * Requires a NodeSelection and checks that neither the selected node, its ancestors,
+ * nor its descendants are of any of the given disallowed types.
+ * Pass a separate `disallowedAncestorTypes` to use a narrower list for the ancestor check.
+ */
+function preWrapCheck(
+    state: EditorState,
+    disallowedTypes: NodeType[],
+    disallowedAncestorTypes: NodeType[] = disallowedTypes
+): boolean {
+    if (!(state.selection instanceof NodeSelection)) return false;
+    return !hasDisallowedParentOrChild(state.selection, disallowedTypes, disallowedAncestorTypes);
+}
+
 export function wrapInHint(tagConf: TagConfiguration): Command {
-    return wpWrapIn(WaterproofSchema.nodes.hint, tagConf);
+    return (state, dispatch) => {
+        // container is disallowed as the wrap target (not in hintinputcontent) but is fine as an
+        // ancestor — a hint can live inside a container.
+        if (!preWrapCheck(
+            state,
+            [WaterproofSchema.nodes.hint, WaterproofSchema.nodes.input, WaterproofSchema.nodes.container],
+            [WaterproofSchema.nodes.hint, WaterproofSchema.nodes.input]
+        )) return false;
+        return wpWrapIn(WaterproofSchema.nodes.hint, tagConf)(state, dispatch);
+    };
 }
 
 export function wrapInInput(tagConf: TagConfiguration): Command {
-    return wpWrapIn(WaterproofSchema.nodes.input, tagConf);
+    return (state, dispatch) => {
+        if (!preWrapCheck(
+            state,
+            [WaterproofSchema.nodes.hint, WaterproofSchema.nodes.input, WaterproofSchema.nodes.container],
+            [WaterproofSchema.nodes.hint, WaterproofSchema.nodes.input]
+        )) return false;
+        return wpWrapIn(WaterproofSchema.nodes.input, tagConf)(state, dispatch);
+    };
 }
 
-function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration): Command {
+export function wrapInContainer(tagConf: TagConfiguration, name: string): Command {
+    return (state, dispatch) => {
+        if (!preWrapCheck(state, [WaterproofSchema.nodes.container])) return false;
+        return wpWrapIn(WaterproofSchema.nodes.container, tagConf, {name})(state, dispatch);
+    };
+}
+
+function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration, attrs? : Attrs): Command {
     return (state, dispatch) => {
         const sel = state.selection;
+        // Double check, but needed for typechecking
         if (!(sel instanceof NodeSelection)) return false;
         
         const before = sel.$from.nodeBefore;
@@ -154,15 +202,12 @@ function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration): Command {
             const needsBefore = needsNewlineBefore(nodeBeingWrapped.type, tagConf);
             const needsAfter = needsNewlineAfter(nodeBeingWrapped.type, tagConf);
             
-            if ((needsBefore && !beforeIsNewline) || (needsAfter && !afterIsNewline)) {
-                return false;
-            }
-            
             let $start = sel.$from;
             let $end = sel.$to;
-            const consumeBefore = needsBefore && beforeIsNewline;
-            const consumeAfter = needsAfter && afterIsNewline;
-            // console.log("Consume before and after:", consumeBefore, consumeAfter);
+
+            const consumeBefore = needsBefore && beforeIsNewline && !openingTagEndsWithNewline(nodeType, tagConf);
+            const consumeAfter = needsAfter && afterIsNewline && !closingTagStartsWithNewline(nodeType, tagConf);
+
             if (before !== null && consumeBefore) {
                 // extend the selection to incldue the before newline node
                 $start = state.doc.resolve(sel.from - before.nodeSize);
@@ -176,23 +221,36 @@ function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration): Command {
             const blockRange = $start.blockRange($end);
             if (blockRange === null) return false;
             const tr = state.tr;
-            tr.wrap(blockRange, [{type: nodeType}]);
+            tr.wrap(blockRange, [{type: nodeType, attrs}]);
+
+            // Capture the wrapper boundary positions right after the wrap, before any inserts,
+            // so later insertions inside the wrapper don't shift the outer-before position.
+            const wrapperStart = tr.mapping.map(blockRange.start);
+
+            // If the wrapper's opening tag does not end with a newline, the wrapped node needs a
+            // newline before it, and no surrounding newline was consumed into the wrapper, insert a
+            // newline node as the first child of the wrapper so the content starts on its own line.
+            if (!openingTagEndsWithNewline(nodeType, tagConf) && needsBefore && !consumeBefore) {
+                tr.insert(wrapperStart, WaterproofSchema.nodes.newline.create());
+            }
+
+            // Symmetrically for the closing tag.
+            if (!closingTagStartsWithNewline(nodeType, tagConf) && needsAfter && !consumeAfter) {
+                const wrapperContentEnd = tr.mapping.map(blockRange.end) - 1;
+                tr.insert(wrapperContentEnd, WaterproofSchema.nodes.newline.create());
+            }
 
             // We potentially have to insert newlines before or after the newly created input area.
-            if (consumeBefore) {
-                const nodeBeforeNewline = $start.nodeBefore;
-                if (nodeBeforeNewline !== null && needsNewlineAfter(nodeBeforeNewline.type, tagConf)) {
-                    // Inserting newline before the input area
-                    tr.insert(tr.mapping.map(blockRange.start) - 1, WaterproofSchema.nodes.newline.create());
-                }
+            const nodeBefore = $start.nodeBefore;
+            if (nodeBefore !== null && nodeBefore.type !== WaterproofSchema.nodes.newline && (needsNewlineAfter(nodeBefore.type, tagConf) || needsNewlineBefore(nodeType, tagConf))) {
+                // Inserting newline before the input area
+                tr.insert(wrapperStart - 1, WaterproofSchema.nodes.newline.create());
             }
             
-            if (consumeAfter) {
-                const nodeAfterNewline = $end.nodeAfter;
-                if (nodeAfterNewline !== null && needsNewlineBefore(nodeAfterNewline.type, tagConf)) {
-                    // Inserting newline after the input area
-                    tr.insert(tr.mapping.map(blockRange.end), WaterproofSchema.nodes.newline.create());
-                }
+            const nodeAfter = $end.nodeAfter;
+            if (nodeAfter !== null && nodeAfter.type !== WaterproofSchema.nodes.newline && (needsNewlineBefore(nodeAfter.type, tagConf) || needsNewlineAfter(nodeType, tagConf))) {
+                // Inserting newline after the input area
+                tr.insert(tr.mapping.map(blockRange.end), WaterproofSchema.nodes.newline.create());
             }
 
             // Finally, dispatch the transaction and set the selection to be the node selection of the newly created input area.

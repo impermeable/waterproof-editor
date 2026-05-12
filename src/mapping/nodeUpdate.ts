@@ -3,9 +3,18 @@ import { OperationType, ParsedStep } from "./types";
 import { Mapping } from "./mapping";
 import { typeFromStep } from "./helper-functions";
 import { DocChange, DocumentSerializer, NodeUpdateError, TagConfiguration, WrappingDocChange } from "../api";
+import { makeNeighbors } from "../serialization/DocumentSerializer";
 import { WaterproofSchema } from "../schema";
 import { Node } from "prosemirror-model";
 import { ReplaceAroundStep, ReplaceStep } from "prosemirror-transform";
+
+function countNewlines(s: string): number {
+    let count = 0;
+    for (let i = 0; i < s.length; i++) {
+        if (s[i] === '\n') count++;
+    }
+    return count;
+}
 
 export class NodeUpdate {
     // Store the tag configuration and serializer
@@ -24,17 +33,19 @@ export class NodeUpdate {
                 return [this.tagConf.input.openTag, this.tagConf.input.closeTag];
             case "math_display":
                 return [this.tagConf.math.openTag, this.tagConf.math.closeTag];
+            case "container":
+                return [this.tagConf.container.openTag(title), this.tagConf.container.closeTag];
             default:
                 throw new NodeUpdateError(`Unsupported node type: ${nodeName}`);
         }
     }
     
     // Handle a node update step
-    public nodeUpdate(step: ReplaceStep | ReplaceAroundStep, mapping: Mapping) : ParsedStep {
+    public nodeUpdate(step: ReplaceStep | ReplaceAroundStep, mapping: Mapping, serializer: DocumentSerializer, proseDoc: Node) : ParsedStep {
         let parsedStep;
         if (step instanceof ReplaceStep) {
             // The step is a ReplaceStep
-            parsedStep = this.doReplaceStep(step, mapping);
+            parsedStep = this.doReplaceStep(step, mapping, serializer, proseDoc);
         } else {
             // The step is a ReplaceAroundStep (wrapping or unwrapping of nodes)
             parsedStep = this.doReplaceAroundStep(step, mapping);
@@ -42,15 +53,15 @@ export class NodeUpdate {
         return parsedStep;
     }
 
-    doReplaceStep(step: ReplaceStep, mapping: Mapping): ParsedStep {
+    doReplaceStep(step: ReplaceStep, mapping: Mapping, serializer: DocumentSerializer, proseDoc: Node): ParsedStep {
         // Determine operation type
         const type = typeFromStep(step);
         console.log("In doReplaceStep, operation type:", type);
         switch (type) {
             case OperationType.insert:
-                return this.replaceInsert(step, mapping.getMapping());
+                return this.replaceInsert(step, mapping.getMapping(), serializer, proseDoc);
             case OperationType.delete:
-                return this.replaceDelete(step, mapping.getMapping());
+                return this.replaceDelete(step, mapping.getMapping(), serializer, proseDoc);
             case OperationType.replace:
                 throw new NodeUpdateError(" We do not support ReplaceSteps that replace nodes with other nodes (textual replaces are handled in the textUpdate module) ");
         }
@@ -74,7 +85,7 @@ export class NodeUpdate {
     // ReplaceInsert is used when we insert new nodes into the document
     // Note: that these steps can be quite complex, as they can contain multiple (nested) nodes
     //       for example undoing a node deletion 'reinserts' the deleted node(s)
-    replaceInsert(step: ReplaceStep, tree: Tree): ParsedStep {
+    replaceInsert(step: ReplaceStep, tree: Tree, serializer: DocumentSerializer, proseDoc : Node): ParsedStep {
         // We start by checking that there is something to insert in the step
         if (!step.slice.content.childCount) {
             throw new NodeUpdateError(" ReplaceStep insert has no content ");
@@ -98,31 +109,23 @@ export class NodeUpdate {
         
         const nodes: TreeNode[] = [];
         let serialized = "";
+        // We use the fully serialized document to determine an accurate linecount
+        // If this causes performance issues, we could likely fix this by being smarter about it.
+        const serializedDoc = serializer.serializeDocument(proseDoc)
+        let lineCounter = countNewlines(serializedDoc.substring(0, documentPos));
         step.slice.content.forEach((node, _, idx) => {
             const parentContent = step.slice.content;
-
-            // Above
-            const nodeDirectlyAbove = parentContent.maybeChild(idx - 1);
-            const nodeTwoAbove = parentContent.maybeChild(idx - 2);
-            // Below
-            const nodeDirectlyBelow = parentContent.maybeChild(idx + 1);
-            const nodeTwoBelow = parentContent.maybeChild(idx + 2);
-
-            const func = (skipNewlines: boolean): { nodeAbove: string | null; nodeBelow: string | null } => {
-                let above = nodeDirectlyAbove?.type.name ?? null;
-                let below = nodeDirectlyBelow?.type.name ?? null;
-
-                if (above === "newline" && skipNewlines) above = nodeTwoAbove?.type.name ?? null;
-                if (below === "newline" && skipNewlines) below = nodeTwoBelow?.type.name ?? null;
-
-                return {nodeAbove: above, nodeBelow: below};
-            };
+            const func = makeNeighbors(
+                parentContent.maybeChild(idx - 1), parentContent.maybeChild(idx - 2),
+                parentContent.maybeChild(idx + 1), parentContent.maybeChild(idx + 2)
+            );
             const output = this.serializer.serializeNode(node, parent.type, func);
             serialized += output;
-            const builtNode = this.buildTreeFromNode(node, offsetOriginal, offsetProse);
+            const builtNode = this.buildTreeFromNode(node, offsetOriginal, offsetProse, lineCounter);
             nodes.push(builtNode);
             offsetOriginal += output.length;
             offsetProse += node.nodeSize;
+            lineCounter += countNewlines(output);
         });
 
         const docChange: DocChange = {
@@ -134,29 +137,33 @@ export class NodeUpdate {
         const proseOffset = step.slice.content.size;
         const textOffset = serialized.length;
 
+        const lineDelta = countNewlines(serialized);
+
         // now we need to update the tree
         tree.traverseDepthFirst((thisNode: TreeNode) => {
-            // Update all nodes that come fully after the insertion position
-            if (thisNode.pmRange.from >= step.to) {
-                thisNode.shiftOffsets(textOffset, proseOffset);
-            }
+            // Skip the root node — it's handled separately below
+            if (thisNode === tree.root) return;
 
-            // The inserted nodes could be children of nodes already in the tree (at least of the root node,
-            // but possibly also of hint or input nodes)
-            if (thisNode.pmRange.from < step.from && thisNode.pmRange.to > step.to) {
+            if (thisNode.pmRange.from < step.from && thisNode.pmRange.to > step.from) {
+                // This node strictly contains the insertion point (parent/ancestor)
+                // Only shift closing offsets
                 thisNode.shiftCloseOffsets(textOffset, proseOffset);
+            } else if (thisNode.pmRange.from >= step.to) {
+                // This node starts at or after the insertion position (sibling)
+                thisNode.shiftOffsets(textOffset, proseOffset);
+                thisNode.shiftLineStart(lineDelta);
             }
         });
+        // The root always contains the insertion
+        tree.root.shiftCloseOffsets(textOffset, proseOffset);
 
         // Add the nodes to the parent node. We do this later so that updating in the step 
         // before does not affect the positions of the nodes we are adding
         nodes.forEach(n => parent.addChild(n));
-        
         return { result: docChange, newTree: tree };
     }
 
-    buildTreeFromNode(node: Node, startOrig: number, startProse: number): TreeNode {
-
+    buildTreeFromNode(node: Node, startOrig: number, startProse: number, currentLine: number = 0): TreeNode {
         // Shortcut for newline nodes
         if (node.type == WaterproofSchema.nodes.newline) {
             return new TreeNode(
@@ -182,48 +189,46 @@ export class NodeUpdate {
             )
         }
 
-        const [openTagForNode, closeTagForNode] = this.nodeNameToTagPair(node.type.name, node.attrs.title ? node.attrs.title : "");
+        const nodeTitle = node.attrs.title ? node.attrs.title : (node.attrs.name ? node.attrs.name : "");
+        const [openTagForNode, closeTagForNode] = this.nodeNameToTagPair(node.type.name, nodeTitle);
+
+        const contentLineStart = currentLine + countNewlines(openTagForNode);
+        const lineStart = (node.type.name === "code" || node.type.name === "math_display") ? contentLineStart : 0;
 
         const treeNode = new TreeNode(
             node.type.name, // node type
             {from: startOrig + openTagForNode.length, to: 0}, // inner range
             {from: startOrig, to: 0}, // full range
-            node.attrs.title ? node.attrs.title : "", // title
+            nodeTitle, // title
             startProse + 1, 0, // prosemirror start, end
             {from: startProse, to: 0},
-            0
+            lineStart
         );
 
 
         let childOffsetOriginal = startOrig + openTagForNode.length;
         let childOffsetProse = startProse + 1; // +1 for the opening tag
+        let childLine = contentLineStart;
 
         node.forEach((child, _, idx) => {
-            const childTreeNode = this.buildTreeFromNode(child, childOffsetOriginal, childOffsetProse);
-            treeNode.children.push(childTreeNode);
-
-            // Above
-            const nodeDirectlyAbove = node.maybeChild(idx - 1);
-            const nodeTwoAbove = node.maybeChild(idx - 2);
-
-            // Below
-            const nodeDirectlyBelow = node.maybeChild(idx + 1);
-            const nodeTwoBelow = node.maybeChild(idx + 2);
-
-            const func = (skipNewlines: boolean): { nodeAbove: string | null; nodeBelow: string | null } => {
-                let above = nodeDirectlyAbove?.type.name ?? null;
-                let below = nodeDirectlyBelow?.type.name ?? null;
-
-                if (above === "newline" && skipNewlines) above = nodeTwoAbove?.type.name ?? null;
-                if (below === "newline" && skipNewlines) below = nodeTwoBelow?.type.name ?? null;
-
-                return {nodeAbove: above, nodeBelow: below};
-            };
-            
-            // Update the offsets for the next child
+            const func = makeNeighbors(
+                node.maybeChild(idx - 1), node.maybeChild(idx - 2),
+                node.maybeChild(idx + 1), node.maybeChild(idx + 2)
+            );
             const serializedChild = this.serializer.serializeNode(child, node.type.name, func);
+
+            // Text nodes are leaf content tracked by the parent's contentRange, not as
+            // separate TreeNodes. Adding them would make findNodeByProsePos return a
+            // "text" node for edits inside code/markdown cells, breaking textUpdate.
+            if (child.type !== WaterproofSchema.nodes.text) {
+                const childTreeNode = this.buildTreeFromNode(child, childOffsetOriginal, childOffsetProse, childLine);
+                treeNode.children.push(childTreeNode);
+            }
+
+            // Always advance offsets so subsequent non-text children land correctly.
             childOffsetOriginal += serializedChild.length;
             childOffsetProse += child.nodeSize;
+            childLine += countNewlines(serializedChild);
         });
 
         // Now fill in the to positions for innerRange and range
@@ -240,25 +245,43 @@ export class NodeUpdate {
      * @param tree The input tree
      * @returns A ParsedStep containing the resulting DocChange and the updated tree.
      */
-    replaceDelete(step: ReplaceStep, tree: Tree): ParsedStep {       
+    replaceDelete(step: ReplaceStep, tree: Tree, serializer: DocumentSerializer, proseDoc: Node): ParsedStep {
         // Find all nodes that are fully in the deleted range
         const nodesToDelete: TreeNode[] = [];
         let from = Number.POSITIVE_INFINITY;
         let to = Number.NEGATIVE_INFINITY;
+
+        const origDocStart = step.from;
+        const origDocEnd = step.to;
+
+        // Figure out how many newlines are in the deleted content, needed to update the
+        // line numbers of the nodes that come after the deleted nodes.
+        // proseDoc reflects the state after all prior steps in this transaction because
+        // Mapping._currentDoc is kept in sync and passed here as proseDoc.
+        const parentNodeType = proseDoc.resolve(origDocStart).parent.type.name;
+        const parentNode = parentNodeType === "doc" ? null : parentNodeType;
+        // Get the slice of the document that will be deleted, serialize it and count the newlines in it
+        const { content } = proseDoc.slice(origDocStart, origDocEnd);
+        const str = serializer.serializeFragment(content, parentNode);
+        const deletedNewlines = countNewlines(str);
+
+        // First pass: identify nodes to delete
         tree.traverseDepthFirst((node: TreeNode) => {
-            if (node.prosemirrorStart >= step.from && node.prosemirrorEnd <= step.to) {
+            if (node !== tree.root && node.pmRange.from >= step.from && node.pmRange.to <= step.to) {
                 nodesToDelete.push(node);
 
                 if (node.tagRange.from < from) from = node.tagRange.from;
                 if (node.tagRange.to > to) to = node.tagRange.to;
-
-                // Remove from the tree immediately (saves an O(n) traversal over nodesToDelete later)
-                const parent = tree.findParent(node);
-                if (parent) {
-                    parent.removeChild(node);
-                }
             }
         });
+
+        // Second pass: remove from tree
+        for (const node of nodesToDelete) {
+            const parent = tree.findParent(node);
+            if (parent) {
+                parent.removeChild(node);
+            }
+        }
 
         if (nodesToDelete.length == 0) {
             throw new NodeUpdateError("Could not find any nodes to delete in the given step.");
@@ -278,9 +301,16 @@ export class NodeUpdate {
         
         // Update positions of nodes after the deleted nodes
         tree.traverseDepthFirst((thisNode: TreeNode) => {
-            // only shift nodes that come after the deleted nodes
-            if (thisNode.prosemirrorStart >= step.to) {
+            if (thisNode === tree.root) return;
+
+            if (thisNode.pmRange.from < step.from && thisNode.pmRange.to > step.to) {
+                // This node is an ancestor that strictly contains the deleted range —
+                // only shrink its closing offsets (its opening is unaffected).
+                thisNode.shiftCloseOffsets(-originalRemovedLength, -proseRemovedLength);
+            } else if (thisNode.prosemirrorStart >= step.to) {
+                // This node comes entirely after the deleted range.
                 thisNode.shiftOffsets(-originalRemovedLength, -proseRemovedLength);
+                thisNode.shiftLineStart(-deletedNewlines);
             }
         });
         tree.root.shiftCloseOffsets(-originalRemovedLength, -proseRemovedLength);
@@ -324,32 +354,45 @@ export class NodeUpdate {
             }
         };
 
-        // First we update all nodes that come totally after the unwrapped node
+        const removedNewlines = countNewlines(wrappedOpenTag) + countNewlines(wrappedCloseTag);
+
+        // First we update all nodes that come totally after the unwrapped node,
+        // and all intermediate ancestors that contain the wrapper.
+        const tagTextOffset  = -wrappedOpenTag.length - wrappedCloseTag.length;
+        const tagProseOffset = -2;
         tree.traverseDepthFirst((thisNode: TreeNode) => {
-            if (thisNode.pmRange.from >= wrapperNode.pmRange.to) {
-                // The text positions shift by the length of the open and close tags that have just been removed
-                const textOffset = -wrappedOpenTag.length - wrappedCloseTag.length;
-                // The prosemirror positions shift by 2 (1 for the opening and 1 for the closing tag)
-                const proseOffset = -2;
-                thisNode.shiftOffsets(textOffset, proseOffset);
+            if (thisNode === tree.root) return;
+            if (thisNode.pmRange.from < wrapperNode.pmRange.from && thisNode.pmRange.to > wrapperNode.pmRange.to) {
+                // Ancestor of the wrapper (e.g. a container): shrink close offsets only.
+                thisNode.shiftCloseOffsets(tagTextOffset, tagProseOffset);
+            } else if (thisNode.pmRange.from >= wrapperNode.pmRange.to) {
+                // Node entirely after the wrapper: shift all offsets.
+                thisNode.shiftOffsets(tagTextOffset, tagProseOffset);
+                thisNode.shiftLineStart(-removedNewlines);
             }
         });
 
         // Update the root node separately
-        tree.root.shiftCloseOffsets(-wrappedOpenTag.length - wrappedCloseTag.length, -2);
+        tree.root.shiftCloseOffsets(tagTextOffset, tagProseOffset);
 
         // Now we need to update the nodes that were children of the wrapper node
         nodesInRange.forEach(n => {
-            // We update their positions
-            n.shiftOffsets(-wrappedOpenTag.length, -1);
-            // and add them to the parent of the wrapper node
+            // Shift the entire subtree: the open tag offset applies to this node and
+            // all its descendants (e.g. when lifting a container that itself contains a hint).
+            n.traverseDepthFirst(subNode => {
+                subNode.shiftOffsets(-wrappedOpenTag.length, -1);
+                // The open tag may contain newlines that were counted towards lineStart
+                // when wrapping happened; subtract them now.
+                subNode.shiftLineStart(-countNewlines(wrappedOpenTag));
+            });
+            // add to the parent of the wrapper node
             wrapperParent.addChild(n);
         });
         
         return { result: docChange, newTree: tree };
     }
     
-    replaceAroundReplace(step: ReplaceAroundStep, tree: Tree): ParsedStep {        
+    replaceAroundReplace(step: ReplaceAroundStep, tree: Tree): ParsedStep {
         // We start by checking what kind of node we are wrapping with
         const wrappingNode = step.slice.content.firstChild;
         if (!wrappingNode) {
@@ -363,24 +406,41 @@ export class NodeUpdate {
             throw new NodeUpdateError(" We only support ReplaceAroundSteps with a single wrapping node ");
         }
 
-        // Check that the wrapping node is of a supported type (hint or input)
+        // Check that the wrapping node is of a supported type (hint, input, or container)
         const insertedNodeType = wrappingNode.type.name;
-        if (insertedNodeType !== "hint" && insertedNodeType !== "input") {
-            throw new NodeUpdateError(" We only support wrapping in hints or inputs ");
+        if (insertedNodeType !== "hint" && insertedNodeType !== "input" && insertedNodeType !== "container") {
+            throw new NodeUpdateError(" We only support wrapping in hints, inputs, or containers ");
         }
 
-        // If we are wrapping in a hint node we need to have a title attribute
-        const title: string = insertedNodeType === "hint" ? wrappingNode.attrs.title : "";
+        // If we are wrapping in a hint node we need to have a title attribute; container uses name attribute
+        const title: string = insertedNodeType === "hint" ? wrappingNode.attrs.title
+            : insertedNodeType === "container" ? wrappingNode.attrs.name
+            : "";
         // Get the tags for the wrapping node
         const [openTag, closeTag] = this.nodeNameToTagPair(insertedNodeType, title);
 
         // The step includes a range of nodes that are wrapped. We use the mapping
         // to find the node at gapFrom (the first one being wrapped) and the node
         // at gapTo (the last one being wrapped).
-        const nodesBeingWrappedStart = tree.findNodeByProsePos(step.gapFrom);
+        let nodesBeingWrappedStart = tree.findNodeByProsePos(step.gapFrom);
         const nodesBeingWrappedEnd = tree.findNodeByProsePos(step.gapTo);
         // If one of the two doesn't exist we error
         if (!nodesBeingWrappedStart || !nodesBeingWrappedEnd) throw new NodeUpdateError(" Could not find node in mapping ");
+        
+        const openTagLines = countNewlines(openTag);
+        const closeTagLines = countNewlines(closeTag);
+
+        // findNodeByProsePos is biased: at a boundary position it returns the node ENDING there.
+        // If gapFrom equals nodesBeingWrappedStart.pmRange.to, we got the preceding node instead
+        // of the node that starts at gapFrom. Advance to the next sibling to correct this.
+        if (nodesBeingWrappedStart.pmRange.to === step.gapFrom) {
+            const parent = tree.findParent(nodesBeingWrappedStart);
+            const siblings = parent ? parent.children : tree.root.children;
+            const idx = siblings.indexOf(nodesBeingWrappedStart);
+            if (idx + 1 < siblings.length) {
+                nodesBeingWrappedStart = siblings[idx + 1];
+            }
+        }
 
         // Generate the document change (this is a wrapping document change)
         const docChange: WrappingDocChange = {
@@ -432,10 +492,16 @@ export class NodeUpdate {
             parent.removeChild(n);
         });
         
-        // Finally we need to update all nodes that come after the inserted wrapping node
+        // Update nodes after the inserted wrapping node and intermediate ancestors.
         tree.traverseDepthFirst((thisNode: TreeNode) => {
-            if (thisNode.pmRange.from >= positions.proseEnd) {
+            if (thisNode === tree.root) return;
+            if (thisNode.pmRange.from < positions.proseStart && thisNode.pmRange.to > positions.proseEnd) {
+                // Ancestor of the wrapped range (e.g. a container): expand close offsets only.
+                thisNode.shiftCloseOffsets(openTag.length + closeTag.length, 2);
+            } else if (thisNode.pmRange.from >= positions.proseEnd) {
+                // Node entirely after the wrapped range: shift all offsets.
                 thisNode.shiftOffsets(openTag.length + closeTag.length, 2);
+                thisNode.shiftLineStart(openTagLines + closeTagLines);
             }
         });
 
@@ -443,13 +509,18 @@ export class NodeUpdate {
         parent.addChild(newNode);
         
         nodesInRange.forEach(n => {
+            // Shift before adding: addChild sorts by pmRange.from, so all positions
+            // must be final before insertion to avoid sort-order corruption on ties.
+            n.traverseDepthFirst(subNode => {
+                subNode.shiftOffsets(openTag.length, 1);
+                subNode.shiftLineStart(openTagLines);
+            });
             newNode.addChild(n);
-            n.shiftOffsets(openTag.length, 1);
         });
 
         tree.root.shiftCloseOffsets(openTag.length + closeTag.length, 2);
 
-        return {result: docChange, newTree: tree};
+        return { result: docChange, newTree: tree };
     }
 
 }

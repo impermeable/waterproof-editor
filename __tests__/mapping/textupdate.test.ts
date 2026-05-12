@@ -15,8 +15,6 @@ function createMapping(doc: WaterproofDocument) {
   return mapping;
 }
 
-const PLACEHOLDER_LINENR = 0;
-
 function findFirstCodeNode(root: TreeNode): TreeNode | null {
   let found: TreeNode | null = null;
   root.traverseDepthFirst((node: TreeNode) => {
@@ -26,9 +24,8 @@ function findFirstCodeNode(root: TreeNode): TreeNode | null {
   return found;
 }
 
-// TODO: Test linenrs
 test("ReplaceStep insert — inserts text into a block", () => {
-  const blocks = [new MarkdownBlock("Hello", {from: 0, to: 5}, {from: 0, to: 5}, PLACEHOLDER_LINENR)];
+  const blocks = [new MarkdownBlock("Hello", {from: 0, to: 5}, {from: 0, to: 5}, 0)];
   const mapping = createMapping(blocks);
   const slice: Slice = new Slice(Fragment.from(WaterproofSchema.text(" world")), 0, 0);
   const step: ReplaceStep = new ReplaceStep(6, 6, slice);
@@ -51,11 +48,13 @@ test("ReplaceStep insert — inserts text into a block", () => {
     startInFile: 5,
     endInFile: 5
   });
+
+  // No code blocks
+  expect(newTree.computeLineNumbers()).toStrictEqual([]);
 });
 
-const helloWorldMarkdownBlock = new MarkdownBlock("Hello world", {from: 0, to: 11}, {from: 0, to: 11}, PLACEHOLDER_LINENR);
+const helloWorldMarkdownBlock = new MarkdownBlock("Hello world", {from: 0, to: 11}, {from: 0, to: 11}, 0);
 
-// TODO: Test linenrs
 test("ReplaceStep insert — inserts text in the middle of a block", () => {
   const mapping = createMapping([helloWorldMarkdownBlock]);
   const slice: Slice = new Slice(Fragment.from(WaterproofSchema.text("big ")), 0, 0);
@@ -79,6 +78,8 @@ test("ReplaceStep insert — inserts text in the middle of a block", () => {
     startInFile: 6,
     endInFile: 6
   });
+
+  expect(newTree.computeLineNumbers()).toStrictEqual([]);
 });
 
 test("ReplaceStep delete — deletes part of a block", () => {
@@ -102,6 +103,8 @@ test("ReplaceStep delete — deletes part of a block", () => {
     startInFile: 6,
     endInFile: 11
   })
+
+  expect(newTree.computeLineNumbers()).toStrictEqual([]);
 });
 
 
@@ -128,18 +131,20 @@ test("ReplaceStep replace — replaces part of a block", () => {
     startInFile: 6,
     endInFile: 11
   });
+
+  expect(newTree.computeLineNumbers()).toStrictEqual([]);
 });
 
 test("ReplaceStep insert — nested code inside input shifts wrapper and later blocks", () => {
-  // Assumption: Input areas contain newline, code, newline blocks in order.
-  // Assumption: Block ranges are contiguous in the document.
+  // Document: <input-area>\n```coq\nTest\n```\n</input-area>After
+  // Line counting: \n at pos 12 (line 1), \n at pos 19 in ```coq\n (line 2) → code starts at line 2
   const blocks = [
-    new InputAreaBlock("```coq\nTest\n```", {from: 0, to: 42}, {from: 12, to: 29}, PLACEHOLDER_LINENR, [
-      new NewlineBlock({from: 12, to: 13}, {from: 12, to: 13}, PLACEHOLDER_LINENR),
-      new CodeBlock("Test", {from: 13, to: 28}, {from: 20, to: 24}, PLACEHOLDER_LINENR),
-      new NewlineBlock({from: 28, to: 29}, {from: 28, to: 29}, PLACEHOLDER_LINENR)
+    new InputAreaBlock("```coq\nTest\n```", {from: 0, to: 42}, {from: 12, to: 29}, 0, [
+      new NewlineBlock({from: 12, to: 13}, {from: 12, to: 13}, 0),
+      new CodeBlock("Test", {from: 13, to: 28}, {from: 20, to: 24}, 2),
+      new NewlineBlock({from: 28, to: 29}, {from: 28, to: 29}, 0)
     ]),
-    new MarkdownBlock("After", {from: 42, to: 47}, {from: 42, to: 47}, PLACEHOLDER_LINENR)
+    new MarkdownBlock("After", {from: 42, to: 47}, {from: 42, to: 47}, 0)
   ];
 
   const mapping = createMapping(blocks);
@@ -179,4 +184,10 @@ test("ReplaceStep insert — nested code inside input shifts wrapper and later b
   expect(updatedInput.contentRange.to).toBe(inputContentEnd + 1);
   expect(updatedAfter.contentRange.from).toBe(afterContentStart + 1);
   expect(updatedAfter.tagRange.from).toBe(afterTagStart + 1);
+
+  // Inserting "X" (no newlines) should preserve the code block's lineStart
+  const updatedCode = findFirstCodeNode(newTree.root);
+  expect(updatedCode).not.toBeNull();
+  expect(updatedCode!.lineStart).toBe(2);
+  expect(newTree.computeLineNumbers()).toStrictEqual([2]);
 });

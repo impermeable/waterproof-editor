@@ -2,7 +2,7 @@ import { mathPlugin, mathSerializer } from "@benrbray/prosemirror-math";
 import { selectParentNode } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
 import { Node as ProseNode } from "prosemirror-model";
-import { EditorState, NodeSelection, Plugin, Selection, TextSelection, Transaction } from "prosemirror-state";
+import { Command, EditorState, NodeSelection, Plugin, Selection, TextSelection, Transaction } from "prosemirror-state";
 import { ReplaceAroundStep, ReplaceStep, Step } from "prosemirror-transform";
 import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
@@ -175,6 +175,9 @@ export class WaterproofEditor {
 			clipboardTextSerializer: (slice) => { return mathSerializer.serializeSlice(slice) },
 			dispatchTransaction: ((tr) => {
 				// Called on every transaction.
+				// Reset _currentDoc so stale state from a previous (possibly failed)
+				// transaction cannot bleed into this one.
+				this._mapping?.resetCurrentDoc();
 
 				let step : Step | undefined = undefined;
 				for (step of tr.steps) {
@@ -589,6 +592,7 @@ export class WaterproofEditor {
 		const trans = state.tr;
 		trans.setMeta(INPUT_AREA_PLUGIN_KEY, {teacher: isTeacher});
 		this._view.dispatch(trans);
+		this._editorElem.classList.toggle("teacher-mode", isTeacher);
 	}
 
 	public reportProgress(current: number, total: number, text?: string): void {
@@ -778,6 +782,14 @@ export class WaterproofEditor {
 				severity: d.severity
 			}
 		});
+	}
+
+	/**
+	 * Execute a ProseMirror command on the editor.
+	 * @param cmd The ProseMirror command to execute.
+	 */
+	public executeProsemirrorCommand(cmd: Command): void {
+		if (this._view) cmd(this._view.state, this._view.dispatch, this._view);
 	}
 
 	// Editor API

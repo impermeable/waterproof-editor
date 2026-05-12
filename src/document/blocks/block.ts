@@ -8,6 +8,7 @@ export enum BLOCK_NAME {
     MARKDOWN = "markdown",
     CODE = "code",
     NEWLINE = "newline",
+    CONTAINER = "container",
 }
 
 export interface BlockRange {
@@ -26,7 +27,7 @@ export interface Block {
     /** The linenumber (0 based) at the start of this block */
     lineStart: number;
 
-    /** Blocks that are children of this block, only valid for InputArea and Hint Blocks. */
+    /** Blocks that are children of this block, only valid for InputArea, Hint, and Container Blocks. */
     innerBlocks?: Block[];
 
     /** Convert this block to the corresponding ProseMirror node. */
