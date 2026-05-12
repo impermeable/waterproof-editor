@@ -1,6 +1,8 @@
 import { EditType, typeFromDocChange, isWrappingDocChange, isDocChange } from "../src/edit-utils";
 import { DocChange, WrappingDocChange } from "../src/api";
 
+// AI-generated tests
+
 const docChange = (startInFile: number, endInFile: number, finalText: string): DocChange => ({
     startInFile, endInFile, finalText
 });
