@@ -427,7 +427,7 @@ describe("checkInputArea with container nesting", () => {
         expect(checkInputArea(innerSel)).toBe(false);
     });
 
-    // T3 — Regression: the original code only checked depth=1 for input nodes.
+    // Regression: the original code only checked depth=1 for input nodes.
     // This test exercises the depth>=2 branch: cursor exactly at the input boundary
     // inside a container (depth=2, before any inner block), which was missed pre-fix.
     test("returns true at depth 2 (cursor at input boundary inside container)", () => {
@@ -448,7 +448,7 @@ describe("checkInputArea with container nesting", () => {
 // Regression tests for container bugs
 // ============================================================
 
-// T1 — Regression: wrapInContainer must not absorb the preceding newline.
+// Regression: wrapInContainer must not absorb the preceding newline.
 // The old implementation used tr.wrap(blockRange, ...) which, for a top-level
 // NodeSelection, caused the preceding newline to be swept inside the container.
 // The fix uses ReplaceAroundStep(sel.from, sel.to, sel.from, sel.to, ...).
@@ -472,7 +472,7 @@ describe("wrapInContainer newline regression", () => {
     });
 });
 
-// T2 — Regression: wrapping a container node inside another container must be rejected.
+// Regression: wrapping a container node inside another container must be rejected.
 describe("wrapInContainer container-in-container prevention", () => {
     test("returns false when selected node is itself a container", () => {
         const mdNode = WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text("hello"));
@@ -484,7 +484,7 @@ describe("wrapInContainer container-in-container prevention", () => {
     });
 });
 
-// T4 — Regression: a text edit inside the container after wrapping must not corrupt the doc.
+// Regression: a text edit inside the container after wrapping must not corrupt the doc.
 // This exercises the position-mapping path that was broken by the old tr.wrap approach.
 describe("wrapInContainer followed by content edit", () => {
     test("doc structure remains valid after wrap and text insert inside code", () => {
@@ -513,7 +513,7 @@ describe("wrapInContainer followed by content edit", () => {
 });
 
 
-// T5 — Regression: wpLift must lift ALL children when container has multiple inner blocks.
+// Regression: wpLift must lift ALL children when container has multiple inner blocks.
 describe("wpLift with multiple children", () => {
     test("lifts all children out of container when container has multiple inner blocks", () => {
         const mdNode = WaterproofSchema.nodes.markdown.create({}, WaterproofSchema.text("hello"));

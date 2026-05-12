@@ -470,9 +470,9 @@ test("computeLineNumbers collects lineStart for code nodes", () => {
     expect(lineNumbers[1]).toBe(tree.root.children[4].lineStart);
 });
 
-// ===================== nodesInProseRange — new bug #4 regression =====================
 
-test("nodesInProseRange returns only top-level nodes in range, not their children too (new bug #4)", () => {
+test("nodesInProseRange returns only top-level nodes in range, not their children too", () => {
+    // AI-generated regression test
     // Tree structure:
     //   root           pmRange {0, 20}
     //     container    pmRange {0, 10}
