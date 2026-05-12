@@ -92,13 +92,13 @@ export function deleteSelection(tagConf: TagConfiguration): Command {
                 return true;
             } else if (afterIsNewline && afteer !== null && needsNewlineBefore(afteer.type, tagConf)) {
                 // After is newline and afteer needs newline before
-                // We need to keep the after newline, so we delete the node and the before newline
-                if (dispatch) dispatch(state.tr.delete(state.selection.from - beforeSize, state.selection.to).scrollIntoView());
+                // We need to keep the after newline, so we delete the node and the before newline (if any)
+                if (dispatch) dispatch(state.tr.delete(state.selection.from - (beforeIsNewline ? beforeSize : 0), state.selection.to).scrollIntoView());
                 return true;
             } else if (beforeIsNewline && befoore !== null && needsNewlineAfter(befoore.type, tagConf)) {
                 // Before is newline and befoore needs newline after
-                // We need to keep the before newline, so we delete the node and the after newline
-                if (dispatch) dispatch(state.tr.delete(state.selection.from, state.selection.to + afterSize).scrollIntoView());
+                // We need to keep the before newline, so we delete the node and the after newline (if any)
+                if (dispatch) dispatch(state.tr.delete(state.selection.from, state.selection.to + (afterIsNewline ? afterSize : 0)).scrollIntoView());
                 return true;
             } else if (beforeIsNewline && afterIsNewline && (befoore === null || (befoore !== null && !needsNewlineAfter(befoore.type, tagConf))) && (afteer === null || (afteer !== null && !needsNewlineBefore(afteer.type, tagConf)))) {
                 // Before and after are newlines, but befoore does not need newline after and afteer does not need newline before
