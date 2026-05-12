@@ -211,16 +211,21 @@ export class NodeUpdate {
         let childLine = contentLineStart;
 
         node.forEach((child, _, idx) => {
-            const childTreeNode = this.buildTreeFromNode(child, childOffsetOriginal, childOffsetProse, childLine);
-            treeNode.children.push(childTreeNode);
-
             const func = makeNeighbors(
                 node.maybeChild(idx - 1), node.maybeChild(idx - 2),
                 node.maybeChild(idx + 1), node.maybeChild(idx + 2)
             );
-
-            // Update the offsets for the next child
             const serializedChild = this.serializer.serializeNode(child, node.type.name, func);
+
+            // Text nodes are leaf content tracked by the parent's contentRange, not as
+            // separate TreeNodes. Adding them would make findNodeByProsePos return a
+            // "text" node for edits inside code/markdown cells, breaking textUpdate.
+            if (child.type !== WaterproofSchema.nodes.text) {
+                const childTreeNode = this.buildTreeFromNode(child, childOffsetOriginal, childOffsetProse, childLine);
+                treeNode.children.push(childTreeNode);
+            }
+
+            // Always advance offsets so subsequent non-text children land correctly.
             childOffsetOriginal += serializedChild.length;
             childOffsetProse += child.nodeSize;
             childLine += countNewlines(serializedChild);

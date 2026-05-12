@@ -1,7 +1,7 @@
 import { Fragment, Slice } from "prosemirror-model";
 import { ReplaceAroundStep, ReplaceStep } from "prosemirror-transform";
 import { DocChange } from "../../src/api";
-import { Block } from "../../src/document";
+import { Block, CodeBlock, MarkdownBlock, NewlineBlock } from "../../src/document";
 import { Mapping, TreeNode } from "../../src/mapping";
 import { configuration, parse } from "../../src/markdown-defaults";
 import { WaterproofSchema } from "../../src/schema";
@@ -318,4 +318,54 @@ test("Regression: deleting the first code block at position 0 routes to nodeUpda
     expect(result!.startInFile).toBeGreaterThanOrEqual(0);
 
     sanityCheckTree(mapping.getMapping().root);
+});
+
+// AI-generated regression test
+// Regression: after deleting a code block and undoing, typing inside the
+// reinserted block must not throw.
+//
+// Root cause: buildTreeFromNode recurses into all ProseMirror children,
+// including text nodes. When the undo step reinserts code("Code"), the rebuilt
+// mapping TreeNode for the code block gets a spurious "text" child. The next
+// text-insert step calls findNodeByProsePos, which descends into that child and
+// returns a node of type "text". textUpdate.getNodeFromCacheOrSearch then throws
+// TextUpdateError because "text" is not in supportsTextEdits.
+test("Regression: typing inside a code block after undo of its deletion does not throw", () => {
+    // Document:  ```coq\nCode\n```  |  \n  |  # Hello
+    // ProseMirror layout:
+    //   code     pmRange {0, 6}   prosemirrorStart=1  prosemirrorEnd=5
+    //   newline  pmRange {6, 7}
+    //   markdown pmRange {7, 16}
+    const blocks = [
+        new CodeBlock("Code",    { from: 0,  to: 15 }, { from: 7,  to: 11 }, 1),
+        new NewlineBlock(                               { from: 15, to: 16 }, { from: 15, to: 16 }, 0),
+        new MarkdownBlock("# Hello",                   { from: 16, to: 23 }, { from: 16, to: 23 }, 0),
+    ];
+    const proseDoc = constructDocument(blocks);
+    const mapping = new Mapping(blocks, 0, config, serializer);
+
+    const tree = mapping.getMapping();
+    const codeNode = tree.root.children.find(n => n.type === "code");
+    if (!codeNode) throw new Error("Test setup: code node not found");
+
+    // Step 1: delete the code block — matches deleteSelection on a NodeSelection.
+    const deleteStep = new ReplaceStep(codeNode.pmRange.from, codeNode.pmRange.to, Slice.empty);
+    mapping.update(deleteStep, proseDoc);
+
+    // Step 2: undo — ProseMirror reinserts the code node carrying its text child "Code".
+    // buildTreeFromNode adds that text node as a child of the rebuilt code TreeNode (the bug).
+    const undoSlice = new Slice(
+        Fragment.from([WaterproofSchema.nodes.code.create(null, Fragment.from([WaterproofSchema.text("Code")]))]),
+        0, 0
+    );
+    jest.spyOn(serializer, "serializeDocument").mockReturnValueOnce("\n# Hello");
+    mapping.update(new ReplaceStep(0, 0, undoSlice), proseDoc);
+
+    sanityCheckTree(mapping.getMapping().root);
+
+    // Step 3: type "X" at position 2, which is inside the reinserted code block's content
+    // (prosemirrorStart=1, prosemirrorEnd=5).
+    // With the bug, findNodeByProsePos returns the spurious "text" child and throws.
+    const typeStep = new ReplaceStep(2, 2, new Slice(Fragment.from(WaterproofSchema.text("X")), 0, 0));
+    expect(() => mapping.update(typeStep, proseDoc)).not.toThrow();
 });
