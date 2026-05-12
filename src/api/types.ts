@@ -170,7 +170,7 @@ export type WaterproofEditorConfig = {
      */
     toMarkdown?: (inputString: string) => string,
     /**
-     * Disables MarkdownIt features. Will likely be removed in the future once there is a nice way to support non markdown markup languages.
+     * Disables Markdown features. Will likely be removed in the future once there is a nice way to support non markdown markup languages.
      */
     disableMarkdownFeatures?: Array<string>,
 
