@@ -1,11 +1,11 @@
-import { selectParentNode, wrapIn } from "prosemirror-commands";
-import { Schema } from "prosemirror-model";
-import { Command, PluginView, Plugin, PluginKey } from "prosemirror-state";
+import { selectParentNode } from "prosemirror-commands";
+import { Command, PluginView, Plugin, PluginKey, EditorState } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
-import { cmdInsertCode, cmdInsertLatex, cmdInsertMarkdown, InsertionPlace, liftWrapper } from "../commands";
+import { InsertionPlace, wrapInHint, wrapInInput, deleteSelection, wpLift } from "../commands";
 import { OS } from "../osType";
-import { FileFormat } from "../api/FileFormat";
+import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "../commands/insert-command";
+import { MenuBarEntry, TagConfiguration } from "../api";
 
 /** MenuEntry type contains the DOM, whether to only show it in teacher mode and the command to execute on click */
 type MenuEntry = {
@@ -13,6 +13,8 @@ type MenuEntry = {
     teacherModeOnly: boolean;
     showByDefault: boolean;
     cmd: Command;
+    customEntry: boolean;
+    isActive?: (state: EditorState) => boolean;
 };
 
 /**
@@ -24,7 +26,7 @@ type MenuEntry = {
  * @param teacherModeOnly [`false` by default] Whether this button should only be available in teacher mode.
  * @returns A new `MenuButton` object.
  */
-function createMenuItem(displayedText: string, tooltipText: string, cmd: Command, buttonSettings?: {teacherModeOnly?: boolean, showByDefault?: boolean}): MenuEntry {
+function createMenuItem(displayedText: string, tooltipText: string, cmd: Command, buttonSettings?: {teacherModeOnly?: boolean, showByDefault?: boolean}, customEntry?: boolean): MenuEntry {
     // Create the DOM element.
     const menuItem = document.createElement("div");
     // Set the displayed text and the tooltip.
@@ -33,7 +35,7 @@ function createMenuItem(displayedText: string, tooltipText: string, cmd: Command
     // Add the class for styling this menubar item
     menuItem.classList.add("menubar-item");
     // Return the new item.
-    return {cmd, dom: menuItem, teacherModeOnly: buttonSettings?.teacherModeOnly ?? false, showByDefault: buttonSettings?.showByDefault ?? false};
+    return {cmd, dom: menuItem, teacherModeOnly: buttonSettings?.teacherModeOnly ?? false, showByDefault: buttonSettings?.showByDefault ?? false, customEntry: customEntry ?? false};
 }
 
 /**
@@ -99,16 +101,21 @@ class MenuView implements PluginView {
                 item.dom.style.display = "flex";
             }
 
-            const active = item.cmd(this.view.state, undefined, this.view);
-            /* From https://prosemirror.net/examples/menu/
-            "To update the menu for a new state, all commands are run without dispatch function,
-            and the items for those that return false are hidden."
-            */
-            // Instead of hiding the item we set the opacity to something low
-            item.dom.style.opacity = active ? "1" : "0.4";
-            // And make it unclickable.
-            item.dom.setAttribute("disabled", (!active).toString());
-
+            if (!item.customEntry) {
+                const active = item.cmd(this.view.state, undefined, this.view);
+                /* From https://prosemirror.net/examples/menu/
+                "To update the menu for a new state, all commands are run without dispatch function,
+                and the items for those that return false are hidden."
+                */
+                // Instead of hiding the item we set the opacity to something low
+                item.dom.style.opacity = active ? "1" : "0.4";
+                // And make it unclickable.
+                item.dom.setAttribute("disabled", (!active).toString());
+            } else if (item.isActive) {
+                const active = item.isActive(this.view.state);
+                item.dom.style.opacity = active ? "1" : "0.4";
+                item.dom.setAttribute("disabled", (!active).toString());
+            }
         }
     }
 
@@ -128,10 +135,7 @@ const LaTeX_SVG = `<svg viewBox="0 0 1200 500" xmlns="http://www.w3.org/2000/svg
 <path d="m6.27 0h-6.09s-.18 2.24-.18 2.24h.24c.14-1.61.29-1.94 1.8-1.94.18 0 .44 0 .54.02.21.04.21.15.21.38v5.25c0 .34 0 .48-1.05.48h-.4v.31c.41-.03 1.42-.03 1.88-.03s1.49 0 1.9.03v-.31h-.4c-1.05 0-1.05-.14-1.05-.48v-5.25c0-.2 0-.34.18-.38.11-.02.38-.02.57-.02 1.5 0 1.65.33 1.79 1.94h.25s-.19-2.24-.19-2.24z" transform="matrix(45 0 0 45 356.35 50.35)"/>
 <path d="m6.16 4.2h-.25c-.25 1.53-.48 2.26-2.19 2.26h-1.32c-.47 0-.49-.07-.49-.4v-2.66h.89c.97 0 1.08.32 1.08 1.17h.25v-2.64h-.25c0 .85-.11 1.16-1.08 1.16h-.89v-2.39c0-.33.02-.4.49-.4h1.28c1.53 0 1.79.55 1.95 1.94h.25l-.28-2.24h-5.6v.3h.23c.77 0 .79.11.79.47v5.22c0 .36-.02.47-.79.47h-.23v.31h5.74z" transform="matrix(45 0 0 45 602.5 150.25)"/>
 <path d="m3.76 2.95 1.37-2c.21-.32.55-.64 1.44-.65v-.3h-2.38v.3c.4.01.62.23.62.46 0 .1-.02.12-.09.23 0 0-1.14 1.68-1.14 1.68l-1.28-1.92c-.02-.03-.07-.11-.07-.15 0-.12.22-.29.64-.3v-.3c-.34.03-1.07.03-1.45.03-.31 0-.93-.01-1.3-.03v.3h.19c.55 0 .74.07.93.35 0 0 1.83 2.77 1.83 2.77l-1.63 2.41c-.14.2-.44.66-1.44.66v.31h2.38v-.31c-.46-.01-.63-.28-.63-.46 0-.09.03-.13.1-.24l1.41-2.09 1.58 2.38c.02.04.05.08.05.11 0 .12-.22.29-.65.3v.31c.35-.03 1.08-.03 1.45-.03.42 0 .88.01 1.3.03v-.31h-.19c-.52 0-.73-.05-.94-.36 0 0-2.1-3.18-2.1-3.18z" transform="matrix(45 0 0 45 845.95 47.65)"/>
-</svg>`
-
-/** If set to `true`, the menubar will display debug buttons.*/
-const DEBUG = false;
+</svg>`;
 
 /**
  * Only execute the command when in teacher mode
@@ -149,12 +153,13 @@ function teacherOnlyWrapper(cmd: Command): Command {
 
 /**
  * Creates the default menu bar.
- * @param schema The schema in use for the editor.
  * @param outerView The outer (prosemirror)editor.
- * @param filef The file format of the current file. Some commands will behave differently in `.mv` vs `.v` context.
+ * @param os The operating system of the user. Determines what modifier keys to show in the tooltips.
+ * @param tagConf The current tag configuration.
+ * @param customEntries Array of custom menubar entries that should be added to the menubar
  * @returns A new `MenuView` filled with default menu items.
  */
-function createDefaultMenu(schema: Schema, outerView: EditorView, filef: FileFormat, os: OS): MenuView {
+function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfiguration, customEntries: Array<MenuBarEntry> | undefined): MenuView {
 
     // Platform specific keybinding string:
     const cmdOrCtrl = os == OS.MacOS ? "Cmd" : "Ctrl";
@@ -164,34 +169,50 @@ function createDefaultMenu(schema: Schema, outerView: EditorView, filef: FileFor
 
     // Create the list of menu entries.
     const items: MenuEntry[] = [
-        // Insert Coq command
-        createMenuItem("Math↓", `Insert new verified math block underneath (${keyBinding("q")})`, cmdInsertCode(schema, filef, InsertionPlace.Underneath)),
-        createMenuItem("Math↑", `Insert new verified math block above (${keyBinding("Q")})`, cmdInsertCode(schema, filef, InsertionPlace.Above)),
+        // Insert Code Block
+        createMenuItem("Math↓", `Insert new verified math block underneath (${keyBinding("q")})`, getCmdInsertCode(InsertionPlace.Below, tagConf)),
+        createMenuItem("Math↑", `Insert new verified math block above (${keyBinding("Q")})`, getCmdInsertCode(InsertionPlace.Above, tagConf)),
         // Insert Markdown
-        createMenuItem("Text↓", `Insert new text block underneath (${keyBinding("m")})`, cmdInsertMarkdown(schema, filef, InsertionPlace.Underneath)),
-        createMenuItem("Text↑", `Insert new text block above (${keyBinding("M")})`, cmdInsertMarkdown(schema, filef, InsertionPlace.Above)),
+        createMenuItem("Text↓", `Insert new text block underneath (${keyBinding("m")})`, getCmdInsertMarkdown(InsertionPlace.Below, tagConf)),
+        createMenuItem("Text↑", `Insert new text block above (${keyBinding("M")})`, getCmdInsertMarkdown(InsertionPlace.Above, tagConf)),
         // Insert LaTeX
-        createMenuItem(`${LaTeX_SVG} <div>↓</div>`, `Insert new LaTeX block underneath (${keyBinding("l")})`, cmdInsertLatex(schema, filef, InsertionPlace.Underneath)),
-        createMenuItem(`${LaTeX_SVG} <div>↑</div>`, `Insert new LaTeX block above (${keyBinding("L")})`, cmdInsertLatex(schema, filef, InsertionPlace.Above)),
+        createMenuItem(`${LaTeX_SVG} <div>↓</div>`, `Insert new LaTeX block underneath (${keyBinding("l")})`, getCmdInsertLatex(InsertionPlace.Below, tagConf)),
+        createMenuItem(`${LaTeX_SVG} <div>↑</div>`, `Insert new LaTeX block above (${keyBinding("L")})`, getCmdInsertLatex(InsertionPlace.Above, tagConf)),
         // Select the parent node.
         createMenuItem("Parent", `Select the parent node (${keyBinding(".")})`, selectParentNode),
         // in teacher mode, display input area, hint and lift buttons.
-        createMenuItem("ⵊ...", "Make selection an input area", teacherOnlyWrapper(wrapIn(schema.nodes["input"])), teacherOnly),
-        createMenuItem("<strong>?</strong>", "Make selection a hint element", teacherOnlyWrapper(wrapIn(schema.nodes["hint"])), teacherOnly),
-        createMenuItem("↑", "Lift selected node (Reverts the effect of making a 'hint' or 'input area')", teacherOnlyWrapper(liftWrapper), teacherOnly)
+        createMenuItem("ⵊ...", "Make selection an input area", teacherOnlyWrapper(wrapInInput(tagConf)), teacherOnly),
+        createMenuItem("<strong>?</strong>", "Make selection a hint element", teacherOnlyWrapper(wrapInHint(tagConf)), teacherOnly),
+        createMenuItem("↑", "Lift selected node (Reverts the effect of making a 'hint' or 'input area')", teacherOnlyWrapper(wpLift(tagConf)), teacherOnly),
+        createMenuItem("🗑️", "Delete selection", teacherOnlyWrapper(deleteSelection(tagConf)), teacherOnly),
     ]
 
-    // If the DEBUG variable is set to `true` then we display a `dump` menu item, which outputs the current
-    // document in the console as a JSON object.
-    if (DEBUG) {
-        items.push(createMenuItem("DUMP DOC", "", (state, dispatch) => {
-            if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m dumped doc", JSON.stringify(state.doc.toJSON()));
-            return true;
-        }, {showByDefault: true}));
-        items.push(createMenuItem("DUMP SELECTION", "", (state, dispatch) => {
-            if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m Selection", state.selection);
-            return true;
-        }, {showByDefault: true}));
+    const customMenuItems = customEntries?.map(entry => {
+        const item = createMenuItem(entry.title, entry.hoverText, () => { entry.callback(); return true; }, entry.buttonVisibility, true);
+        item.isActive = entry.isActive;
+        return item;
+    });
+    if (customMenuItems !== undefined)
+        items.push(...customMenuItems);
+
+
+    // The DEBUG label will be dropped in case we are *not* in debug mode.
+    // eslint-disable-next-line no-unused-labels
+    DEBUG: {
+        items.push(
+            createMenuItem("DUMP DOC", "", (state, dispatch) => {
+                if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m dumped doc", JSON.stringify(state.doc.toJSON()));
+                return true;
+            }, {showByDefault: true}),
+            createMenuItem("DUMP SELECTION", "", (state, dispatch) => {
+                if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m Selection", state.selection);
+                return true;
+            }, {showByDefault: true}),
+            createMenuItem("DUMP STATE", "", (state, dispatch) => {
+                if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m Editor State", JSON.stringify(state.toJSON()));
+                return true;
+            }, {showByDefault: true})
+        );
     }
 
     // Return a new MenuView with the previously created items.
@@ -212,16 +233,15 @@ export const MENU_PLUGIN_KEY = new PluginKey<IMenuPluginState>("prosemirror-menu
 
 /**
  * Create a new menu plugin given the schema and file format.
- * @param schema The schema in use for the editor.
  * @param filef The file format of the currently opened file.
  * @returns A prosemirror `Plugin` type containing the menubar.
  */
-export function menuPlugin(schema: Schema, filef: FileFormat, os: OS) {
+export function menuPlugin(os: OS, tagConf: TagConfiguration, customEntries: Array<MenuBarEntry> | undefined) {
     return new Plugin({
         // This plugin has an associated `view`. This allows it to add DOM elements.
         view(outerView: EditorView) {
             // Create the default menu.
-            const menuView = createDefaultMenu(schema, outerView, filef, os);
+            const menuView = createDefaultMenu(outerView, os, tagConf, customEntries);
             // Get the parent node (the parent node of the outer prosemirror dom)
             const parentNode = outerView.dom.parentNode;
             if (parentNode == null) {

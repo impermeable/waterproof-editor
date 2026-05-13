@@ -50,9 +50,13 @@
 	},
   
 	".cm-gutters": {
-	  "backgroundColor": "var(--wp-editorInlayHintBackground)",
+	  "backgroundColor": "var(--wp-listFilterWidgetBackground)",
 	  "color": "var(--wp-editorInlayHintForeground)",
 	  "border": "none"
+	},
+
+	".cm-gutters-after": {
+	  "backgroundColor": "var(--wp-editorInlayHintBackground)"
 	},
 
 	".cm-activeLineGutter": {

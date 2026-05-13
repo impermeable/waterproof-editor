@@ -1,3 +1,4 @@
 export { BlockRange, Block } from "./block";
 
-export { InputAreaBlock, HintBlock, CoqBlock, MathDisplayBlock, MarkdownBlock, CoqDocBlock, CoqCodeBlock, CoqMarkdownBlock } from "./blocktypes";
+export * from "./blocktypes";
+export * from "./typeguards";

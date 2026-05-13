@@ -8,10 +8,6 @@
     display: none;
 }
 
-/* .markdown-view-editor {
-
-} */
-
 .markdown-view-editor::before {
     --border-color: var(--wp-inputBorder);
     border-right: 1px solid var(--border-color);
@@ -22,7 +18,7 @@
     font-size: var(--wp-fontSize);
     font-weight: var(--wp-fontWeight);
     border-radius: 0px 0px 5px 0px;
-    content: "Markdown";
+    content: attr(markup-name);
     padding: 0.2em;
 }
 
@@ -30,10 +26,3 @@
 code {
     font-family: var(--wp-editorFontFamily);
 }
-
-
-/* 
-.markdown-view-editor::after {
-    border-top: 1px solid black;
-    content: "</markdown>"
-} */

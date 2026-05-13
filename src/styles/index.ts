@@ -9,6 +9,9 @@ import "./style.css";
 // for hints
 import "./hints.css";
 
+// for containers 
+import "./container.css";
+
 // for menubar
 import "./menubar.css";
 
@@ -21,20 +24,11 @@ import "./markdown.css";
 // for popover notifications
 import "./notifications.css";
 
-// for the coqdoc outline
-import "./coqdoc.css";
-
-// for the progressBar
-import "./progressBar.css";
+// for the progress bar and spinner
+import "./progress.css";
 
 // for the document progress decorator
 import "./documentProgressDecorator.css";
-
-// for the spinner
-import "./spinner.css";
-
-// for the freeze effect skull
-import "./freeze.css";
 
 // for the custom context menu
 import "./context-menu.css";
@@ -44,3 +38,6 @@ import "./autocomplete.css";
 
 // Highlighting for the magic keyword:
 import "./magic.css";
+
+// For the busy indicator in the gutter:
+import "./busy-indicator.css";

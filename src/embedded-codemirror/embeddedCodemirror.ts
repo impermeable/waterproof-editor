@@ -3,7 +3,6 @@ import { Node as PNode, Schema } from "prosemirror-model";
 import { TextSelection } from "prosemirror-state";
 import { Decoration, DecorationSource, EditorView, NodeView } from "prosemirror-view";
 import { MovementDirection, MovementUnit } from "./types";
-import { exitCode } from "prosemirror-commands";
 import { keybindings } from "./embedded-codemirror-keymap";
 
 /**
@@ -97,8 +96,17 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 		return true;
 	}
 
-    selectNode?: (() => void) | undefined;
-    deselectNode?: (() => void) | undefined;
+    selectNode() {
+        if (this.dom instanceof HTMLElement) {
+            this.dom.classList.add("ProseMirror-selectednode");
+        }
+    }
+
+    deselectNode() {
+        if (this.dom instanceof HTMLElement) {
+            this.dom.classList.remove("ProseMirror-selectednode");
+        }
+    }
     
     setSelection(anchor: number, head: number, _root: Document | ShadowRoot) {
 		// Focus on the internal codemirror instance.
@@ -120,7 +128,7 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 		// Get the current cursor position.
 		const pos = this._getPos();
 		// If there is no position we are done.
-		if (!pos) return;
+		if (pos === undefined) return;
 		// If we are updating or we don't have focus then we should return early.
 		if (this.updating || !this._codemirror?.hasFocus) return;
 
@@ -135,6 +143,8 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 		if (update.docChanged || pmSel.from != selFrom || pmSel.to != selTo) {
 			//..then we get the currnt transaction
 			const tr = this._outerView.state.tr;
+			
+			const lineDelta = update.state.doc.lines - update.startState.doc.lines;
 			update.changes.iterChanges((fromA, toA, fromB, toB, text) => {
 				//..iterate over all changes and create text changes in the outer editor.
 				if (text.length) {
@@ -143,9 +153,13 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 				}
 				else {
 					tr.delete(offset + fromA, offset + toA);
-					offset += (toB - fromB) - (toA - fromA);
 				}
+
+				// Accumulate the total offset of the changes
+				// Some edits (e.g. toggle comment) are represented as multiple inserts/replaces.
+				offset += (toB - fromB) - (toA - fromA);
 			});
+			if (lineDelta !== 0) tr.setMeta("lineDelta", lineDelta);
 		  	tr.setSelection(TextSelection.create(tr.doc, selFrom, selTo));
 		  	this._outerView.dispatch(tr);
 		}
@@ -165,7 +179,7 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 			// Get the current position.
 			const pos = this._getPos();
 			// If there is none, we can't escape this view,
-			if (!pos) return false;
+			if (pos === undefined) return false;
 
 			// Get the current state and the main selection related to this state.
 			const _state = targetView.state;
@@ -227,22 +241,13 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
 
     // Setup codemirror keymap
 	embeddedCodeMirrorKeymap(): KeyBinding[] {
-		const view = this._outerView;
 
-		// 'Mod' is a platform independent 'Ctrl'/'Cmd'
 		return [
 			...keybindings,
 			{ key: "ArrowUp", run: this.maybeEscape(MovementUnit.line, MovementDirection.backward) },
 			{ key: "ArrowLeft", run: this.maybeEscape(MovementUnit.character, MovementDirection.backward) },
 			{ key: "ArrowDown", run: this.maybeEscape(MovementUnit.line, MovementDirection.forward) },
 			{ key: "ArrowRight", run: this.maybeEscape(MovementUnit.character, MovementDirection.forward) },
-			{
-				key: "Mod-Enter", run: () => {
-					if (!exitCode(view.state, view.dispatch)) return false
-					view.focus()
-					return true
-				}
-			},
 		]
 	}
 }

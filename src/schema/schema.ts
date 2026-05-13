@@ -2,17 +2,16 @@ import { Node as PNode, Schema } from "prosemirror-model";
 
 export const SchemaCell = {
 	InputArea: "input",
+	Hint: "hint",
 	Markdown: "markdown",
 	MathDisplay: "math_display",
-	Code: "code"
+	Code: "code",
+	Newline: "newline",
+	Container: "container"
 } as const;
 
 export type SchemaKeys = keyof typeof SchemaCell;
 export type SchemaNames = typeof SchemaCell[SchemaKeys];
-
-const cell = `(markdown | hint | coqblock | input | math_display)`;
-const containercontent = "(markdown | coqblock | math_display)";
-// const groupMarkdown = "markdowncontent";
 
 /**
  * General schema obtained from `prosemirror-markdown`:
@@ -23,13 +22,11 @@ const containercontent = "(markdown | coqblock | math_display)";
  *
  * math blocks obtained from `prosemirror-math`:
  * https://github.com/benrbray/prosemirror-math/blob/master/src/math-schema.ts
- *
- * see [notes](./notes.md)
  */
-export const WaterproofSchema: Schema = new Schema({
+export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 	nodes: {
 		doc: {
-			content: `${cell}*`
+			content: "cell+"
 		},
 
 		text: {
@@ -41,6 +38,7 @@ export const WaterproofSchema: Schema = new Schema({
 		markdown: {
 			block: true,
 			content: "text*",
+			group: "cell hintinputcontent containercontent",
 			parseDOM: [{tag: "markdown", preserveWhitespace: "full"}],
 			atom: true,
 			toDOM: () => {
@@ -52,7 +50,8 @@ export const WaterproofSchema: Schema = new Schema({
 		/////// HINT //////
 		//#region Hint
 		hint: {
-			content: `${containercontent}*`,
+			content: "hintinputcontent+",
+			group: "cell containercontent",
 			attrs: {
 				title: {default: "💡 Hint"},
 				shown: {default: false}
@@ -66,7 +65,8 @@ export const WaterproofSchema: Schema = new Schema({
 		/////// Input Area //////
 		//#region input
 		input: {
-			content: `${containercontent}*`,
+			content: "hintinputcontent+",
+			group: "cell containercontent",
 			attrs: {
 				status: {default: null}
 			},
@@ -76,80 +76,47 @@ export const WaterproofSchema: Schema = new Schema({
 		},
 		//#endregion
 
-		////// Coqblock //////
-		//#region Coq codeblock
-		"coqblock": {
-			content: `(coqdoc | coqcode)+`,
-			attrs: {
-				prePreWhite:{default:"newLine"},
-				prePostWhite:{default:"newLine"},
-				postPreWhite:{default:"newLine"},
-				postPostWhite:{default:"newLine"}
-			},
-			toDOM: () => {
-				return ["coqblock", 0];
-			}
-		},
-
-		coqdoc: {
-			content: "(math_display | coqdown)*",
-			attrs: {
-				preWhite:{default:"newLine"},
-				postWhite:{default:"newLine"}
-			},
-			toDOM: () => {
-				return ["coqdoc", 0];
-			}
-		},
-
-		coqdown: {
-			content: "text*",
-			block: true,
-			atom: true,
-			toDOM: () => {
-				return ["coqdown", 0];
-			},
-		},
-
-		coqcode: {
+		////// Code //////
+		//#region Code
+		code: {
 			content: "text*",// content is of type text
+			group: "cell hintinputcontent containercontent",
 			code: true,
 			atom: true, // doesn't have directly editable content (content is edited through codemirror)
-			toDOM(node) { return ["WaterproofCode", node.attrs, 0] } // <coqcode></coqcode> cells
+			toDOM(node) { return ["WaterproofCode", node.attrs, 0] } // <WaterproofCode></WaterproofCode> cells
 		},
+		
 		//#endregion
 
 		/////// MATH DISPLAY //////
 		//#region math-display
 		math_display: {
-			group: "math",
+			group: "math cell hintinputcontent containercontent",
 			content: "text*",
 			atom: true,
 			code: true,
 			toDOM(node) { return ["math-display", {...{ class: "math-node" }, ...node.attrs}, 0]; },
 		},
 		//#endregion
-	},
-	// marks: {
-	// 	em: {
-	// 	  toDOM() { return ["em"] }
-	// 	},
 
-	// 	strong: {
-	// 	  toDOM() { return ["strong"] }
-	// 	},
+		newline: {
+			group: "cell hintinputcontent containercontent",
+			toDOM(node) { return ["WaterproofNewline", node.attrs]},
+			selectable: false,
+		},
 
-	// 	link: {
-	// 	  attrs: {
-	// 		href: {},
-	// 		title: {default: null}
-	// 	  },
-	// 	  inclusive: false,
-	// 	  toDOM(node) { return ["a", node.attrs] }
-	// 	},
-
-	// 	code: {
-	// 	  toDOM() { return ["code"] }
-	// 	}
-	// }
+		/////// CONTAINER //////
+		//#region container
+		container: {
+			content: "containercontent+",
+			group: "cell",
+			attrs: {
+				name: {default: ""}
+			},
+			toDOM: (node) => {
+				return ["div", {class: "container", "data-name": node.attrs.name}, 0];
+			}
+		},
+		//#endregion
+	}
 });
