@@ -33,3 +33,12 @@ In waterproof-vscode, the extension can be refreshed, for instance with `Ctrl+r`
 For an example of how to use a WaterproofEditor instance in your own project we refer to [waterproof-vscode](https://www.github.com/impermeable/waterproof-vscode).
 
 More information can be found [here](./UsingWaterproofEditor.md).
+
+## Release process
+
+In order to make a release, do the following:
+
+1. Run `npm pack`, checking that the tarball does not contain unneeded files.
+2. Use `npm install path-to-pack.tgz` in `waterproof-vscode` and test the extension with the packaged version installed.
+3. Run `npm publish --access public` to publish.
+4. Tag the released commit and push the tag.
