@@ -31,6 +31,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _dynamicCompletions: Completion[] = [];
 	private _readOnlyCompartment: Compartment;
 	private _themeCompartment: Compartment;
+
 	private lastUsedDiagnosticsVersion: number = 0;
 
 	private readonly busyIndicator: CodeBlockBusyIndicator;

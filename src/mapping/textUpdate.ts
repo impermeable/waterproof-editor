@@ -5,7 +5,7 @@ import { typeFromStep } from "./helper-functions";
 import { ReplaceStep } from "prosemirror-transform";
 import { TextUpdateError, DocChange } from "../api";
 
-const supportsTextEdits = ["code", "markdown", "math_display"];
+const supportsTextEdits = new Set(["code", "markdown", "math_display"]);
 
 export class TextUpdate {
     /**
@@ -13,6 +13,10 @@ export class TextUpdate {
      * Note that this is a *reference* to the node in the tree.
      */
     private cachedNode: TreeNode | null = null;
+
+    public invalidateCache(): void {
+        this.cachedNode = null;
+    }
 
     getNodeFromCacheOrSearch(step: ReplaceStep, tree: Tree): TreeNode | null {
         // These checks should be okay as the tree is updated after every text update,
@@ -26,7 +30,7 @@ export class TextUpdate {
         // If we have to search the tree anyway we take the time to do a sanity check
         // for the type of node returned here. In this case we only expect a text
         // editable node to be returned (i.e. code, markdown, or math-display)
-        if (!supportsTextEdits.includes(target?.type ?? "")) {
+        if (!supportsTextEdits.has(target?.type ?? "")) {
             throw new TextUpdateError("When attempting to refresh the text update node cache we got a node that does not support text edits");
         }
         this.cachedNode = target;
@@ -85,7 +89,7 @@ export class TextUpdate {
             }
         });
 
-        return {result, newTree: tree};
+        return { result, newTree: tree };
     }
 }
 

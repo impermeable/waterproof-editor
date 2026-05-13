@@ -17,7 +17,16 @@ export class Mapping {
     private tree: Tree;
     /** The version of the underlying textDocument */
     private _version: number;
+    /**
+     * Tracks the ProseMirror document after each processed step.
+     * The caller of `update` always passes the pre-transaction document, so for
+     * step N in a multi-step transaction the passed `doc` is already stale.
+     * We keep `_currentDoc` in sync by applying each step to it, so that
+     * subsequent calls within the same transaction see the correct document.
+     */
+    private _currentDoc: Node | null = null;
 
+    private readonly serializer: DocumentSerializer;
     private readonly nodeUpdate: NodeUpdate;
     private readonly textUpdate: TextUpdate;
 
@@ -26,6 +35,7 @@ export class Mapping {
      * @param inputBlocks Array containing the blocks that make up this document.
      */
     constructor(inputBlocks: Block[], versionNum: number, tMap: TagConfiguration, serializer: DocumentSerializer) {
+        this.serializer = serializer;
         this.textUpdate = new TextUpdate();
         this.nodeUpdate = new NodeUpdate(tMap, serializer);
         this._version = versionNum;
@@ -96,6 +106,15 @@ export class Mapping {
         
     }
 
+    /**
+     * Resets the internally-evolved document to null so the next transaction
+     * starts fresh from the document passed by the caller.
+     * Call this at the beginning of each ProseMirror dispatchTransaction.
+     */
+    public resetCurrentDoc(): void {
+        this._currentDoc = null;
+    }
+
     public update(step: Step, doc: Node): DocChange | WrappingDocChange {
         if (!(step instanceof ReplaceStep || step instanceof ReplaceAroundStep))
             throw new MappingError("Step update (in textDocMapping) should not be called with a non document changing step");
@@ -107,23 +126,46 @@ export class Mapping {
             // This is probably the most used path
             isText = true;
         } else {
-            // TODO: Figure out if this takes a lot of computation and whether we can do this more efficiently.
-            // A textual deletion has no content, but so do node deletions. We differentiate between them by
-            // checking what the parent node of the from position is. 
-            const parentNodeType = doc.resolve(step.from).parent.type;
+            const nodeAtPos = this.tree.findNodeByProsePos(step.from);
+
+            // The lower bound excludes deletions of the node itself (step.from = pmRange.from
+            // < prosemirrorStart). The upper bound excludes the case where findNodeByProsePos
+            // returns a node whose pmRange.to equals step.from due to its left-bias — in that
+            // situation step.from is past the node's content and belongs to nodeUpdate.
             isText = (step.slice.content.childCount === 0 &&
-                (parentNodeType === WaterproofSchema.nodes.markdown ||
-                    parentNodeType === WaterproofSchema.nodes.code ||
-                    parentNodeType === WaterproofSchema.nodes.math_display));
+                (nodeAtPos?.type === "markdown" ||
+                 nodeAtPos?.type === "code" ||
+                 nodeAtPos?.type === "math_display") &&
+                step.from >= nodeAtPos.prosemirrorStart &&
+                step.from <= nodeAtPos.prosemirrorEnd);
         }
 
         let result: ParsedStep;
 
-        // Parse the step into a text document change
-        if (step instanceof ReplaceStep && isText) result = this.textUpdate.textUpdate(step, this);
-        else result = this.nodeUpdate.nodeUpdate(step, this);
+        // For multi-step transactions the caller passes the same pre-transaction `doc` for
+        // every step, so by step N it is stale. Use our internally-evolved document instead.
+        const currentDoc = this._currentDoc ?? doc;
 
-        this.tree = result.newTree
+        // Parse the step into a text document change
+        if (step instanceof ReplaceStep && isText) {
+            result = this.textUpdate.textUpdate(step, this);
+        } else {
+            // A structural (node-level) update may remove nodes from the tree, leaving
+            // any cached TextUpdate node as a stale orphan. Invalidate before delegating.
+            // The main function of the cache is performance speedup for students editing documents,
+            // and they will never hit this branch
+            this.textUpdate.invalidateCache();
+            // The entire document is serialized here. This is done to be able to produce an accurate linecount
+            // If this leads to performance issues, this could likely be resolved by being smarter about this.
+            result = this.nodeUpdate.nodeUpdate(step, this, this.serializer, currentDoc);
+        }
+
+        this.tree = result.newTree;
+
+        // Evolve _currentDoc by applying the step, so the next call in the same
+        // transaction receives the correct document rather than the stale original.
+        const applied = step.apply(currentDoc);
+        this._currentDoc = applied.doc ?? currentDoc;
 
         if ('finalText' in result.result) {
             if (this.checkDocChange(result.result)) this._version++;
@@ -154,7 +196,9 @@ export class Mapping {
         function buildSubtree(blocks: Block[]): TreeNode[] {
             return blocks.map(block => {
 
-                const title = typeguards.isHintBlock(block) ? block.title : "";
+                const title = typeguards.isHintBlock(block) ? block.title
+                    : typeguards.isContainerBlock(block) ? block.name
+                    : "";
 
                 const node = new TreeNode(
                     block.type,

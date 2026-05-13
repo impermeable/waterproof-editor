@@ -5,7 +5,8 @@ import { EditorState, TextSelection, Transaction, Selection, NodeSelection } fro
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { WaterproofSchema } from "../schema";
 import { newline } from "../document/blocks/schema";
-import { getParentAndIndex } from "./utils";
+import { closingTagStartsWithNewline, getParentAndIndex, needsNewlineAfter, needsNewlineBefore, openingTagEndsWithNewline } from "./utils";
+import { TagConfiguration } from "../api";
 
 /////// Helper functions /////////
 
@@ -16,9 +17,12 @@ import { getParentAndIndex } from "./utils";
  * @param nodeType The type of node to insert (one of `WaterproofSchema.nodes`)
  * @returns An insertion transaction.
  */
-export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean): Transaction | undefined {    
+export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeType, tagConf: TagConfiguration): Transaction | undefined {
     const sel = state.selection;
     let trans: Transaction = tr;
+
+    const insertNewlineBeforeIfNotExists = needsNewlineBefore(nodeType, tagConf);
+    const insertNewlineAfterIfNotExists  = needsNewlineAfter(nodeType, tagConf);
 
     const parentAndIndex = getParentAndIndex(sel);
     if (parentAndIndex === null) return;
@@ -33,8 +37,7 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
         // To and from point directly to beginning and end of node.
         pos = sel.from;
     } else if (sel instanceof TextSelection) {
-        // TODO: This -1 is here to make sure that we do not insert 3 random code cells. 
-        // I can't fully wrap my head around why it is needed at the moment though.
+        // This -1 is here to make sure we select the parent node
         pos = sel.from - sel.$from.parentOffset - 1;
     } else {
         return;
@@ -48,13 +51,26 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
     const beforeNewline = parent.maybeChild(index - 2);
     const hasNewlineBefore = beforeNewline === null ? false : beforeNewline.type === WaterproofSchema.nodes.newline;
 
+    // A newline is also required after the new node if the current node (now below) requires one before its open tag.
+    const currentNode = parent.maybeChild(index);
+    const currentNeedsNewlineBefore = tagConf && currentNode ? needsNewlineBefore(currentNode.type, tagConf) : false;
+
     const toInsert: PNode[] = [];
 
-    if (insertNewlineBeforeIfNotExists && !hasNewlineBefore && beforeIsNewline) {
+    const nodeAboveInsertion = beforeIsNewline ? beforeNewline : nodeAboveSelection;
+    const newlineAlreadyAbove = beforeIsNewline ? hasNewlineBefore : false;
+    const aboveNeedsNewlineAfter = nodeAboveInsertion !== null && needsNewlineAfter(nodeAboveInsertion.type, tagConf);
+
+    if ((insertNewlineBeforeIfNotExists && !hasNewlineBefore && beforeIsNewline) ||
+        (aboveNeedsNewlineAfter && !newlineAlreadyAbove) ||
+        // The new node becomes the first child of a non-doc container. A leading newline is
+        // required when the node's open tag needs one before it and the container's own opening
+        // tag does not already end with a newline (which would otherwise provide that separator).
+        (insertNewlineBeforeIfNotExists && !beforeIsNewline && parent.type !== WaterproofSchema.nodes.doc && !openingTagEndsWithNewline(parent.type, tagConf))) {
         toInsert.push(newline());
     }
     toInsert.push(nodeType.create());
-    if (insertNewlineAfterIfNotExists && !beforeIsNewline) {
+    if ((insertNewlineAfterIfNotExists || currentNeedsNewlineBefore) && !beforeIsNewline) {
         toInsert.push(newline());
     }
 
@@ -70,10 +86,13 @@ export function insertAbove(state: EditorState, tr: Transaction, nodeType: NodeT
  * @param nodeType The type of node to insert (one of `WaterproofSchema.nodes`)
  * @returns An insertion transaction.
  */
-export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeType, insertNewlineBeforeIfNotExists: boolean, insertNewlineAfterIfNotExists: boolean): Transaction | undefined {
+export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeType, tagConf: TagConfiguration): Transaction | undefined {
     const sel = state.selection;
     let trans: Transaction = tr;
-    
+
+    const insertNewlineBeforeIfNotExists = needsNewlineBefore(nodeType, tagConf);
+    const insertNewlineAfterIfNotExists  = needsNewlineAfter(nodeType, tagConf);
+
     const parentAndIndex = getParentAndIndex(sel);
     if (parentAndIndex === null) return;
     const {parent, index} = parentAndIndex;
@@ -82,12 +101,12 @@ export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeT
     const afterIsNewline = nodeBelowSelection === null ? false : (nodeBelowSelection.type === WaterproofSchema.nodes.newline);
 
     let pos;
-    
+
     if (sel instanceof NodeSelection) {
         // To and from point directly to beginning and end of node.
         pos = sel.to;
     } else if (sel instanceof TextSelection) {
-        pos = sel.to + (sel.$from.parent.nodeSize - sel.$from.parentOffset) - 1;
+        pos = sel.from + (sel.$from.parent.nodeSize - sel.$from.parentOffset) - 1;
     } else {
         return;
     }
@@ -96,17 +115,32 @@ export function insertBelow(state: EditorState, tr: Transaction, nodeType: NodeT
         // Assumption: If a newline appears after a node the current node wants that.
         pos += 1; // We are going to insert after
     }
-    
+
     const afterNewline = parent.maybeChild(index + 2);
     const hasNewlineAfter = afterNewline === null ? false : afterNewline.type === WaterproofSchema.nodes.newline;
 
     
+    const nodeBelowInsertion = afterIsNewline ? afterNewline : nodeBelowSelection;
+    const newlineAlreadyBelow = afterIsNewline ? hasNewlineAfter : false;
+    const belowNeedsNewlineBefore = nodeBelowInsertion !== null && needsNewlineBefore(nodeBelowInsertion.type, tagConf);
+    // A newline is also required before the new node if the current node's close tag requires one.
+    const currentNode = parent.maybeChild(index);
+    const currentNeedsNewlineAfter = tagConf && currentNode ? needsNewlineAfter(currentNode.type, tagConf) : false;
+
     const toInsert: PNode[] = [];
-    if (insertNewlineBeforeIfNotExists && !afterIsNewline) {
+    if ((insertNewlineBeforeIfNotExists || currentNeedsNewlineAfter) && !afterIsNewline) {
         toInsert.push(newline());
     }
     toInsert.push(nodeType.create());
-    if (insertNewlineAfterIfNotExists && !hasNewlineAfter && afterIsNewline) {
+    // A trailing newline is needed when:
+    // 1. The node is inserted after an existing newline and there is no newline further down, OR
+    // 2. The node below the insertion point needs a newline before it, OR
+    // 3. The new node becomes the last child of a non-doc container and requires a newline after
+    //    its closing tag. The newline is only needed when the container's own closing tag does not
+    //    already start with a newline (which would otherwise provide that separator).
+    if ((insertNewlineAfterIfNotExists && !hasNewlineAfter && afterIsNewline) ||
+        (belowNeedsNewlineBefore && !newlineAlreadyBelow) ||
+        (insertNewlineAfterIfNotExists && !afterIsNewline && parent.type !== WaterproofSchema.nodes.doc && !closingTagStartsWithNewline(parent.type, tagConf))) {
         toInsert.push(newline());
     }
 
@@ -156,8 +190,9 @@ export function allowedToInsert(state: EditorState): boolean {
 export function checkInputArea(sel: Selection): boolean {
     const from = sel.$from;
     const depth = from.depth;
-    // An input area can only ever have depth = 1, since it is a 
-    // top level node (see WaterproofSchema in `schema.ts`)
+    // An input area can be at depth = 1 (top level) or depth = 2 (inside a container)
     if (depth < 1) return false;
-    return from.node(1).type === WaterproofSchema.nodes.input;
+    if (from.node(1).type === WaterproofSchema.nodes.input) return true;
+    if (depth >= 2 && from.node(1).type === WaterproofSchema.nodes.container && from.node(2).type === WaterproofSchema.nodes.input) return true;
+    return false;
 }
