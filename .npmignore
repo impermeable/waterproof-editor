@@ -14,3 +14,4 @@ package-lock.json
 /tsconfig.tsbuildinfo
 sonar-project.properties
 /coverage
+/scripts
