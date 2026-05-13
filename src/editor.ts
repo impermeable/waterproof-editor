@@ -2,7 +2,7 @@ import { mathPlugin, mathSerializer } from "@benrbray/prosemirror-math";
 import { selectParentNode } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
 import { Node as ProseNode } from "prosemirror-model";
-import { EditorState, NodeSelection, Plugin, Selection, TextSelection, Transaction } from "prosemirror-state";
+import { Command, EditorState, NodeSelection, Plugin, Selection, TextSelection, Transaction } from "prosemirror-state";
 import { ReplaceAroundStep, ReplaceStep, Step } from "prosemirror-transform";
 import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
@@ -120,7 +120,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
 	init(content: string, version: number = 1) {
 		// Initialize the file translator given the fileformat.
 		if(this._view) {
-			if (this._mapping && this._mapping.version == version) return;
+			if (this._mapping?.version == version) return;
 			// Hack to forcefully remove the 'old' menubar
 			document.querySelector(".progress-bar")?.remove();
 			this._view.dom.remove();
@@ -141,6 +141,28 @@ export class WaterproofEditor implements MessageHandlerEditor {
 		this._editorConfig.api.editorReady();
 	}
 
+	refreshDocument(content: string, version: number = 1) {
+		if (!this._view) return;
+		if (this._mapping?.version == version) return;
+
+		const blocks = this._editorConfig.documentConstructor(content);
+		const proseDoc = constructDocument(blocks);
+
+		this._mapping = new Mapping(blocks, version, this._editorConfig.tagConfiguration, this._serializer);
+		const newState = EditorState.create({
+			doc: proseDoc,
+			plugins: this._view.state.plugins,
+			schema: WaterproofSchema
+		});
+
+		this._view.updateState(newState);
+
+		/** Ask for line numbers */
+		this.updateLineNumbers();
+		this.handleScroll(window.innerHeight);
+
+	}
+
 	private get state(): EditorState | undefined {
 		return this._view?.state;
 	}
@@ -153,6 +175,9 @@ export class WaterproofEditor implements MessageHandlerEditor {
 			clipboardTextSerializer: (slice) => { return mathSerializer.serializeSlice(slice) },
 			dispatchTransaction: ((tr) => {
 				// Called on every transaction.
+				// Reset _currentDoc so stale state from a previous (possibly failed)
+				// transaction cannot bleed into this one.
+				this._mapping?.resetCurrentDoc();
 
 				let step : Step | undefined = undefined;
 				for (step of tr.steps) {
@@ -567,6 +592,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
 		const trans = state.tr;
 		trans.setMeta(INPUT_AREA_PLUGIN_KEY, {teacher: isTeacher});
 		this._view.dispatch(trans);
+		this._editorElem.classList.toggle("teacher-mode", isTeacher);
 	}
 
 	public reportProgress(current: number, total: number, text?: string): void {
@@ -756,6 +782,14 @@ export class WaterproofEditor implements MessageHandlerEditor {
 				severity: d.severity
 			}
 		});
+	}
+
+	/**
+	 * Execute a ProseMirror command on the editor.
+	 * @param cmd The ProseMirror command to execute.
+	 */
+	public executeProsemirrorCommand(cmd: Command): void {
+		if (this._view) cmd(this._view.state, this._view.dispatch, this._view);
 	}
 
 	// Editor API
