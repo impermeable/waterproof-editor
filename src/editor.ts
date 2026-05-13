@@ -1,25 +1,24 @@
 import { mathPlugin, mathSerializer } from "@benrbray/prosemirror-math";
-import { deleteSelection, selectParentNode } from "prosemirror-commands";
+import { selectParentNode } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
-import { Schema, Node as ProseNode } from "prosemirror-model";
-import { AllSelection, EditorState, NodeSelection, Plugin, Selection, TextSelection, Transaction } from "prosemirror-state";
+import { Node as ProseNode } from "prosemirror-model";
+import { Command, EditorState, NodeSelection, Plugin, Selection, TextSelection, Transaction } from "prosemirror-state";
 import { ReplaceAroundStep, ReplaceStep, Step } from "prosemirror-transform";
 import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
 import { constructDocument } from "./document/construct-document";
 
-import { DocChange, LineNumber, InputAreaStatus, SimpleProgressParams, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic } from "./api";
+import { DocChange, InputAreaStatus, WrappingDocChange, HistoryChange, Severity, OffsetDiagnostic, MappingError, NodeUpdateError, TextUpdateError, DocumentSerializer, Positioned, ThemeStyle, WaterproofEditorConfig, TextContentOfSpecifier, MessageHandlerEditor } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
 import { WaterproofSchema } from "./schema";
-import { REAL_MARKDOWN_PLUGIN_KEY, coqdocPlugin, realMarkdownPlugin } from "./markup-views";
+import { SWITCHABLE_VIEW_PLUGIN_KEY, switchableViewPlugin } from "./markup-views";
 import { menuPlugin } from "./menubar";
 import { MENU_PLUGIN_KEY } from "./menubar/menubar";
-import { PROGRESS_PLUGIN_KEY, progressBarPlugin } from "./progressBar";
-import { DOCUMENT_PROGRESS_DECORATOR_KEY, documentProgressDecoratorPlugin } from "./documentProgressDecorator";
-import { FileTranslator } from "./translation";
+import { documentProgressDecoratorPlugin } from "./documentProgressDecorator";
 import { createContextMenuHTML } from "./context-menu";
+import { DefaultTagSerializer } from "./serialization/DocumentSerializer";
 
 // CSS imports
 import "katex/dist/katex.min.css";
@@ -27,12 +26,13 @@ import "prosemirror-view/style/prosemirror.css";
 import "./styles";
 import { UPDATE_STATUS_PLUGIN_KEY, updateStatusPlugin } from "./qedStatus";
 import { CodeBlockView } from "./codeview/nodeview";
-import { InsertionPlace, cmdInsertCode, cmdInsertLatex, cmdInsertMarkdown } from "./commands";
 import { OS } from "./osType";
-import { Positioned, WaterproofMapping, WaterproofEditorConfig, ThemeStyle } from "./api";
 import { Completion } from "@codemirror/autocomplete";
-import { FileFormat } from "./api/FileFormat";
-import { ServerStatus } from "./api";
+import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown } from "./commands/insert-command";
+import { InsertionPlace } from "./commands";
+import { deleteSelection } from "./commands/commands";
+import { Mapping } from "./mapping";
+import { ProgressBar } from "./progressBar";
 
 /** Type that contains a coq diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {message: string, start: number, end: number, severity: Severity};
@@ -40,30 +40,25 @@ export type DiagnosticObjectProse = {message: string, start: number, end: number
 /**
  * WaterproofEditor class. Configured via the WaterproofEditorConfig object.
  */
-export class WaterproofEditor {
+export class WaterproofEditor implements MessageHandlerEditor {
 
-	private _editorConfig: WaterproofEditorConfig;
-
-	// The schema used in this prosemirror editor.
-	private _schema: Schema;
+	private readonly _editorConfig: WaterproofEditorConfig;
 
 	// The editor and content html elements.
-	private _editorElem: HTMLElement;
+	private readonly _editorElem: HTMLElement;
 
 	// The prosemirror view
 	private _view: EditorView | undefined;
 
-	// The file translator in use.
-	private _translator: FileTranslator | undefined;
-
 	// The file document mapping
-	private _mapping: WaterproofMapping | undefined;
+	private _mapping: Mapping | undefined;
 
 	// User operating system.
 	private readonly _userOS;
 
 	private currentProseDiagnostics: Array<DiagnosticObjectProse>;
 	
+	// @internal
 	public get diagnosticsVersion() {
 		return this.diagnosticsUpdateCounter;
 	}
@@ -71,16 +66,22 @@ export class WaterproofEditor {
 
 	private _lineNumbersShown: boolean = false;
 
+	private readonly _serializer: DocumentSerializer;
+
+	private readonly _progressBar;
+
+	private oldOffsetChecked: number | null = null;
+
 	/**
 	 * Create a new WaterproofEditor instance.
 	 * @param editorElement The HTML element where the editor will be inserted in the document
 	 * @param config The configuration of the editor to use.
 	 */
 	constructor (editorElement: HTMLElement, config: WaterproofEditorConfig, private readonly initialThemeStyle: ThemeStyle) {
-		this._schema = WaterproofSchema;
 		this._editorElem = editorElement;
 		this.currentProseDiagnostics = [];
 		this._editorConfig = config;
+		this._serializer = config.serializer ?? new DefaultTagSerializer(config.tagConfiguration);
 
 		const userAgent = window.navigator.userAgent;
 		this._userOS = OS.Unknown;
@@ -91,6 +92,7 @@ export class WaterproofEditor {
 
 		const theContextMenu = createContextMenuHTML(this);
 
+		this._progressBar = new ProgressBar(editorElement);
 
 		document.body.appendChild(theContextMenu);
 
@@ -118,41 +120,20 @@ export class WaterproofEditor {
 	init(content: string, version: number = 1) {
 		// Initialize the file translator given the fileformat.
 		if(this._view) {
-			if (this._mapping && this._mapping.version == version) return;
+			if (this._mapping?.version == version) return;
 			// Hack to forcefully remove the 'old' menubar
-			document.querySelector(".menubar")?.remove();
 			document.querySelector(".progress-bar")?.remove();
-			document.querySelector(".spinner-container")?.remove();
 			this._view.dom.remove();
 		}
 
-		this._translator = new FileTranslator();
+		const blocks = this._editorConfig.documentConstructor(content);
+		const proseDoc = constructDocument(blocks);
 
-		let resultingDocument = content;
-		let documentChange: DocChange | WrappingDocChange | undefined = undefined;
-
-		if (this._editorConfig.documentPreprocessor !== undefined) {
-			console.log("Using document preprocessor!!");
-			const result = this._editorConfig.documentPreprocessor(content);
-			resultingDocument = result.resultingDocument;
-			documentChange = result.documentChange;
-			if (documentChange !== undefined) {
-				console.log("Document change due to preprocessor: ", documentChange);
-				this._editorConfig.api.documentChange(documentChange);
-			}
-			if (resultingDocument !== content) version = version + 1;
-		}
-
-		const parsedContent = this._translator.toProsemirror(resultingDocument);
-		// this._contentElem.innerHTML = parsedContent;
-
-		const proseDoc = constructDocument(this._editorConfig.documentConstructor(resultingDocument));
-
-		this._mapping = new this._editorConfig.mapping(parsedContent, version);
+		this._mapping = new Mapping(blocks, version, this._editorConfig.tagConfiguration, this._serializer);
 		this.createProseMirrorEditor(proseDoc);
 
 		/** Ask for line numbers */
-		this.sendLineNumbers();
+		this.updateLineNumbers();
 		this.handleScroll(window.innerHeight);
 
 		// notify host that the editor is ready
@@ -160,11 +141,33 @@ export class WaterproofEditor {
 		this._editorConfig.api.editorReady();
 	}
 
-	get state(): EditorState | undefined {
+	refreshDocument(content: string, version: number = 1) {
+		if (!this._view) return;
+		if (this._mapping?.version == version) return;
+
+		const blocks = this._editorConfig.documentConstructor(content);
+		const proseDoc = constructDocument(blocks);
+
+		this._mapping = new Mapping(blocks, version, this._editorConfig.tagConfiguration, this._serializer);
+		const newState = EditorState.create({
+			doc: proseDoc,
+			plugins: this._view.state.plugins,
+			schema: WaterproofSchema
+		});
+
+		this._view.updateState(newState);
+
+		/** Ask for line numbers */
+		this.updateLineNumbers();
+		this.handleScroll(window.innerHeight);
+
+	}
+
+	private get state(): EditorState | undefined {
 		return this._view?.state;
 	}
 
-	createProseMirrorEditor(proseDoc: ProseNode) {
+	private createProseMirrorEditor(proseDoc: ProseNode) {
 		// Shadow this variable _userOS.
 		const userOS = this._userOS;
 		const view = new EditorView(this._editorElem, {
@@ -172,45 +175,50 @@ export class WaterproofEditor {
 			clipboardTextSerializer: (slice) => { return mathSerializer.serializeSlice(slice) },
 			dispatchTransaction: ((tr) => {
 				// Called on every transaction.
+				// Reset _currentDoc so stale state from a previous (possibly failed)
+				// transaction cannot bleed into this one.
+				this._mapping?.resetCurrentDoc();
 
-				// Why does this happen here?
-				// Don't we wont to only do this when we know this is a valid transaction?
-				view.updateState(view.state.apply(tr));
 				let step : Step | undefined = undefined;
 				for (step of tr.steps) {
 					if (step instanceof ReplaceStep || step instanceof ReplaceAroundStep) {
 						if (this._mapping === undefined) throw new Error(" Mapping is undefined, cannot synchronize with vscode");
 						try {
-							const change: DocChange | WrappingDocChange = this._mapping.update(step); // Get text document update
+							const change: DocChange | WrappingDocChange = this._mapping.update(step, view.state.doc); // Get text document update
 							this._editorConfig.api.documentChange(change);
-						} catch (error) {
-							console.log("Step error: ", step);
-							console.error((error as Error).message);
+						} catch (error: unknown) {
+							const err = error as MappingError | TextUpdateError | NodeUpdateError;
+							console.error("Error while applying step to mapping, the edit will **not** be applied!");
+							console.error("The step: ", step);
+							console.error("The error message:", err.message);
+							console.error("Error originated in:", err.constructor.name);
 
 
 							// Send message to VSCode that an error has occured
-							this._editorConfig.api.applyStepError((error as Error).message);
+							this._editorConfig.api.applyStepError(err.message);
 
-							// Set global locking mode
-							const tr = view.state.tr;
-							tr.setMeta(INPUT_AREA_PLUGIN_KEY,"ErrorMode");
-							tr.setSelection(new AllSelection(view.state.doc));
-							view.updateState(view.state.apply(tr));
-
-							// We ensure this transaction is not applied
 							return;
 						}
 
 					}
 				}
-				if (tr.selectionSet && tr.selection instanceof TextSelection) {
-					this.updateCursor(tr.selection);
-				} else if (tr.getMeta(REAL_MARKDOWN_PLUGIN_KEY)) {
-					// Set the cursor position from a markdown cell
-					this.updateCursor(tr.getMeta(REAL_MARKDOWN_PLUGIN_KEY));
+
+				const lineDelta = tr.getMeta("lineDelta");
+				if (lineDelta !== undefined && tr.steps.length === 1 && tr.steps[0] instanceof ReplaceStep) {
+					this._mapping?.updateLines(lineDelta, tr.steps[0].from);
 				}
 
-				if (step !== undefined) this.sendLineNumbers();
+				// Only update the state when we know that the transaction did not cause an error
+				view.updateState(view.state.apply(tr));
+
+				if (tr.selectionSet && tr.selection instanceof TextSelection) {
+					this.updateCursor(tr.selection);
+				} else if (tr.getMeta(SWITCHABLE_VIEW_PLUGIN_KEY)) {
+					// Set the cursor position from a markdown cell
+					this.updateCursor(tr.getMeta(SWITCHABLE_VIEW_PLUGIN_KEY));
+				}
+
+				if (step !== undefined) this.updateLineNumbers();
 			}),
 			handleKeyDown(view, e) {
 				// Stop certain events from propagating
@@ -239,55 +247,116 @@ export class WaterproofEditor {
 					event.preventDefault();
 				},
 				"mousedown": (view, event) => {
+					const domTarget = event.target as Node | null;
+					if (domTarget === null) { event.preventDefault(); return; }
+					
+					const posAtDomTarget = view.posAtDOM(domTarget, 0);
+					const nodeAtDomTarget = view.state.doc.resolve(posAtDomTarget).node();
+					if (nodeAtDomTarget.type === WaterproofSchema.nodes.math_display) return;
+
 					event.preventDefault();
 				}
 			}
 		});
 		this._view = view;
+
+		// The DEBUG label will be dropped in case we are *not* in debug mode.
+		// eslint-disable-next-line no-unused-labels
+		DEBUG: {
+			console.log("\x1b[33m[DEBUG]\x1b[0m Debug mode enabled. We will attach pm-dev-tools");
+			// eslint-disable-next-line @typescript-eslint/no-require-imports
+			const devTools = require("prosemirror-dev-tools");
+			devTools.applyDevTools(view);
+		}
 	}
 
 	/** Create initial prosemirror state */
-	createState(proseDoc: ProseNode): EditorState {
+	private createState(proseDoc: ProseNode): EditorState {
 		return EditorState.create({
-			schema: this._schema,
+			schema: WaterproofSchema,
 			doc: proseDoc,
 			plugins: this.createPluginsArray()
 		});
 	}
 
 	/** Create the array of plugins used by the prosemirror editor */
-	createPluginsArray(): Plugin[] {
+	private createPluginsArray(): Plugin[] {
 		return [
 			history(),
-			createHintPlugin(this._schema),
+			createHintPlugin(),
 			inputAreaPlugin,
 			updateStatusPlugin(this),
 			mathPlugin,
-			realMarkdownPlugin(this._schema),
-			coqdocPlugin(this._schema),
-			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this, this.initialThemeStyle),
-			progressBarPlugin,
+			switchableViewPlugin(this._editorConfig),
+			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this, this.initialThemeStyle, this._editorConfig.languageConfig),
 			documentProgressDecoratorPlugin,
-			menuPlugin(WaterproofSchema, FileFormat.MarkdownV, this._userOS),
+			menuPlugin(this._userOS, this._editorConfig.tagConfiguration, this._editorConfig.menubarEntries),
 			keymap({
 				"Mod-h": () => {
 					this.executeCommand("Help.");
 					return true;
 				},
-				"Backspace": deleteSelection,
-				"Delete": deleteSelection,
-				"Mod-m": cmdInsertMarkdown(WaterproofSchema, FileFormat.MarkdownV, InsertionPlace.Underneath),
-				"Mod-M": cmdInsertMarkdown(WaterproofSchema, FileFormat.MarkdownV, InsertionPlace.Above),
-				"Mod-q": cmdInsertCode(WaterproofSchema, FileFormat.MarkdownV, InsertionPlace.Underneath),
-				"Mod-Q": cmdInsertCode(WaterproofSchema, FileFormat.MarkdownV, InsertionPlace.Above),
-				"Mod-l": cmdInsertLatex(WaterproofSchema, FileFormat.MarkdownV, InsertionPlace.Underneath),
-				"Mod-L": cmdInsertLatex(WaterproofSchema, FileFormat.MarkdownV, InsertionPlace.Above),
+				"Backspace": deleteSelection(this._editorConfig.tagConfiguration),
+				"Delete": deleteSelection(this._editorConfig.tagConfiguration),
+				"Mod-m": getCmdInsertMarkdown(InsertionPlace.Below, this._editorConfig.tagConfiguration),
+				"Mod-M": getCmdInsertMarkdown(InsertionPlace.Above, this._editorConfig.tagConfiguration),
+				"Mod-q": getCmdInsertCode(InsertionPlace.Below, this._editorConfig.tagConfiguration),
+				"Mod-Q": getCmdInsertCode(InsertionPlace.Above, this._editorConfig.tagConfiguration),
+				"Mod-l": getCmdInsertLatex(InsertionPlace.Below, this._editorConfig.tagConfiguration),
+				"Mod-L": getCmdInsertLatex(InsertionPlace.Above, this._editorConfig.tagConfiguration),
 				// We bind Ctrl/Cmd+. to selecting the parent node of the currently selected node.
 				"Mod-.": selectParentNode
 			})
 		];
 	}
 
+	/**
+	 * Serialize the current document to a string.
+	 * @returns Either the serialized document or `undefined` when the editor is not initialized.
+	 */
+	public serializeDocument(): string | undefined {
+		if (!this._view) return;
+		return this._serializer.serializeDocument(this._view.state.doc);
+	}
+
+	/**
+	 * Returns the text content of specified parts of the document as well as the positions where the text starts.
+	 * 
+	 * Does not use the serializer, but extracts the text content directly from the nodes.
+	 * @param include Types of content to include.
+	 */
+	public textContentOfInputAreas(include: number = 0): Array<[string, {start: number, end: number}]> {		
+		if (!this._view || this._mapping === undefined) return [];
+		const mapping = this._mapping;
+		const contents: Array<[string, {start: number, end: number}]> = [];
+
+		const includeMarkdown = include & TextContentOfSpecifier.MARKDOWN;
+		const includeCode = include & TextContentOfSpecifier.CODE;
+		const includeMath = include & TextContentOfSpecifier.MATH_DISPLAY;
+
+		this._view.state.doc.descendants((node, _pos, parent) => {
+			// node type should be in include
+			if (parent !== null && parent.type === WaterproofSchema.nodes.input && (include === undefined ||
+				(node.type === WaterproofSchema.nodes.markdown && includeMarkdown) ||
+				(node.type === WaterproofSchema.nodes.code && includeCode) ||
+				(node.type === WaterproofSchema.nodes.math_display && includeMath))) {
+				// TODO: This is a bit strange since we are converting the positions using the mapping.
+				// Should we *always* do this, even in cases where we are not necessarily dealing with the raw text file? 
+				
+				// The +1 gives us the prose position inside the text node
+				contents.push([node.textContent, {start: mapping.pmIndexToTextOffset(_pos + 1), end: mapping.pmIndexToTextOffset(_pos + 1 + node.nodeSize)}]);
+				return false;
+			}
+			const shouldDescend = parent !== null && node.type === WaterproofSchema.nodes.input;
+			return shouldDescend;
+		});
+		return contents;
+	}
+
+	/**
+	 * Update the themestyle used inside of the code cells (switch between dark and light)
+	 * @param theme Either `ThemeStyle.Light` or `ThemeStyle.Dark` 
+	 */
 	public updateNodeViewThemes(theme: ThemeStyle) {
 		const view = this._view!;
 		const state = view.state;
@@ -339,101 +408,18 @@ export class WaterproofEditor {
 	}
 
 	/** Called on every selection update. */
-	public updateCursor(pos: Selection) : void {
+	private updateCursor(pos: Selection) : void {
 		// If this is not a cursor update return
 		if (!(pos instanceof TextSelection)) return;
 		if (this._mapping === undefined) throw new Error(" Mapping is undefined, cannot synchronize with vscode");
-		this._editorConfig.api.cursorChange(this._mapping.findPosition(pos.$head.pos));
+		this._editorConfig.api.cursorChange(this._mapping.pmIndexToTextOffset(pos.$head.pos));
 	}
 
 	/** Called on every transaction update in which the textdocument was modified */
-	public sendLineNumbers() {
-		if (!this._lineNumbersShown) return;
-		if (!this._view || CODE_PLUGIN_KEY.getState(this._view.state) === undefined) return;
-		const linenumbers = Array<number>();
-		// @ts-expect-error TODO: Fix me
-		for (const codeCell of CODE_PLUGIN_KEY.getState(this._view.state).activeNodeViews) {
-			// @ts-expect-error TODO: Fix me
-			linenumbers.push(this._mapping?.findPosition(codeCell._getPos() + 1));
-		}
-		if (this._mapping === undefined) {
-			// Fail when the mapping is undefined
-			console.error("Encountered undefined mapping in sendLineNumbers function");
-			return;
-		}
-		this._editorConfig.api.lineNumbers(linenumbers, this._mapping.version);
-	}
-
-		private updateDocumentProgress() {
-		// Use getState with the CODE_PLUGIN_KEY to obtain linenumbers
-		if (!this._view) return;
-		const lineNumbers = CODE_PLUGIN_KEY.getState(this._view.state)?.lines;
-		// Use getState with the CODE_PLUGIN_KEY to obtain progress activeNodeViews
-		const activeNodeViews = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
-		// Use getState with the PROGRESS_PLUGIN_KEY to obtain progress status
-		const progressParams = PROGRESS_PLUGIN_KEY.getState(this._view.state)?.progressParams;
-		if (progressParams === undefined || lineNumbers === undefined || activeNodeViews === undefined) return;
-		// Compute currentLine from progressParams
-		if (progressParams.progress.length == 0) return;
-		const currentLine = progressParams?.progress[0].range.start.line + 1;
-		const endLine = progressParams?.progress[0].range.end.line + 1;
-	
-		if (currentLine == endLine) {
-			// Done checking, remove bar
-			const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, 
-				{progressHeightLow: 0, progressHeightHigh: 0, total: 0});
-			this._view.dispatch(tr);
-			return;
-		}
-
-		// Compute current nodeView using lineNumbers and activeNodeViews
-		let currentNodeView = undefined;
-		let viewLineNumber = undefined;
-		let nextLineNumber = undefined;
-		let nextNodeView = undefined;
-		
-		let i = 0;
-		for (const nodeView of activeNodeViews) {
-			if (currentNodeView != undefined) {
-				nextNodeView = nodeView;
-				break;
-			}
-			if (currentLine >= lineNumbers.linenumbers[i] && currentLine < lineNumbers.linenumbers[i + 1]) {
-				currentNodeView = nodeView; 
-				viewLineNumber = lineNumbers.linenumbers[i];
-				nextLineNumber = lineNumbers.linenumbers[i + 1];
-			}
-			i++;
-		}
-		if (currentNodeView === undefined || viewLineNumber === undefined || nextLineNumber === undefined) return;
-		let startPos = currentNodeView._getPos();
-		let nextPos = nextNodeView?._getPos();
-		if (startPos === undefined || nextPos === undefined) return;
-		const startDocCoords = this._view.coordsAtPos(0);
-		let startCoords = this._view.coordsAtPos(startPos, -1);
-		// If we don't find a good position, this is likely a hidden codeblock
-		// Go back until we find a position in the document or the top
-		while (startCoords == null || startCoords.top == 0) {
-			startPos--;
-			if (startPos < 0) break;
-			startCoords = this._view.coordsAtPos(startPos, -1);
-		}
-
-		// If we don't find a good position, this is likely a hidden codeblock
-		// Go forward until we find a position in the document or the bottom
-		let nextCoords = this._view.coordsAtPos(nextPos);
-		while (nextCoords == null || nextCoords.top == 0) {
-			nextPos++;
-			if (nextPos >= this._view.state.doc.content.size) break;
-			nextCoords = this._view.coordsAtPos(nextPos);
-		}
-		const endDocCoords = this._view.coordsAtPos(this._view.state.doc.content.size);
-		const height = startCoords.top - startDocCoords.top;
-
-		// Communicate the total size of the document, the low estimate where processing is happening
-		// and the high estimate, unit is pixels for each
-		const tr = this._view.state.tr.setMeta(DOCUMENT_PROGRESS_DECORATOR_KEY, {
-			total: endDocCoords.top - startDocCoords.top, progressHeightLow: height, progressHeightHigh: nextCoords.top - startDocCoords.top});
+	private updateLineNumbers() {
+		if (!this._view || !this._mapping) return;
+		const nrs = this._mapping.computeLineNumbers();
+		const tr = this._view.state.tr.setMeta(CODE_PLUGIN_KEY, nrs);
 		this._view.dispatch(tr);
 	}
 
@@ -449,17 +435,6 @@ export class WaterproofEditor {
 			.getState(state)
 			?.activeNodeViews
 			?.forEach(codeBlock => codeBlock.handleNewComplete(completions));
-	}
-
-	/** Called whenever a line number message is received from vscode to update line numbers of codemirror cells */
-	public setLineNumbers(msg: LineNumber) {
-		if (!this._view || !this._mapping || msg.version < this._mapping.version) return;
-		const state = CODE_PLUGIN_KEY.getState(this._view.state);
-		if (!state) return;
-		const tr = this._view.state.tr.setMeta(CODE_PLUGIN_KEY, msg);
-		this._view.dispatch(tr);
-		// Document progress uses lines to compute the right size of the decorator
-		this.updateDocumentProgress();
 	}
 
 	/**
@@ -490,13 +465,13 @@ export class WaterproofEditor {
 		// Translate postions to line/offset
 		let offsetStart;
 		try {
-			offsetStart = this._mapping?.findPosition(pmOffsetStart);
+			offsetStart = this._mapping?.pmIndexToTextOffset(pmOffsetStart);
 		} catch {
 			offsetStart = pmOffsetStart;
 		}
 		let offsetEnd;
 		try {
-			offsetEnd = this._mapping?.findPosition(pmOffsetEnd);
+			offsetEnd = this._mapping?.pmIndexToTextOffset(pmOffsetEnd);
 		} catch {
 			offsetEnd = pmOffsetEnd;
 		}
@@ -522,7 +497,7 @@ export class WaterproofEditor {
 		let state = this._view.state;
 		let from = state.selection.from;
 		let to = state.selection.to;
-		if (REAL_MARKDOWN_PLUGIN_KEY.getState(state)?.cursor) {
+		if (SWITCHABLE_VIEW_PLUGIN_KEY.getState(state)?.cursor) {
 			// @ts-expect-error TODO: Fix me
 			from = REAL_MARKDOWN_PLUGIN_KEY.getState(state)?.cursor?.from;
 			// @ts-expect-error TODO: Fix me
@@ -538,10 +513,7 @@ export class WaterproofEditor {
 
 		// Early return if the plugin state is undefined.
 		if (inputAreaPluginState === undefined) return false;
-		const { teacher, globalLock } = inputAreaPluginState;
-		// Early return if we are in the global locked mode
-		// 	(nothing should be editable anymore)
-		if (globalLock) return false;
+		const { teacher } = inputAreaPluginState;
 
 		// If we are in teacher mode (ie. not locked) than
 		// 	 we are always able to insert.
@@ -555,7 +527,7 @@ export class WaterproofEditor {
 
 		let isEditable = false;
 		state.doc.nodesBetween($from.pos, $from.pos, (node) => {
-			if (node.type.name === "input") {
+			if (node.type === WaterproofSchema.nodes.input) {
 				isEditable = true;
 			}
 		});
@@ -566,6 +538,15 @@ export class WaterproofEditor {
 
 		return true;
 	}
+
+	public replaceRange(startOffset: number, endOffset: number, text: string): boolean {
+        if (!this._view || !this._mapping) return false;
+        const from = this._mapping.textOffsetToPmIndex(startOffset);
+        const to = this._mapping.textOffsetToPmIndex(endOffset);
+        const tr = this._view.state.tr.insertText(text, from, to);
+        this._view.dispatch(tr);
+        return true;
+    }
 
 	/**
 	 * Toggles line numbers for all codeblocks.
@@ -578,7 +559,7 @@ export class WaterproofEditor {
 		const tr = view.state.tr;
 		tr.setMeta(CODE_PLUGIN_KEY, {setting: "update", show: this._lineNumbersShown});
 		view.dispatch(tr);
-		this.sendLineNumbers();
+		this.updateLineNumbers();
 	}
 
 	/**
@@ -611,36 +592,47 @@ export class WaterproofEditor {
 		const trans = state.tr;
 		trans.setMeta(INPUT_AREA_PLUGIN_KEY, {teacher: isTeacher});
 		this._view.dispatch(trans);
-	}
-    
-	/**
-	 * Updates the state of the progress bar in the editor.
-	 * 
-	 * @param progressParams The type used to store information on the status of the checking of the current file
-	 */
-	public updateProgressBar(progressParams: SimpleProgressParams): void {
-		if (!this._view) return;
-		const state = this._view.state;
-		const tr = state.tr;
-		tr.setMeta(PROGRESS_PLUGIN_KEY, {progressParams});
-		this._view.dispatch(tr);
-		this.updateDocumentProgress();
+		this._editorElem.classList.toggle("teacher-mode", isTeacher);
 	}
 
-	public updateServerStatus(status: ServerStatus) : void {
-		if (!this._view) return;
-		const state = this._view.state;
-		const tr = state.tr;
-		tr.setMeta(PROGRESS_PLUGIN_KEY, {serverStatus: status});
-		this._view.dispatch(tr);
+	public reportProgress(current: number, total: number, text?: string): void {
+		this._progressBar.reportProgress(current, total, text);
 	}
+
+	public startSpinner(): void { this._progressBar.startSpinner(); }
+	
+	public stopSpinner(): void { this._progressBar.stopSpinner(); }
+
+	public setBusyIndicator(busyPos: number) {
+		if (this.oldOffsetChecked === busyPos) return;
+
+		if (this._mapping === undefined || this._view === undefined) return;
+
+		const pmPos: number = this._mapping.textOffsetToPmIndex(busyPos);
+
+		
+		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
+		if (views === undefined) return;
+
+		for (const view of views) view.setBusyIndicator(pmPos);
+		
+		this.oldOffsetChecked = busyPos;
+	}
+
+	public removeBusyIndicators() {
+		if (!this._view) return;
+		CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews.forEach(cv => cv.removeBusyIndicator());
+		this.oldOffsetChecked = null;
+	}
+
 
 	/**
 	 * Updates the status of the input areas in the editor.
 	 * 
-	 * @param status Array containing the status of the input areas within the current document, where `status[i]` corresponds to the i-th input area (starting at zero for the first input area). 
+	 * @param status Array containing the status of the input areas within the current document, where `status[i]`
+	 * corresponds to the i-th input area (starting at zero for the first input area). 
 	 */
-	public updateQedStatus(status: InputAreaStatus[]) : void {
+	public setInputAreaStatus(status: InputAreaStatus[]) : void {
 		if (!this._view) return;
 		const state = this._view.state;
 		const tr = state.tr;
@@ -662,8 +654,8 @@ export class WaterproofEditor {
 
 		// Map the positions
 		const newDiags = diagnostics.map(d => {
-			const start = map.findInvPosition(d.startOffset);
-			const end = map.findInvPosition(d.endOffset);
+			const start = map.textOffsetToPmIndex(d.startOffset);
+			const end = map.textOffsetToPmIndex(d.endOffset);
 
 			return {
 				message: d.message,
@@ -690,8 +682,8 @@ export class WaterproofEditor {
 		const map = this._mapping;
 		if (map === undefined) return false;
 
-		const start = map.findInvPosition(toRemove.startOffset);
-		const end = map.findInvPosition(toRemove.endOffset);
+		const start = map.textOffsetToPmIndex(toRemove.startOffset);
+		const end = map.textOffsetToPmIndex(toRemove.endOffset);
 
 		const proseDiag: DiagnosticObjectProse = {
 			start, end,
@@ -708,6 +700,12 @@ export class WaterproofEditor {
 		this.diagnosticsUpdateCounter++;
 		this.informCodemirrorViews();
 		return oldLength > newLength;
+	}
+
+	public clearDiagnostics() {
+		this.currentProseDiagnostics = [];
+		this.diagnosticsUpdateCounter++;
+		this.informCodemirrorViews();
 	}
 
 	/**
@@ -729,8 +727,8 @@ export class WaterproofEditor {
 		this.currentProseDiagnostics = new Array<DiagnosticObjectProse>(diagnostics.length);
 		for (let i = 0; i < diagnostics.length; i++) {
 			const diag = diagnostics[i];
-			const start = map.findInvPosition(diag.startOffset);
-			const end = map.findInvPosition(diag.endOffset);
+			const start = map.textOffsetToPmIndex(diag.startOffset);
+			const end = map.textOffsetToPmIndex(diag.endOffset);
 			if (start >= end) continue;
 			this.currentProseDiagnostics[i] = {
 				message: diag.message,
@@ -786,11 +784,21 @@ export class WaterproofEditor {
 		});
 	}
 
+	/**
+	 * Execute a ProseMirror command on the editor.
+	 * @param cmd The ProseMirror command to execute.
+	 */
+	public executeProsemirrorCommand(cmd: Command): void {
+		if (this._view) cmd(this._view.state, this._view.dispatch, this._view);
+	}
+
 	// Editor API
+	// @internal
 	public executeCommand(command: string) {
 		this._editorConfig.api.executeCommand(command, (new Date()).getTime());
 	}
 
+	// @internal
 	public executeHelp() {
 		this._editorConfig.api.executeHelp();
 	}

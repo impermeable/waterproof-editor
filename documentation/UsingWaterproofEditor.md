@@ -15,23 +15,24 @@ In our `.mv` constructor, parts surrounded by `<input-area>` and `</input-area>`
 ### WaterproofDocument
 It may be helpful to think of a WaterproofDocument in terms of the following "grammar":
 ```
-WaterproofDocument  ::= Block+
+WaterproofDocument  ::= (ContainerBlock | Block)+
 
-Block               ::= HintBlock | InputAreaBlock | MarkdownBlock | CoqBlock | MathDisplayBlock
+Block               ::= HintBlock | InputAreaBlock | MarkdownBlock | CodeBlock | MathDisplayBlock | NewlineBlock
 
-InnerBlock          ::= MarkdownBlock | CoqBlock | MathDisplayBlock
+ContainerBlock      ::= Container of Block with a name.
+
+InnerBlock          ::= MarkdownBlock | CodeBlock | MathDisplayBlock | NewlineBlock
 
 HintBlock           ::= Container of InnerBlock+ with a title.
 InputAreaBlock      ::= Container of InnerBlock+
 
 MarkdownBlock       ::= A container with markdown content (supports inline LaTeX).
-CoqBlock            ::= A container with code content.
+CodeBlock            ::= A container with code content.
 MathDisplayBlock    ::= A container with LaTeX content that should be rendered in math display mode.
+NewlineBlock        ::= A block that keeps track of significant newlines
 ```
 
-### WaterproofMapping
-
-The `WaterproofMapping` that is constructed is responsible for translating [ProseMirror positions](https://prosemirror.net/docs/guide/#doc.indexing) into an offset position into the document string.
+The schema `WaterproofSchema` defined in [`src/schema/schema.ts`](../src/schema/schema.ts) follows from the above grammar.
 
 ### WaterproofEditorConfig
 

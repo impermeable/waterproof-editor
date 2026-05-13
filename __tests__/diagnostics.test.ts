@@ -3,23 +3,28 @@
 */
 import { expect } from "@jest/globals";
 
-import { DiagnosticObjectProse, WaterproofEditor } from "../src/editor";
-import { DocChange, OffsetDiagnostic, Severity, StringCell, ThemeStyle, WaterproofEditorConfig, WaterproofMapping } from "../src/api";
+jest.mock("prosemirror-dev-tools", () => ({ applyDevTools: () => {} }));
 
-class IdMapping extends WaterproofMapping {
-    getMapping = () => new Map<number, StringCell>();
-    get version() { return -1; }
-    findPosition = (idx: number) => idx;
-    findInvPosition = (idx: number) => idx;
-    update = () => {
-        const ch: DocChange = {
-            endInFile: -1,
-            startInFile: -1,
-            finalText: ""
-        };
-        return ch;
+// We mock the mapping in order to not test against a possibly faulty mapping implementation
+jest.mock('../src/mapping/mapping', () => {
+  const actual = jest.requireActual('../src/mapping/mapping');
+  return {
+    ...actual,
+    Mapping: class extends actual.Mapping {
+        // We replace the two main functions with identity functions
+        pmIndexToTextOffset = (x: number) => x;
+        textOffsetToPmIndex = (x: number) => x;
     }
-}
+};
+});
+
+// Note that this prevents console log statements from showing
+jest.spyOn(global.console, "log").mockImplementation();
+
+import { DiagnosticObjectProse, WaterproofEditor } from "../src/editor";
+import { configuration } from "../src/markdown-defaults";
+import { OffsetDiagnostic, Severity, ThemeStyle, WaterproofEditorConfig } from "../src/api";
+import { CodeBlock } from "../src/document";
 
 const cfg: WaterproofEditorConfig = {
     api: {
@@ -29,13 +34,12 @@ const cfg: WaterproofEditorConfig = {
         editorReady: () => {},
         executeCommand: () => {},
         executeHelp: () => {},
-        lineNumbers: () => {},
         viewportHint: () => {},
     },
     completions: [],
-    documentConstructor: () => [],
-    mapping: IdMapping,
-    symbols: []
+    documentConstructor: () => [new CodeBlock("This is a very long sentence", {from: 0, to: 28}, {from: 0, to: 28}, 0)],
+    symbols: [],
+    tagConfiguration: configuration("coq")
 }
 
 type inType = Array<OffsetDiagnostic>;

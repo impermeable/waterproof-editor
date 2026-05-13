@@ -1,6 +1,5 @@
-import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, acceptCompletion, completionStatus, hasNextSnippetField, nextSnippetField, snippetKeymap, prevSnippetField, clearSnippet, moveCompletionSelection, closeCompletion } from "@codemirror/autocomplete";
-import { defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { coq, coqSyntaxHighlighting } from "./lang-pack"
+import { bracketMatching, syntaxHighlighting } from "@codemirror/language";
+import { Completion, CompletionContext, CompletionResult, CompletionSource, autocompletion, snippet, acceptCompletion, completionStatus, hasNextSnippetField, nextSnippetField, snippetKeymap, prevSnippetField, clearSnippet, moveCompletionSelection, closeCompletion, closeBrackets } from "@codemirror/autocomplete";
 import { Compartment, EditorState, Extension } from "@codemirror/state"
 import {
 	EditorView as CodeMirror, Command, keymap as cmKeymap,
@@ -13,8 +12,11 @@ import { renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, lintGutter } from "@codemirror/lint";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
-import { ThemeStyle } from "../api";
+import { LanguageConfiguration, ThemeStyle } from "../api";
 import { WaterproofEditor } from "../editor";
+import { WaterproofSchema } from "../schema";
+import { CodeBlockBusyIndicator } from "./busy-indicator";
+
 
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
@@ -29,7 +31,10 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _dynamicCompletions: Completion[] = [];
 	private _readOnlyCompartment: Compartment;
 	private _themeCompartment: Compartment;
+
 	private lastUsedDiagnosticsVersion: number = 0;
+
+	private readonly busyIndicator: CodeBlockBusyIndicator;
 
 	constructor(
 		node: Node,
@@ -39,12 +44,14 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		schema: Schema,
 		completions: Array<Completion>,
 		symbols: Array<Completion>,
-		initialThemeStyle: ThemeStyle
+		initialThemeStyle: ThemeStyle,
+		private readonly languageConfig?: LanguageConfiguration
 	) {
 		super(node, view, getPos, schema);
 		this._node = node;
 		this._outerView = view;
 		this._getPos = getPos;
+		this.busyIndicator = new CodeBlockBusyIndicator();
 		this._lineNumbersExtension = [];
 
 		this._lineNumberCompartment = new Compartment;
@@ -82,7 +89,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 			const before = context.matchBefore(/\s*\w+(\s[\s\w]*)?/);
 			// The check line.text === before.text makes sure that there is nothing after the cursor.
 			// This prevents the case that we are in the first hole of the snippet
-			// "By ([hole 1]) we conclude that [hole 2].[hole 3]", we hit "i" and tab (with the intention of moving to the second hole) 
+			// "By ([hole 1]) we conclude that [hole 2].[hole 3]", we hit "i" and tab (with the intention of moving to the second hole)
 			// and this autocompletes to "It holds that"
 			if (before !== null && line.text === before.text) {
 				return {
@@ -91,7 +98,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 					validFor: /[^.]*/
 				}
 			}
-		
+
 			// Not in a valid completion context, return null
 			return null;
   		}
@@ -106,7 +113,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				from: before ? before.from : context.pos,
 				options: symbols,
 				validFor: /\\[^ ]*/
-			};	
+			};
 		}
 
 		// Shadow this._outerView for use in the next function.
@@ -120,15 +127,15 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				div.innerText = "Empty code cell";
 				return div;
 			}
-			const name = outerView.state.doc.resolve(pos).node(1).type.name;
-			if (name === "input") {
+			const parentNodeType = outerView.state.doc.resolve(pos).parent.type;
+			if (parentNodeType === WaterproofSchema.nodes.input) {
 				// This codemirror cell is part of an input area, we change
 				// the placeholder to `(* Type your proof here *)` and apply
 				// the appropriate styling.
-				div.innerText = "(* Type your proof here *)";
+				//div.innerText = "(* Type your proof here *)";
 				// The styling of this class is
 				// defined in `editor/src/kroqed-editor/styles/input-area.css`.
-				div.classList.add("empty-proof-placeholder");
+				div.classList.add("empty-input-area-placeholder");
 			} else {
 				// This codemirror cell is not part of an input area, use the
 				// `Empty code cell` placeholder.
@@ -145,6 +152,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._codemirror = new CodeMirror({
 			doc: this._node.textContent,
 			extensions: [
+				bracketMatching({}),
+				closeBrackets(),
+				...this.busyIndicator.getExtensions(),
 				// Add the linting extension for showing diagnostics (errors, warnings, etc)
 				linter(this.lintingFunction, {
 					// This codemirror instance needs to refresh diagnostics when the version of diagnostics stored in the
@@ -154,11 +164,18 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 					tooltipFilter: inInputArea ? (() => { return []; }) : undefined, // Don't show tooltips inside of input-areas
 					delay: 500,
 				}),
-				...optional, 
+				...optional,
 				this._readOnlyCompartment.of(EditorState.readOnly.of(!this._outerView.editable)),
 				this._lineNumberCompartment.of(this._lineNumbersExtension),
-				this._themeCompartment.of(coqSyntaxHighlighting(initialThemeStyle)),
-
+				this._themeCompartment.of(
+					(() => {
+						if (languageConfig !== undefined) {
+							return syntaxHighlighting(initialThemeStyle === ThemeStyle.Light ? languageConfig.highlightLight : languageConfig.highlightDark);
+						}
+						return [];
+					})()
+				),
+				languageConfig?.languageSupport ?? [],
 				autocompletion({
 					override: [
 						tacticCompletionSource,
@@ -220,8 +237,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 					}
 				]),
 				customTheme,
-				syntaxHighlighting(defaultHighlightStyle),
-				coq(),
+				languageConfig?.languageSupport ?? [],
                 highlightActiveLine(),
 				CodeMirror.updateListener.of(update => this.forwardUpdate(update)),
 				placeholder(placeholderContent())
@@ -244,11 +260,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 						// in student mode.
 						const pos = getPos();
 						if (pos === undefined) return;
-						// Resolve the position in the prosemirror document and get the node one level underneath the root.
-						// TODO: Assumption that `<input-area>`s only ever appear one level beneath the root node.
-						// TODO: Hardcoded node names.
-						const name = outerView.state.doc.resolve(pos).node(1).type.name;
-						if (name !== "input") return; // This node is not part of an input area.
+						// We check whether the parent node is an input area.
+						const parentNodeType = outerView.state.doc.resolve(pos).parent.type;
+						if (parentNodeType !== WaterproofSchema.nodes.input) return; // This node is not part of an input area.
 					}
 
 					view.update([tr]);
@@ -277,12 +291,10 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private partOfInputArea(): boolean {
 		const pos = this._getPos();
 		if (pos === undefined) return false;
-		// Resolve the position in the prosemirror document and get the node one level underneath the root.
-		// TODO: Assumption that `<input-area>`s only ever appear one level beneath the root node.
-		// TODO: Hardcoded node names.
-		const name = this._outerView.state.doc.resolve(pos).node(1).type.name;
-		if (name !== "input") return false;
-		return true; 
+		// We check whether the parent node is an input area.
+		const parentNodeType = this._outerView.state.doc.resolve(pos).parent.type;
+		if (parentNodeType !== WaterproofSchema.nodes.input) return false;
+		return true;
 	}
 
 	public handleSnippet(template: string, posFrom: number, posTo: number, completion? : Completion | undefined) {
@@ -311,10 +323,31 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	public updateThemeFromVSCode(theme: ThemeStyle): void {
 		this._codemirror?.dispatch({
 			effects: this._themeCompartment.reconfigure(
-				coqSyntaxHighlighting(theme)
+				(() => {
+					if (this.languageConfig !== undefined) {
+						return syntaxHighlighting(theme === ThemeStyle.Light ? this.languageConfig.highlightLight : this.languageConfig.highlightDark);
+					}
+					return [];
+				})()
 			)
 		});
 	}
+	
+	/**
+	 * Show the busy spinner on the line currently being checked by coq-lsp.
+	 * {@link busyIndicatorPos} is a ProseMirror document offset.
+	 */
+	public setBusyIndicator(busyIndicatorPos: number): void {
+		if (!this._codemirror) return;
+		this.busyIndicator.setBusy(this._codemirror, busyIndicatorPos, this._getPos());
+	}
+
+	/** Remove the busy spinner from this block. */
+	public removeBusyIndicator(): void {
+		if (!this._codemirror) return;
+		this.busyIndicator.clearBusy(this._codemirror);
+	}
+
 
 	/**
 	 * Update the line numbers extension
@@ -390,7 +423,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	 */
 	public preprocessDiagnostic(from: number, to: number, message: string, severity: number): Diagnostic {
 		const severityString = severityToString(severity);
-		
+
 		// By default, there is the copy action
 		let actions = [{
 			name: "📋",
@@ -462,12 +495,12 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private showCopyNotification(from:number) {
 		//coordinates of the the line with the diagnostic
 		const coords = this._codemirror?.coordsAtPos(from);
-	
+
 		if (!coords) {
 			console.warn("Could not determine coordinates for diagnostic line.");
 			return;
 		}
-	
+
 		// Create the notification element
 		const notification = document.createElement("div");
 		notification.textContent = `Copied!`;
@@ -475,7 +508,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		notification.style.left = `${coords.left}px`; // Align with the left edge of the line
 		notification.classList.add("copy-notification");
 		document.body.appendChild(notification);
-	
+
 		// Fade out after 1 second
 		setTimeout(() => {
 			notification.style.opacity = "0";

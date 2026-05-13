@@ -2,14 +2,13 @@ import { Node as ProseNode } from "prosemirror-model";
 
 // The different types of blocks that can be constructed.
 export enum BLOCK_NAME {
-    COQ = "coq",
     MATH_DISPLAY = "math_display", 
-    INPUT_AREA = "input_area",
+    INPUT_AREA = "input",
     HINT = "hint", 
     MARKDOWN = "markdown",
-    COQ_MARKDOWN = "coqdown",
-    COQ_CODE = "coq_code", 
-    COQ_DOC = "coq_doc"
+    CODE = "code",
+    NEWLINE = "newline",
+    CONTAINER = "container",
 }
 
 export interface BlockRange {
@@ -17,13 +16,21 @@ export interface BlockRange {
     to: number;
 }
 
+// TODO: Here we still use innerRange and range
 export interface Block {
-    type: string;
+    type: BLOCK_NAME;
     stringContent: string;
+    /** Range in the original document, including possible tags (like <input-area>) */
     range: BlockRange;
+    /** Range in the original document, but only the content within possible tags */
+    innerRange: BlockRange;
+    /** The linenumber (0 based) at the start of this block */
+    lineStart: number;
 
+    /** Blocks that are children of this block, only valid for InputArea, Hint, and Container Blocks. */
     innerBlocks?: Block[];
 
+    /** Convert this block to the corresponding ProseMirror node. */
     toProseMirror(): ProseNode;
     debugPrint(level: number): void;
 }

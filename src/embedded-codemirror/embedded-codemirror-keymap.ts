@@ -1,8 +1,8 @@
-import { cursorGroupLeft, selectGroupLeft, cursorLineBoundaryLeft, selectLineBoundaryLeft, cursorGroupRight, selectGroupRight, cursorLineBoundaryRight, selectLineBoundaryRight, cursorDocStart, selectDocStart, cursorPageUp, selectPageUp, cursorDocEnd, selectDocEnd, cursorPageDown, selectPageDown, cursorLineBoundaryBackward, selectLineBoundaryBackward, cursorLineBoundaryForward, selectLineBoundaryForward, insertNewlineAndIndent, deleteCharBackward, deleteCharForward, deleteGroupBackward, deleteGroupForward, cursorCharLeft, cursorCharRight, cursorLineDown, cursorLineUp, selectCharLeft, selectCharRight, selectLineDown, selectLineUp, selectAll } from "@codemirror/commands";
+import { cursorGroupLeft, selectGroupLeft, cursorLineBoundaryLeft, selectLineBoundaryLeft, cursorGroupRight, selectGroupRight, cursorLineBoundaryRight, selectLineBoundaryRight, cursorDocStart, selectDocStart, cursorPageUp, selectPageUp, cursorDocEnd, selectDocEnd, cursorPageDown, selectPageDown, cursorLineBoundaryBackward, selectLineBoundaryBackward, cursorLineBoundaryForward, selectLineBoundaryForward, insertNewlineAndIndent, deleteCharBackward, deleteCharForward, deleteGroupBackward, deleteGroupForward, cursorCharLeft, cursorCharRight, cursorLineDown, cursorLineUp, selectCharLeft, selectCharRight, selectLineDown, selectLineUp, selectAll, toggleComment, moveLineDown, moveLineUp } from "@codemirror/commands";
 import { KeyBinding } from "@codemirror/view";
 import { indentUnit } from "@codemirror/language";
 import { EditorState, StateCommand, SelectionRange, ChangeSpec, Line, EditorSelection } from "@codemirror/state"
-import { acceptCompletion, completionKeymap, completionStatus } from "@codemirror/autocomplete";
+import { acceptCompletion, completionKeymap, completionStatus, currentCompletions } from "@codemirror/autocomplete";
 
 function changeFirstLine(state: EditorState, f: (line: Line, changes: ChangeSpec[], range: SelectionRange) => void) {
     return state.changeByRange(range => {
@@ -52,6 +52,11 @@ export const keybindings: KeyBinding[] = [
     { key: "End", run: cursorLineBoundaryForward, shift: selectLineBoundaryForward, preventDefault: true },
     { key: "Mod-End", run: cursorDocEnd, shift: selectDocEnd },
 
+    { key: "Mod-/", run: toggleComment },
+
+    { key: "Alt-ArrowDown", run: moveLineDown},
+    { key: "Alt-ArrowUp", run: moveLineUp},
+
     { key: "Enter", run: insertNewlineAndIndent },
 
     { key: "Backspace", run: deleteCharBackward, shift: deleteCharBackward },
@@ -72,4 +77,20 @@ export const keybindings: KeyBinding[] = [
             return indentMoreCustom(target);
         }
     },
+    {
+        key: "Space",
+        run: (target) => {
+            const status = completionStatus(target.state);
+            const anyTactic = currentCompletions(target.state).some(c => c.detail === "tactic");
+
+            // Accept completion on space, unless no completion active or it's a tactic
+            // (tactics can contain spaces :D)
+            if (status !== null && !anyTactic) {
+                acceptCompletion(target);
+            }
+
+            // Return false so space character is always inserted
+            return false;
+        }
+    }
 ]

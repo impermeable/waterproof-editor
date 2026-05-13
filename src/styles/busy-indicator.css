@@ -1,0 +1,65 @@
+/* Busy indicator styling */
+
+/* 
+This yellow color is striking, but it may not create an association with the (blue) progressBar.
+To convey to the user that these are related, it may be worth using the same color for both.
+However, the progressBar is too dark in a lot of cases to be used by this indicator. 
+*/
+:root {
+  --wp-busy-indicator-color: #ffae00;
+  --wp-busy-indicator-color-fade: #ffae00de;
+}
+
+/* slightly less pale for light mode */
+.vscode-light {
+  --wp-busy-indicator-color: #ff9000;
+  --wp-busy-indicator-color-fade: #ff9000de;
+}
+
+.busy-indicator {
+  display: block;
+  flex-shrink: 0;
+  width: 0.84em; /* fallback for editors that don't support 'lh' */
+  width: 0.7lh;
+  height: 0.84em; /* fallback for editors that don't support 'lh' */
+  height: 0.7lh;
+  background: var(--wp-busy-indicator-color);
+  box-shadow: 0 0 0 0 var(--wp-busy-indicator-color-fade);
+  animation: pulse 1.5s infinite;
+  border-radius: 20%;
+}
+
+/* 
+The final size needs to be (roughly) such that:
+  width_busy-indicator + 2 * max_box_shadow = width_gutter
+so that the busy-indicator fills the gutter without overflowing at the end of the pulse.
+
+Alternatively we could set width_busy-indicator = width_gutter, which would only show pulsing vertically.
+However, this can be quite subtle. 
+*/
+@keyframes pulse {
+  100% {
+    box-shadow: 0 0 0 0.3em transparent; /* fallback for editors that don't support 'lh' */
+    box-shadow: 0 0 0 0.25lh transparent;
+  }
+}
+
+/* 
+This ensures that the busy gutter maintains a consistent width 
+even if there is no .busy-indicator element.
+If instead, we want the gutter to collapse when there are no markers,
+we can remove this rule and rely on the default gutter behavior.
+*/
+.cm-busy-gutter {
+  width: 1.44em; /* fallback for editors that don't support 'lh' */
+  width: 1.2lh;
+  min-width: 1.44em; /* fallback for editors that don't support 'lh' */
+  min-width: 1.2lh;
+  opacity: 100%;
+}
+
+.cm-busy-gutter .cm-gutterElement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

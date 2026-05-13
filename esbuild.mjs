@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import process from "process";
 import * as esbuild from "esbuild";
+import pkgJson from "./package.json" with {type: "json"};
 
 const watch = process.argv.includes("--watch");
 const minify = process.argv.includes("--minify");
 const disableSourcemap = process.argv.includes("--sourcemap=no");
 const genSourcemap = disableSourcemap ? null : { sourcemap: "inline" };
+const debugBuild = process.argv.includes("--debug");
 
 // Setting to `copy` means we bundle the fonts in dist. Setting this to `dataurl` includes the fonts as base64 encoded data in the generated css file.
 const fontLoader = "base64";
@@ -13,7 +15,7 @@ const sharedConfig = {
   entryPoints: ["src/index.ts", "src/styles/waterproof-defaults.css"],
   outdir: "dist",
   bundle: true,
-  format: "cjs",
+  format: "esm",
   ...genSourcemap,
   platform: "browser",
   loader: {
@@ -22,6 +24,12 @@ const sharedConfig = {
     ".ttf": fontLoader,
     ".grammar": "file"
   },
+  external: [
+    // We mark all the peerDependencies as external, that way they won't be included in the bundle
+    // but remain of the form `import ... from ...`
+    ...Object.keys(pkgJson.peerDependencies)
+  ],
+  dropLabels: debugBuild ? [] : ["DEBUG"],
   minify,
   plugins: [
     {

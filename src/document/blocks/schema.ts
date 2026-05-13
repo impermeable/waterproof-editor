@@ -9,11 +9,6 @@ export const text = (content: string): ProseNode => {
     return WaterproofSchema.text(content);
 }
 
-/** Construct coq markdown prosemirror node. */
-export const coqMarkdown = (content: string): ProseNode => {
-    return WaterproofSchema.nodes.coqdown.create({}, text(content));
-}
-
 /** Construct math display prosemirror node. */
 export const mathDisplay = (content: string): ProseNode => {
     return WaterproofSchema.nodes.math_display.create({}, text(content));
@@ -25,8 +20,8 @@ export const markdown = (content: string): ProseNode => {
 }
 
 /** Construct coqcode prosemirror node. */
-export const coqCode = (content: string): ProseNode => {
-    return WaterproofSchema.nodes.coqcode.create({}, text(content));
+export const code = (content: string): ProseNode => {
+    return WaterproofSchema.nodes.code.create({}, text(content));
 }
 
 // ##### With inner blocks #####
@@ -41,14 +36,14 @@ export const hint = (title: string, childNodes: ProseNode[]): ProseNode => {
     return WaterproofSchema.nodes.hint.create({title}, childNodes);
 }
 
-/** Construct coq prosemirror node. */
-export const coqblock = (childNodes: ProseNode[], prePreWhite: string, prePostWhite: string, postPreWhite: string, postPostWhite: string): ProseNode => {
-    return WaterproofSchema.nodes.coqblock.create({prePreWhite, prePostWhite, postPreWhite, postPostWhite}, childNodes);
+/** Construct container prosemirror node. */
+export const container = (name: string, childNodes: ProseNode[]): ProseNode => {
+    return WaterproofSchema.nodes.container.create({name}, childNodes);
 }
 
-/** Construct coqdoc prosemirror node. */
-export const coqDoc = (childNodes: ProseNode[], preWhite: string, postWhite: string): ProseNode => {
-    return WaterproofSchema.nodes.coqdoc.create({preWhite, postWhite}, childNodes);
+// ##### Special newline block ######
+export const newline = () => {
+    return WaterproofSchema.nodes.newline.create();
 }
 
 // ##### Root Node #####

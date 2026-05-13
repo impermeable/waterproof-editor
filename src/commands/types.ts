@@ -2,11 +2,11 @@ import { NodeType } from "prosemirror-model";
 import { EditorState, Transaction } from "prosemirror-state";
 
 /**
- * Enum for the insertion place, can be either `Above` or `Underneath` the currently selected cell.
+ * Enum for the insertion place, can be either `Above` or `Below` the currently selected cell.
  */
 export enum InsertionPlace {
     Above, 
-    Underneath,
+    Below,
 }
 
 /**

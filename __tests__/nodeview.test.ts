@@ -18,7 +18,7 @@ jest.mock('../src/inputArea.ts', () => ({
 const docText = "Qed.";
 const docStart = 0;
 const docEnd = docText.length;
-const node: Node = WaterproofSchema.nodes["coqcode"].create(null, WaterproofSchema.text(docText));
+const node: Node = WaterproofSchema.nodes["code"].create(null, WaterproofSchema.text(docText));
 
 test("Basic diagnostic", () => {
     //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
@@ -127,4 +127,54 @@ test("Hint Delete", () => {
     result.actions?.at(0)?.apply(nodeview._codemirror, result.from, result.to);
     //@ts-expect-error private
     expect(nodeview._codemirror?.state.doc.toString()).toStrictEqual("");
+});
+
+
+/** Construct a minimal CodeBlockView for testing. */
+function makeView() {
+    //@ts-expect-error supply only the minimal needed to get a working CodeBlockView
+    return new CodeBlockView(node, {editable: true}, null, () => undefined, null, [], [], ThemeStyle.Light);
+}
+
+/** This functionality ensures that the selection is displayed (in particular when using the ctrl+. shortcut to select) */
+describe("CodeBlockView selectNode / deselectNode", () => {
+    test("selectNode adds ProseMirror-selectednode class", () => {
+        const nv = makeView();
+        expect(nv.dom).toBeInstanceOf(HTMLElement);
+        expect((nv.dom as HTMLElement).classList.contains("ProseMirror-selectednode")).toBe(false);
+
+        nv.selectNode();
+        expect((nv.dom as HTMLElement).classList.contains("ProseMirror-selectednode")).toBe(true);
+    });
+
+    test("deselectNode removes ProseMirror-selectednode class", () => {
+        const nv = makeView();
+        (nv.dom as HTMLElement).classList.add("ProseMirror-selectednode");
+
+        nv.deselectNode();
+        expect((nv.dom as HTMLElement).classList.contains("ProseMirror-selectednode")).toBe(false);
+    });
+
+    test("selectNode then deselectNode round-trips correctly", () => {
+        const nv = makeView();
+
+        nv.selectNode();
+        expect((nv.dom as HTMLElement).classList.contains("ProseMirror-selectednode")).toBe(true);
+
+        nv.deselectNode();
+        expect((nv.dom as HTMLElement).classList.contains("ProseMirror-selectednode")).toBe(false);
+    });
+});
+
+describe("CodeBlockView busy indicator", () => {
+    test("removeBusyIndicator is a no-op when codemirror is absent", () => {
+        const nv = makeView();
+        //@ts-expect-error
+        nv._codemirror = undefined;
+        //@ts-expect-error
+        const spy = jest.spyOn(nv.busyIndicator, "clearBusy");
+
+        expect(() => nv.removeBusyIndicator()).not.toThrow();
+        expect(spy).not.toHaveBeenCalled();
+    });
 });

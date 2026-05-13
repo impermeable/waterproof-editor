@@ -16,24 +16,29 @@
   outline: 1px solid var(--wp-buttonBorder); 
 }
 
-.inputarea.proven::before {
+.inputarea.correct::before {
   width: 8px;
   background-color: var(--wp-terminalAnsiGreen);
 }
 
-.inputarea.proven-contains-warning::before {
+.inputarea.invalid::before,
+.inputarea.correct.contains-warning::before {
   width: 8px;
   background-color: var(--wp-terminalAnsiYellow);
 }
 
-.inputarea.incomplete::before,
-.inputarea.incomplete-contains-error::before,
-.inputarea.incomplete-contains-warning::before, 
-.inputarea.proven-contains-error::before {
+.inputarea.incorrect::before,
+.inputarea.incorrect.contains-error::before,
+.inputarea.incorrect.contains-warning::before, 
+.inputarea.correct-contains-error::before {
   width: 8px;
   background-color: var(--wp-terminalAnsiRed);
 }
 
-.empty-proof-placeholder {
-  color: #940;
+.empty-input-area-placeholder {
+  color: var(--wp-empty-input-area-placeholder-color);
+}
+
+.empty-input-area-placeholder::before {
+  content: var(--wp--empty-input-area-placeholder-content);
 }
