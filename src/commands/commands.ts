@@ -60,56 +60,69 @@ export function wpLift(_tagConf: TagConfiguration): Command {
     }
 }
 
+function computeNodeSelectionDeleteRange(
+    sel: NodeSelection,
+    parentAndIndex: NonNullable<ReturnType<typeof getParentAndIndex>>,
+    tagConf: TagConfiguration
+): [number, number] {
+
+    const { parent, index } = parentAndIndex;
+    const before = parent.maybeChild(index - 1);
+    const after = parent.maybeChild(index + 1);
+    const beforeSize = before === null ? 0 : before.nodeSize;
+    const afterSize = after === null ? 0 : after.nodeSize;
+
+    // node before before, node after after
+    const befoore = parent.maybeChild(index - 2);
+    const afteer = parent.maybeChild(index + 2);
+
+    const beforeIsNewline = before !== null && before.type === WaterproofSchema.nodes.newline;
+    const afterIsNewline = after !== null && after.type === WaterproofSchema.nodes.newline;
+    const befooreNeedsNewlineAfter = befoore !== null && needsNewlineAfter(befoore.type, tagConf);
+    const afteerNeedsNewlineBefore = afteer !== null && needsNewlineBefore(afteer.type, tagConf);
+
+    const { from, to } = sel;
+
+    // Both sides are newlines and both outer nodes need them: keep before newline, delete after
+    if (beforeIsNewline && afterIsNewline && befooreNeedsNewlineAfter && afteerNeedsNewlineBefore) {
+        return [from, to + afterSize];
+    }
+    // After is newline and outer node after needs it: keep after newline, delete before newline (if any)
+    if (afterIsNewline && afteerNeedsNewlineBefore) {
+        return [from - (beforeIsNewline ? beforeSize : 0), to];
+    }
+    // Before is newline and outer node before needs it: keep before newline, delete after newline (if any)
+    if (beforeIsNewline && befooreNeedsNewlineAfter) {
+        return [from, to + (afterIsNewline ? afterSize : 0)];
+    }
+    // Both sides are newlines but neither outer node needs them: delete both
+    if (beforeIsNewline && afterIsNewline && !afteerNeedsNewlineBefore) {
+        return [from - beforeSize, to + afterSize];
+    }
+    // Default: delete only the selected node
+    return [from, to];
+}
+
 export function deleteSelection(tagConf: TagConfiguration): Command {
     return (state, dispatch) => {
         const sel = state.selection;
         if (sel.empty) return false;
+
         if (sel instanceof TextSelection) {
             if (dispatch) dispatch(state.tr.deleteSelection().scrollIntoView());
             return true;
-        } else if (sel instanceof NodeSelection) {
-            const parentAndIndex = getParentAndIndex(sel);
-            if (!parentAndIndex) return false;
-            const {parent, index} = parentAndIndex;
-
-            const before = parent.maybeChild(index - 1);
-            const after = parent.maybeChild(index + 1);
-            const beforeSize = before === null ? 0 : before.nodeSize;
-            const afterSize = after === null ? 0 : after.nodeSize;
-            // node before before
-            const befoore = parent.maybeChild(index - 2);
-            // node after after
-            const afteer = parent.maybeChild(index + 2);
-            
-            const beforeIsNewline = before === null ? false : before.type === WaterproofSchema.nodes.newline;
-            const afterIsNewline = after === null ? false : after.type === WaterproofSchema.nodes.newline;
-
-            if (beforeIsNewline && afterIsNewline && befoore !== null && afteer !== null && needsNewlineAfter(befoore.type, tagConf) && needsNewlineBefore(afteer.type, tagConf)) {
-                // Before and after are newlines, and befoore needs newline after and afteer needs newline before
-                // We need to keep one of the newlines, so we delete the node and the after newline
-                if (dispatch) dispatch(state.tr.delete(state.selection.from, state.selection.to + afterSize).scrollIntoView());
-                return true;
-            } else if (afterIsNewline && afteer !== null && needsNewlineBefore(afteer.type, tagConf)) {
-                // After is newline and afteer needs newline before
-                // We need to keep the after newline, so we delete the node and the before newline (if any)
-                if (dispatch) dispatch(state.tr.delete(state.selection.from - (beforeIsNewline ? beforeSize : 0), state.selection.to).scrollIntoView());
-                return true;
-            } else if (beforeIsNewline && befoore !== null && needsNewlineAfter(befoore.type, tagConf)) {
-                // Before is newline and befoore needs newline after
-                // We need to keep the before newline, so we delete the node and the after newline (if any)
-                if (dispatch) dispatch(state.tr.delete(state.selection.from, state.selection.to + (afterIsNewline ? afterSize : 0)).scrollIntoView());
-                return true;
-            } else if (beforeIsNewline && afterIsNewline && (befoore === null || (befoore !== null && !needsNewlineAfter(befoore.type, tagConf))) && (afteer === null || (afteer !== null && !needsNewlineBefore(afteer.type, tagConf)))) {
-                // Before and after are newlines, but befoore does not need newline after and afteer does not need newline before
-                // We can delete both newlines
-                if (dispatch) dispatch(state.tr.delete(state.selection.from - beforeSize, state.selection.to + afterSize).scrollIntoView());
-                return true;
-            } else {
-                if (dispatch) dispatch(state.tr.deleteSelection().scrollIntoView());
-                return true;
-            }
         }
-        return false;
+
+        if (!(sel instanceof NodeSelection)) return false;
+
+        const parentAndIndex = getParentAndIndex(sel);
+        if (!parentAndIndex) return false;
+
+        if (dispatch) {
+            const [deleteFrom, deleteTo] = computeNodeSelectionDeleteRange(sel, parentAndIndex, tagConf);
+            dispatch(state.tr.delete(deleteFrom, deleteTo).scrollIntoView());
+        }
+        return true;
     }
 }
 
@@ -190,73 +203,61 @@ function wpWrapIn(nodeType: NodeType, tagConf: TagConfiguration, attrs? : Attrs)
         const sel = state.selection;
         // Double check, but needed for typechecking
         if (!(sel instanceof NodeSelection)) return false;
-        
+
         const before = sel.$from.nodeBefore;
         const after = sel.$to.nodeAfter;
-        
+        const beforeIsNewline = before !== null && before.type === WaterproofSchema.nodes.newline;
+        const afterIsNewline = after !== null && after.type === WaterproofSchema.nodes.newline;
+        const needsBefore = needsNewlineBefore(sel.node.type, tagConf);
+        const needsAfter = needsNewlineAfter(sel.node.type, tagConf);
+
+        // Only consume a surrounding newline into the block range when the wrapper's opening/
+        // closing tag does NOT already supply a newline — otherwise the tag's own newline and
+        // the consumed newline would produce a double-newline in serialised output.
+        const consumeBefore = needsBefore && beforeIsNewline && !openingTagEndsWithNewline(nodeType, tagConf);
+        const consumeAfter  = needsAfter  && afterIsNewline  && !closingTagStartsWithNewline(nodeType, tagConf);
+
+        let $start = sel.$from;
+        let $end   = sel.$to;
+        if (before !== null && consumeBefore) $start = state.doc.resolve(sel.from - before.nodeSize);
+        if (after  !== null && consumeAfter)  $end   = state.doc.resolve(sel.to  + after.nodeSize);
+
+        const blockRange = $start.blockRange($end);
+        if (blockRange === null) return false;
+
         if (dispatch) {
-            const beforeIsNewline = before === null ? false : before.type === WaterproofSchema.nodes.newline;
-            const afterIsNewline = after === null ? false : after.type === WaterproofSchema.nodes.newline;
-            const nodeBeingWrapped = sel.node;
-            const needsBefore = needsNewlineBefore(nodeBeingWrapped.type, tagConf);
-            const needsAfter = needsNewlineAfter(nodeBeingWrapped.type, tagConf);
-            
-            let $start = sel.$from;
-            let $end = sel.$to;
-
-            const consumeBefore = needsBefore && beforeIsNewline && !openingTagEndsWithNewline(nodeType, tagConf);
-            const consumeAfter = needsAfter && afterIsNewline && !closingTagStartsWithNewline(nodeType, tagConf);
-
-            if (before !== null && consumeBefore) {
-                // extend the selection to incldue the before newline node
-                $start = state.doc.resolve(sel.from - before.nodeSize);
-            }
-            if (after !== null && consumeAfter) {
-                // extend the selection to include the after newline node
-                $end = state.doc.resolve(sel.to + after.nodeSize);
-            }
-            
-            // We extend the blockRange to include the newlines if they are being consumed.
-            const blockRange = $start.blockRange($end);
-            if (blockRange === null) return false;
             const tr = state.tr;
             tr.wrap(blockRange, [{type: nodeType, attrs}]);
 
-            // Capture the wrapper boundary positions right after the wrap, before any inserts,
-            // so later insertions inside the wrapper don't shift the outer-before position.
             const wrapperStart = tr.mapping.map(blockRange.start);
 
-            // If the wrapper's opening tag does not end with a newline, the wrapped node needs a
-            // newline before it, and no surrounding newline was consumed into the wrapper, insert a
-            // newline node as the first child of the wrapper so the content starts on its own line.
+            // If the wrapper's opening tag has no trailing newline but the wrapped node needs
+            // one before it and no surrounding newline was consumed, insert one inside the wrapper.
             if (!openingTagEndsWithNewline(nodeType, tagConf) && needsBefore && !consumeBefore) {
                 tr.insert(wrapperStart, WaterproofSchema.nodes.newline.create());
             }
-
             // Symmetrically for the closing tag.
             if (!closingTagStartsWithNewline(nodeType, tagConf) && needsAfter && !consumeAfter) {
-                const wrapperContentEnd = tr.mapping.map(blockRange.end) - 1;
-                tr.insert(wrapperContentEnd, WaterproofSchema.nodes.newline.create());
+                tr.insert(tr.mapping.map(blockRange.end) - 1, WaterproofSchema.nodes.newline.create());
             }
 
-            // We potentially have to insert newlines before or after the newly created input area.
+            // Insert an outer newline before the wrapper when the preceding node needs one after
+            // it, or the wrapper type needs one before it, and no newline is already there.
             const nodeBefore = $start.nodeBefore;
-            if (nodeBefore !== null && nodeBefore.type !== WaterproofSchema.nodes.newline && (needsNewlineAfter(nodeBefore.type, tagConf) || needsNewlineBefore(nodeType, tagConf))) {
-                // Inserting newline before the input area
+            if (nodeBefore !== null && nodeBefore.type !== WaterproofSchema.nodes.newline &&
+                    (needsNewlineAfter(nodeBefore.type, tagConf) || needsNewlineBefore(nodeType, tagConf))) {
                 tr.insert(wrapperStart - 1, WaterproofSchema.nodes.newline.create());
             }
-            
+            // Symmetrically after the wrapper.
             const nodeAfter = $end.nodeAfter;
-            if (nodeAfter !== null && nodeAfter.type !== WaterproofSchema.nodes.newline && (needsNewlineBefore(nodeAfter.type, tagConf) || needsNewlineAfter(nodeType, tagConf))) {
-                // Inserting newline after the input area
+            if (nodeAfter !== null && nodeAfter.type !== WaterproofSchema.nodes.newline &&
+                    (needsNewlineBefore(nodeAfter.type, tagConf) || needsNewlineAfter(nodeType, tagConf))) {
                 tr.insert(tr.mapping.map(blockRange.end), WaterproofSchema.nodes.newline.create());
             }
 
-            // Finally, dispatch the transaction and set the selection to be the node selection of the newly created input area.
             tr.setSelection(NodeSelection.create(tr.doc, tr.mapping.map(sel.from)));
             tr.scrollIntoView();
             dispatch(tr);
-            return true;
         }
         return true;
     }

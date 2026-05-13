@@ -31,8 +31,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	private _dynamicCompletions: Completion[] = [];
 	private _readOnlyCompartment: Compartment;
 	private _themeCompartment: Compartment;
-	private readonly _languageCompartment: Compartment;
-	private readonly _diags: Diagnostic[];
+
 	private lastUsedDiagnosticsVersion: number = 0;
 
 	private readonly busyIndicator: CodeBlockBusyIndicator;
@@ -58,8 +57,6 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		this._lineNumberCompartment = new Compartment;
 		this._readOnlyCompartment = new Compartment;
 		this._themeCompartment = new Compartment;
-		this._languageCompartment = new Compartment;
-		this._diags = [];
 
 		const tacticCompletionSource: CompletionSource = function(context: CompletionContext) {
 			const completionResult: CompletionResult = {
