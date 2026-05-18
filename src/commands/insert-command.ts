@@ -93,7 +93,7 @@ export function getCmdInsertTextHint(place: InsertionPlace, tagConf: TagConfigur
         const f = place === InsertionPlace.Above ? insertCompositeNodeAbove : insertCompositeNodeBelow;
 
         const wrapper = WaterproofSchema.nodes.hint;
-        const trans = f(state, state.tr, WaterproofSchema.nodes.markdown, wrapper, tagConf, "💡 Hint");
+        const trans = f(state, state.tr, WaterproofSchema.nodes.markdown, wrapper, tagConf);
 
         if (trans === undefined) { return false; }
         
@@ -116,7 +116,7 @@ export function getCmdInsertExample(place: InsertionPlace, tagConf: TagConfigura
                         state.tr, 
                         WaterproofSchema.nodes.code, 
                         tagConf,
-                        "Example example: True.\nProof.\nQed.");
+                        "Example example: True.\nProof.\n\nQed.");
 
         if (trans === undefined) { return false; }
         

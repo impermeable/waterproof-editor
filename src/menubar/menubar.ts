@@ -4,7 +4,7 @@ import { EditorView } from "prosemirror-view";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { InsertionPlace, wrapInHint, wrapInInput, deleteSelection, wpLift } from "../commands";
 import { OS } from "../osType";
-import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown, getCmdInsertTextHint, getCmdInsertCodeHint } from "../commands/insert-command";
+import { getCmdInsertCode, getCmdInsertLatex, getCmdInsertMarkdown, getCmdInsertTextHint, getCmdInsertCodeHint, getCmdInsertExample } from "../commands/insert-command";
 import { MenuBarEntry, TagConfiguration } from "../api";
 
 /** MenuEntry type contains the DOM, whether to only show it in teacher mode and the command to execute on click */
@@ -189,8 +189,8 @@ function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfigurat
         createMenuItem("Text Hint↓", "Insert new text hint below", getCmdInsertTextHint(InsertionPlace.Below, tagConf)),
         createMenuItem("Math Hint↑", "Insert new math hint above", getCmdInsertCodeHint(InsertionPlace.Above, tagConf)),
         createMenuItem("Math Hint↓", "Insert new math hint below", getCmdInsertCodeHint(InsertionPlace.Below, tagConf)),
-        createMenuItem("Example↑", "Insert new example block above", getCmdInsertCodeHint(InsertionPlace.Above, tagConf)),
-        createMenuItem("Example↓", "Insert new example block below", getCmdInsertCodeHint(InsertionPlace.Below, tagConf)),
+        createMenuItem("Example↑", "Insert new example block above", getCmdInsertExample(InsertionPlace.Above, tagConf)),
+        createMenuItem("Example↓", "Insert new example block below", getCmdInsertExample(InsertionPlace.Below, tagConf)),
     ]
 
     const customMenuItems = customEntries?.map(entry => {
