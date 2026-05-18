@@ -1,9 +1,10 @@
 import { EditorState, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
-import { allowedToInsert, insertAbove, insertBelow } from "./command-helpers";
+import { allowedToInsert, insertAbove, insertBelow, insertCompositeNodeBelow, insertCompositeNodeAbove } from "./command-helpers";
 import { WaterproofSchema } from "../schema";
 import { InsertionPlace } from "./types";
 import { TagConfiguration } from "../api";
+import { needsNewlineAfter, needsNewlineBefore } from "./utils";
 
 export function getCmdInsertMarkdown(place: InsertionPlace, tagConf: TagConfiguration) {
     return (state: EditorState, dispatch?: ((tr: Transaction) => void), _view?: EditorView): boolean => {
@@ -16,7 +17,7 @@ export function getCmdInsertMarkdown(place: InsertionPlace, tagConf: TagConfigur
 
         const f = place === InsertionPlace.Above ? insertAbove : insertBelow;
 
-        const trans = f(state, state.tr, WaterproofSchema.nodes.markdown, tagConf);
+        const trans = f(state, state.tr, WaterproofSchema.nodes.markdown, tagConf, "");
 
         if (trans === undefined) { return false; }
         
@@ -34,7 +35,7 @@ export function getCmdInsertLatex(place: InsertionPlace, tagConf: TagConfigurati
         if (!allowedToInsert(state)) return false;
         
         const f = place  === InsertionPlace.Above ? insertAbove : insertBelow; 
-        const trans = f(state, state.tr, WaterproofSchema.nodes.math_display, tagConf);
+        const trans = f(state, state.tr, WaterproofSchema.nodes.math_display, tagConf, "");
 
         if (trans === undefined) { return false; }
         
@@ -52,7 +53,70 @@ export function getCmdInsertCode(place: InsertionPlace, tagConf: TagConfiguratio
         if (!allowedToInsert(state)) return false;
         
         const f = place === InsertionPlace.Above ? insertAbove : insertBelow;
-        const trans = f(state, state.tr, WaterproofSchema.nodes.code, tagConf);
+        const trans = f(state, state.tr, WaterproofSchema.nodes.code, tagConf, "");
+
+        if (trans === undefined) { return false; }
+        
+        // If dispatch is given and transaction is set, dispatch the transaction.
+        if (dispatch && trans) dispatch(trans);
+
+        // Indicate that this command was successful.
+        return true;
+    }
+}
+
+export function getCmdInsertCodeHint(place: InsertionPlace, tagConf: TagConfiguration) {
+    return (state: EditorState, dispatch?: ((tr: Transaction) => void), _view?: EditorView): boolean => {
+        // Early return when inserting is not allowed.
+        if (!allowedToInsert(state)) return false;
+        
+        const f = place === InsertionPlace.Above ? insertCompositeNodeAbove : insertCompositeNodeBelow;
+
+        const wrapper = WaterproofSchema.nodes.hint;
+        const trans = f(state, state.tr, WaterproofSchema.nodes.code, wrapper, tagConf, "🛠️ Technical details");
+
+        if (trans === undefined) { return false; }
+        
+        // If dispatch is given and transaction is set, dispatch the transaction.
+        if (dispatch && trans) dispatch(trans);
+
+        // Indicate that this command was successful.
+        return true;
+    }
+}
+
+export function getCmdInsertTextHint(place: InsertionPlace, tagConf: TagConfiguration) {
+    return (state: EditorState, dispatch?: ((tr: Transaction) => void), _view?: EditorView): boolean => {
+        // Early return when inserting is not allowed.
+        if (!allowedToInsert(state)) return false;
+        
+        const f = place === InsertionPlace.Above ? insertCompositeNodeAbove : insertCompositeNodeBelow;
+
+        const wrapper = WaterproofSchema.nodes.hint;
+        const trans = f(state, state.tr, WaterproofSchema.nodes.markdown, wrapper, tagConf, "💡 Hint");
+
+        if (trans === undefined) { return false; }
+        
+        // If dispatch is given and transaction is set, dispatch the transaction.
+        if (dispatch && trans) dispatch(trans);
+
+        // Indicate that this command was successful.
+        return true;
+    }
+ 
+}
+
+export function getCmdInsertExample(place: InsertionPlace, tagConf: TagConfiguration) {
+    return (state: EditorState, dispatch?: ((tr: Transaction) => void), _view?: EditorView): boolean => {
+        // Again, early return when inserting is not allowed. 
+        if (!allowedToInsert(state)) return false;
+        
+        const f = place === InsertionPlace.Above ? insertAbove : insertBelow;
+        const trans = f(state, 
+                        state.tr, 
+                        WaterproofSchema.nodes.code, 
+                        tagConf,
+                        "Example example: True.\nProof.\nQed.");
 
         if (trans === undefined) { return false; }
         
