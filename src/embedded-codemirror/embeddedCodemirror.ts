@@ -8,7 +8,7 @@ import { keybindings } from "./embedded-codemirror-keymap";
 /**
  * A class implementing everything required to create an embedded codemirror editor for prosemirror.
  * Implements the `NodeView` prosemirror class. Can be extended to create custom codemirror editors like
- * the one used to edit markdown or Rocq code.
+ * the one used to edit markdown or code.
  */
 export class EmbeddedCodeMirrorEditor implements NodeView {
     public _getPos: (() => number | undefined);
