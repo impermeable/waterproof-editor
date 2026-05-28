@@ -147,6 +147,11 @@ export class Tree {
      * Find the most specific node that contains the given ProseMirror position, this function is biased to find the
      * first node (in terms of position) containing the position. I.e. in a tree with a code cell that ends at 28 and a newline that
      * starts at 28, we will return the code cell when searching for position 28.
+     * 
+     * When using this method, be careful of the cases where you can get the first child of some node,
+     * since these might need some special casing. We suspect that changing this function to have a 
+     * right-bias rather than a left-bias shifts the above issue to concern the final child.
+     * 
      * @param pos ProseMirror position to search for
      * @param node The node to start the search from, defaults to the root node of the tree
      * @returns The most specific node containing the position, or null if no such node exists
@@ -174,13 +179,22 @@ export class Tree {
         // If no child contains pos, return current node
         return node;
     }
-
+    
+    /**
+     * This function returns the nodes fully contained in a range, descendant from a given node, but NOT transitively.
+     * i.e. if Node A is fully contained in Node B, and B is within the range, then A does not get returned.
+     * @param from Start of the range
+     * @param to End of range
+     * @param node TreeNode to start from
+     * @returns top-level TreeNodes contained in the range.
+     */
     nodesInProseRange(from: number, to: number, node: TreeNode | null = this.root): TreeNode[] {
         const result: TreeNode[] = [];
         if (!node) return result;
         if (node.pmRange.to < from || node.pmRange.from > to) return result;
-        if (node.pmRange.from >= from && node.pmRange.to <= to) {
+        if (node !== this.root && node.pmRange.from >= from && node.pmRange.to <= to) {
             result.push(node);
+            return result; // children travel with this node; don't add them separately
         }
         result.push(...node.children.flatMap(child => this.nodesInProseRange(from, to, child)));
         return result;

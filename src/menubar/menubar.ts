@@ -1,5 +1,5 @@
 import { selectParentNode } from "prosemirror-commands";
-import { Command, PluginView, Plugin, PluginKey } from "prosemirror-state";
+import { Command, PluginView, Plugin, PluginKey, EditorState } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { InsertionPlace, wrapInHint, wrapInInput, deleteSelection, wpLift } from "../commands";
@@ -14,6 +14,7 @@ type MenuEntry = {
     showByDefault: boolean;
     cmd: Command;
     customEntry: boolean;
+    isActive?: (state: EditorState) => boolean;
 };
 
 /**
@@ -110,6 +111,10 @@ class MenuView implements PluginView {
                 item.dom.style.opacity = active ? "1" : "0.4";
                 // And make it unclickable.
                 item.dom.setAttribute("disabled", (!active).toString());
+            } else if (item.isActive) {
+                const active = item.isActive(this.view.state);
+                item.dom.style.opacity = active ? "1" : "0.4";
+                item.dom.setAttribute("disabled", (!active).toString());
             }
         }
     }
@@ -163,34 +168,38 @@ function createDefaultMenu(outerView: EditorView, os: OS, tagConf: TagConfigurat
     const teacherOnly = {teacherModeOnly : true};
 
     // Create the list of menu entries.
-    const items: MenuEntry[] = [];
+    const items: MenuEntry[] = [
+        // Insert Code Block
+        createMenuItem("Math↓", `Insert new verified math block underneath (${keyBinding("q")})`, getCmdInsertCode(InsertionPlace.Below, tagConf)),
+        createMenuItem("Math↑", `Insert new verified math block above (${keyBinding("Q")})`, getCmdInsertCode(InsertionPlace.Above, tagConf)),
+        // Insert Markdown
+        createMenuItem("Text↓", `Insert new text block underneath (${keyBinding("m")})`, getCmdInsertMarkdown(InsertionPlace.Below, tagConf)),
+        createMenuItem("Text↑", `Insert new text block above (${keyBinding("M")})`, getCmdInsertMarkdown(InsertionPlace.Above, tagConf)),
+        // Insert LaTeX
+        createMenuItem(`${LaTeX_SVG} <div>↓</div>`, `Insert new LaTeX block underneath (${keyBinding("l")})`, getCmdInsertLatex(InsertionPlace.Below, tagConf)),
+        createMenuItem(`${LaTeX_SVG} <div>↑</div>`, `Insert new LaTeX block above (${keyBinding("L")})`, getCmdInsertLatex(InsertionPlace.Above, tagConf)),
+        // Select the parent node.
+        createMenuItem("Parent", `Select the parent node (${keyBinding(".")})`, selectParentNode),
+        // in teacher mode, display input area, hint and lift buttons.
+        createMenuItem("ⵊ...", "Make selection an input area", teacherOnlyWrapper(wrapInInput(tagConf)), teacherOnly),
+        createMenuItem("<strong>?</strong>", "Make selection a hint element", teacherOnlyWrapper(wrapInHint(tagConf)), teacherOnly),
+        createMenuItem("↑", "Lift selected node (Reverts the effect of making a 'hint' or 'input area')", teacherOnlyWrapper(wpLift(tagConf)), teacherOnly),
+        createMenuItem("🗑️", "Delete selection", teacherOnlyWrapper(deleteSelection(tagConf)), teacherOnly),
+    ]
 
-    const customMenuItems = customEntries?.map(entry => createMenuItem(entry.title, entry.hoverText, () => { entry.callback(); return true; }, entry.buttonVisibility, true));
+    const customMenuItems = customEntries?.map(entry => {
+        const item = createMenuItem(entry.title, entry.hoverText, () => { entry.callback(); return true; }, entry.buttonVisibility, true);
+        item.isActive = entry.isActive;
+        return item;
+    });
     if (customMenuItems !== undefined)
         items.push(...customMenuItems);
+
 
     // The DEBUG label will be dropped in case we are *not* in debug mode.
     // eslint-disable-next-line no-unused-labels
     DEBUG: {
         items.push(
-            ...[
-                // Insert Rocq code block
-                createMenuItem("Math↓", `Insert new verified math block underneath (${keyBinding("q")})`, getCmdInsertCode(InsertionPlace.Below, tagConf)),
-                createMenuItem("Math↑", `Insert new verified math block above (${keyBinding("Q")})`, getCmdInsertCode(InsertionPlace.Above, tagConf)),
-                // Insert Markdown
-                createMenuItem("Text↓", `Insert new text block underneath (${keyBinding("m")})`, getCmdInsertMarkdown(InsertionPlace.Below, tagConf)),
-                createMenuItem("Text↑", `Insert new text block above (${keyBinding("M")})`, getCmdInsertMarkdown(InsertionPlace.Above, tagConf)),
-                // Insert LaTeX
-                createMenuItem(`${LaTeX_SVG} <div>↓</div>`, `Insert new LaTeX block underneath (${keyBinding("l")})`, getCmdInsertLatex(InsertionPlace.Below, tagConf)),
-                createMenuItem(`${LaTeX_SVG} <div>↑</div>`, `Insert new LaTeX block above (${keyBinding("L")})`, getCmdInsertLatex(InsertionPlace.Above, tagConf)),
-                // Select the parent node.
-                createMenuItem("Parent", `Select the parent node (${keyBinding(".")})`, selectParentNode),
-                // in teacher mode, display input area, hint and lift buttons.
-                createMenuItem("ⵊ...", "Make selection an input area", teacherOnlyWrapper(wrapInInput(tagConf)), teacherOnly),
-                createMenuItem("<strong>?</strong>", "Make selection a hint element", teacherOnlyWrapper(wrapInHint(tagConf)), teacherOnly),
-                createMenuItem("↑", "Lift selected node (Reverts the effect of making a 'hint' or 'input area')", teacherOnlyWrapper(wpLift(tagConf)), teacherOnly),
-                createMenuItem("🗑️", "Delete selection", teacherOnlyWrapper(deleteSelection(tagConf)), teacherOnly),
-            ],
             createMenuItem("DUMP DOC", "", (state, dispatch) => {
                 if (dispatch) console.log("\x1b[33m[DEBUG]\x1b[0m dumped doc", JSON.stringify(state.doc.toJSON()));
                 return true;

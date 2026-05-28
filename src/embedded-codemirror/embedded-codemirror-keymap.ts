@@ -83,14 +83,13 @@ export const keybindings: KeyBinding[] = [
             const status = completionStatus(target.state);
             const anyTactic = currentCompletions(target.state).some(c => c.detail === "tactic");
 
-            // Don't complete on space if there is no active completion, 
-            // or if the active completion is a tactic ( tactics can contain spaces :D )
-            if (status === null || anyTactic) { return false; }
+            // Accept completion on space, unless no completion active or it's a tactic
+            // (tactics can contain spaces :D)
+            if (status !== null && !anyTactic) {
+                acceptCompletion(target);
+            }
 
-            // accept the completion
-            acceptCompletion(target);
-
-            // and fall back to normal space behaviour
+            // Return false so space character is always inserted
             return false;
         }
     }

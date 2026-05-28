@@ -1,6 +1,6 @@
 {
   "name": "@impermeable/waterproof-editor",
-  "version": "0.13.0",
+  "version": "0.14.1",
   "description": "Waterproof Editor ",
   "homepage": "https://github.com/impermeable/waterproof-editor#readme",
   "bugs": {
@@ -42,7 +42,7 @@
   "devDependencies": {
     "@codemirror/autocomplete": "6.18.1",
     "@codemirror/commands": "6.6.2",
-    "@codemirror/language": "6.12.1",
+    "@codemirror/language": "6.12.2",
     "@codemirror/lint": "6.9.2",
     "@codemirror/state": "~6.5.3",
     "@codemirror/view": "6.38.8",
@@ -84,14 +84,17 @@
   },
   "overrides": {
     "mocha": {
-      "serialize-javascript": "7.0.4",
+      "serialize-javascript": "7.0.5",
       "diff": "8.0.3"
+    },
+    "eslint": {
+      "brace-expansion": "2.1.0"
     }
   },
   "peerDependencies": {
     "@codemirror/autocomplete": "6.18.1",
     "@codemirror/commands": "6.6.2",
-    "@codemirror/language": "6.12.1",
+    "@codemirror/language": "6.12.2",
     "@codemirror/lint": "6.9.2",
     "@codemirror/state": "~6.5.2",
     "@codemirror/view": "6.38.8"

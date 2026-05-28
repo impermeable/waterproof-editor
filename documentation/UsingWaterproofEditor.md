@@ -15,9 +15,11 @@ In our `.mv` constructor, parts surrounded by `<input-area>` and `</input-area>`
 ### WaterproofDocument
 It may be helpful to think of a WaterproofDocument in terms of the following "grammar":
 ```
-WaterproofDocument  ::= Block+
+WaterproofDocument  ::= (ContainerBlock | Block)+
 
 Block               ::= HintBlock | InputAreaBlock | MarkdownBlock | CodeBlock | MathDisplayBlock | NewlineBlock
+
+ContainerBlock      ::= Container of Block with a name.
 
 InnerBlock          ::= MarkdownBlock | CodeBlock | MathDisplayBlock | NewlineBlock
 

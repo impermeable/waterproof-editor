@@ -6,7 +6,8 @@ export const SchemaCell = {
 	Markdown: "markdown",
 	MathDisplay: "math_display",
 	Code: "code",
-	Newline: "newline"
+	Newline: "newline",
+	Container: "container"
 } as const;
 
 export type SchemaKeys = keyof typeof SchemaCell;
@@ -37,7 +38,7 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		markdown: {
 			block: true,
 			content: "text*",
-			group: "cell containercontent",
+			group: "cell hintinputcontent containercontent",
 			parseDOM: [{tag: "markdown", preserveWhitespace: "full"}],
 			atom: true,
 			toDOM: () => {
@@ -49,8 +50,8 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		/////// HINT //////
 		//#region Hint
 		hint: {
-			content: "containercontent+",
-			group: "cell",
+			content: "hintinputcontent+",
+			group: "cell containercontent",
 			attrs: {
 				title: {default: "💡 Hint"},
 				shown: {default: false}
@@ -64,8 +65,8 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		/////// Input Area //////
 		//#region input
 		input: {
-			content: "containercontent+",
-			group: "cell",
+			content: "hintinputcontent+",
+			group: "cell containercontent",
 			attrs: {
 				status: {default: null}
 			},
@@ -79,7 +80,7 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		//#region Code
 		code: {
 			content: "text*",// content is of type text
-			group: "cell containercontent",
+			group: "cell hintinputcontent containercontent",
 			code: true,
 			atom: true, // doesn't have directly editable content (content is edited through codemirror)
 			toDOM(node) { return ["WaterproofCode", node.attrs, 0] } // <WaterproofCode></WaterproofCode> cells
@@ -90,7 +91,7 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		/////// MATH DISPLAY //////
 		//#region math-display
 		math_display: {
-			group: "math cell containercontent",
+			group: "math cell hintinputcontent containercontent",
 			content: "text*",
 			atom: true,
 			code: true,
@@ -99,9 +100,23 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text" >({
 		//#endregion
 
 		newline: {
-			group: "cell containercontent",
+			group: "cell hintinputcontent containercontent",
 			toDOM(node) { return ["WaterproofNewline", node.attrs]},
 			selectable: false,
-		}
+		},
+
+		/////// CONTAINER //////
+		//#region container
+		container: {
+			content: "containercontent+",
+			group: "cell",
+			attrs: {
+				name: {default: ""}
+			},
+			toDOM: (node) => {
+				return ["div", {class: "container", "data-name": node.attrs.name}, 0];
+			}
+		},
+		//#endregion
 	}
 });
