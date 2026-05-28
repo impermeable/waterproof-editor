@@ -34,7 +34,7 @@ import { deleteSelection } from "./commands/commands";
 import { Mapping } from "./mapping";
 import { ProgressBar } from "./progressBar";
 
-/** Type that contains a Rocq diagnostics object fit for use in the ProseMirror editor context. */
+/** Type that contains a diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {message: string, start: number, end: number, severity: Severity};
 
 /**
