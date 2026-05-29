@@ -469,3 +469,51 @@ test("computeLineNumbers collects lineStart for code nodes", () => {
     expect(lineNumbers[0]).toBe(tree.root.children[2].lineStart);
     expect(lineNumbers[1]).toBe(tree.root.children[4].lineStart);
 });
+
+
+test("nodesInProseRange returns only top-level nodes in range, not their children too", () => {
+    // AI-generated regression test
+    // Tree structure:
+    //   root           pmRange {0, 20}
+    //     container    pmRange {0, 10}
+    //       child1     pmRange {1,  5}
+    //       child2     pmRange {5,  9}
+    //     sibling      pmRange {10, 20}
+    //
+    // Query nodesInProseRange(0, 10): the container is fully in [0,10],
+    // and so are child1 and child2 (they are descendants of container).
+    //
+    // With the bug: [container, child1, child2] are all returned because the
+    // recursion pushes the container and then recurses into its children, which
+    // are also fully contained.
+    //
+    // With the fix: only [container] is returned — the children travel with
+    // their parent; callers must not double-process them.
+    const tree = new Tree(
+        "", {from: 0, to: 20}, {from: 0, to: 20}, "", 0, 19, {from: 0, to: 20}, 0
+    );
+    const container = new TreeNode(
+        "container", {from: 1, to: 9}, {from: 0, to: 10}, "", 1, 9, {from: 0, to: 10}, 0
+    );
+    const child1 = new TreeNode(
+        "markdown", {from: 2, to: 4}, {from: 1, to: 5}, "", 2, 4, {from: 1, to: 5}, 0
+    );
+    const child2 = new TreeNode(
+        "markdown", {from: 6, to: 8}, {from: 5, to: 9}, "", 6, 8, {from: 5, to: 9}, 0
+    );
+    container.addChild(child1);
+    container.addChild(child2);
+
+    const sibling = new TreeNode(
+        "markdown", {from: 11, to: 19}, {from: 10, to: 20}, "", 11, 19, {from: 10, to: 20}, 0
+    );
+    tree.root.addChild(container);
+    tree.root.addChild(sibling);
+
+    const result = tree.nodesInProseRange(0, 10);
+
+    // Only the container should be in the result — not child1 and child2.
+    // If the bug is present, result.length would be 3.
+    expect(result.length).toBe(1);
+    expect(result[0]).toBe(container);
+});

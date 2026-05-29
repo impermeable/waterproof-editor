@@ -6,6 +6,7 @@ export { EditorState, Transaction } from "prosemirror-state";
 // Export QedStatus type
 export { InputAreaStatus } from "./InputAreaStatus";
 export { Severity, SeverityLabel, SeverityLabelMap } from "./Severity";
+export type { MessageHandlerEditor } from "./MessageHandlerEditor";
 
 export * from "./types";
 
