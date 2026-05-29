@@ -5,3 +5,4 @@ dist/
 __tests_output__/
 tsconfig.tsbuildinfo
 coverage/
+impermeable-waterproof-editor-*.tgz

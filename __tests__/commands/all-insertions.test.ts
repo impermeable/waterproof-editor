@@ -9,6 +9,7 @@ import { configuration } from "../../src/markdown-defaults";
 import { EditorView } from "prosemirror-view";
 import { WaterproofSchema } from "../../src/schema";
 
+/* Note that this is not a real tag configuration, the multilean is exclusive to lean files */
 const tagConf: TagConfiguration = {
     markdown: {
         openTag: "", closeTag: "",
@@ -32,6 +33,11 @@ const tagConf: TagConfiguration = {
     math: {
         openTag: "$$", closeTag: "$$",
         openRequiresNewline: false, closeRequiresNewline: false
+    },
+    container: {
+        openTag: (name: string) => `::::${name}\n`,
+        closeTag: "\n::::",
+        openRequiresNewline: false, closeRequiresNewline: false,
     }
 }
 
@@ -42,7 +48,7 @@ const initialStateMath = {"doc":{"type":"doc","content":[{"type":"math_display",
 const startingCell: Array<[string, any]> = [
     ["Latex", initialStateMath],
     ["Markdown", initialStateMD],
-    ["Code", initialStateCode]
+    ["Code", initialStateCode],
 ];
 
 const insertableTypes: Array<[string, (place: InsertionPlace, conf: TagConfiguration) => Command, string]> = [

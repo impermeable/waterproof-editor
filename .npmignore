@@ -13,3 +13,6 @@ package-lock.json
 /tsconfig.json
 /tsconfig.tsbuildinfo
 sonar-project.properties
+/coverage
+/scripts
+impermeable-waterproof-editor*.tgz
