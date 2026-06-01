@@ -5,8 +5,9 @@
 import { EditorState, TextSelection } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { WaterproofSchema } from "../../src/schema";
-import { getCmdInsertCode, getCmdInsertMarkdown, getCmdInsertLatex } from "../../src/commands/insert-command";
+import { getCmdInsertCode, getCmdInsertMarkdown, getCmdInsertLatex, getCmdInsertCodeHint, getCmdInsertTextHint, getCmdInsertExample } from "../../src/commands/insert-command";
 import { InsertionPlace } from "../../src/commands";
+import {checkInputArea} from "../../src/commands/command-helpers";
 import { configuration } from "../../src/markdown-defaults";
 
 const state = {"doc":{"type":"doc","content":[{"type":"code","content":[{"type":"text","text":"Goal True."}]},{"type":"newline"},{"type":"code","content":[{"type":"text","text":"Goal False."}]}]},"selection":{"type":"text","anchor":25,"head":25}};
@@ -303,4 +304,56 @@ test("Insert code above markdown inside input area adds leading newline before c
         {"type": "newline"},
         {"type": "markdown"}
     ]);
+});
+
+test("Insert text hint below code", () => {
+    const view = new EditorView(null, { state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneCode) });
+
+    const cmd = getCmdInsertTextHint(InsertionPlace.Below, tagConf);
+    const res = cmd(view.state, view.dispatch, view);
+
+    // We expect this to be true. Could be false in the case we are not in teacher-mode and hence not allowed to insert or when
+    // something goes wrong with creating the editor.
+    expect(res).toBe(true);
+    const content = view.state.doc.toJSON().content;
+    expect(content[0].type).toBe("code");
+    expect(content[1].type).toBe("newline");
+    expect(content[2].type).toBe("hint");
+    expect(content[2].attrs.title).toBe("💡 Hint");
+    expect(content[2].content).toStrictEqual([
+        { "type": "newline" }, { "type": "markdown" }, { "type": "newline" }
+    ]);
+    expect(content[0].content[0].text).toBe("Goal True.");
+});
+
+const stateOneMarkdown = {
+  "doc": { "type": "doc", "content": [{ "type": "markdown", "content": [{ "type": "text", "text": "Content." }] }] },
+  "selection": { "type": "text", "anchor": 2, "head": 2 }
+};
+test("Insert code hint above markdown", () => {
+    const view = new EditorView(null, { state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown) });
+
+    const cmd = getCmdInsertCodeHint(InsertionPlace.Above, tagConf);
+    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+    const content = view.state.doc.toJSON().content;
+    expect(content[0].type).toBe("hint");
+    expect(content[0].attrs.title).toBe("🛠️ Technical details");
+    expect(content[0].content).toStrictEqual([
+    { "type": "newline" }, { "type": "code" }, { "type": "newline" }
+    ]);
+    expect(content[1].type).toBe("markdown");
+});
+
+test("Insert example below markdown", () => {
+    const view = new EditorView(null, { state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown) });
+
+    const cmd = getCmdInsertExample(InsertionPlace.Below, tagConf);
+    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+    const content = view.state.doc.toJSON().content;
+    expect(content[0].type).toBe("markdown");
+    expect(content[1].type).toBe("newline");
+    expect(content[2].type).toBe("code");
+    expect(content[2].content[0].text).toBe("Example example: True.\nProof.\n\nQed.");
 });
