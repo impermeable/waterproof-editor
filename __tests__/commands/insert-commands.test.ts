@@ -7,8 +7,8 @@ import { EditorView } from "prosemirror-view";
 import { WaterproofSchema } from "../../src/schema";
 import { getCmdInsertCode, getCmdInsertMarkdown, getCmdInsertLatex, getCmdInsertCodeHint, getCmdInsertTextHint, getCmdInsertExample } from "../../src/commands/insert-command";
 import { InsertionPlace } from "../../src/commands";
-import {checkInputArea} from "../../src/commands/command-helpers";
 import { configuration } from "../../src/markdown-defaults";
+import { TagConfiguration } from "../../src/api";
 
 const state = {"doc":{"type":"doc","content":[{"type":"code","content":[{"type":"text","text":"Goal True."}]},{"type":"newline"},{"type":"code","content":[{"type":"text","text":"Goal False."}]}]},"selection":{"type":"text","anchor":25,"head":25}};
 const tagConf = configuration("")
@@ -345,10 +345,10 @@ test("Insert code hint above markdown", () => {
     expect(content[1].type).toBe("markdown");
 });
 
-test("Insert example below markdown", () => {
+test("Insert rocq example below markdown", () => {
     const view = new EditorView(null, { state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown) });
-
-    const cmd = getCmdInsertExample(InsertionPlace.Below, tagConf);
+    const rocqConf = configuration("coq");
+    const cmd = getCmdInsertExample(InsertionPlace.Below, rocqConf);
     expect(cmd(view.state, view.dispatch, view)).toBe(true);
 
     const content = view.state.doc.toJSON().content;
@@ -356,4 +356,26 @@ test("Insert example below markdown", () => {
     expect(content[1].type).toBe("newline");
     expect(content[2].type).toBe("code");
     expect(content[2].content[0].text).toBe("Example example: True.\nProof.\n\nQed.");
+});
+
+const leanConfig: TagConfiguration = {
+    code:     { openTag: "```lean\n",                          closeTag: "\n```",  openRequiresNewline: true,  closeRequiresNewline: true  },
+    hint:     { openTag: (t: string) => `:::hint "${t}"\n`,   closeTag: "\n:::",  openRequiresNewline: true,  closeRequiresNewline: true  },
+    input:    { openTag: ":::input\n",                         closeTag: "\n:::",  openRequiresNewline: true,  closeRequiresNewline: true  },
+    markdown: { openTag: "",                                   closeTag: "",       openRequiresNewline: false, closeRequiresNewline: false },
+    math:     { openTag: "$$`",                                closeTag: "`",      openRequiresNewline: false, closeRequiresNewline: false },
+    container:{ openTag: (n: string) => `::::${n}\n`,         closeTag: "\n::::", openRequiresNewline: true, closeRequiresNewline: true },
+};
+
+test("Insert lean example below markdown", () => {
+    const view = new EditorView(null, { state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown) });
+
+    const cmd = getCmdInsertExample(InsertionPlace.Below, leanConfig);
+    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+    const content = view.state.doc.toJSON().content;
+    expect(content[0].type).toBe("markdown");
+    expect(content[1].type).toBe("newline");
+    expect(content[2].type).toBe("code");
+    expect(content[2].content[0].text).toBe('Example "example"\nGiven:\nAssume:\nConclusion:\nProof:\n\nQED');
 });

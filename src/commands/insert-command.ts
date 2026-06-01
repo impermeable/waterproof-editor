@@ -10,7 +10,6 @@ export function getCmdInsertMarkdown(place: InsertionPlace, tagConf: TagConfigur
     return (state: EditorState, dispatch?: ((tr: Transaction) => void), _view?: EditorView): boolean => {
         // Early return when inserting is not allowed
         if (!allowedToInsert(state)) return false;
-
         // TODO: Can there be cases where this doesn't work?
         // Can we attempt this command in a case where our state and selection is such that 
         // we can't actually add the node there?
@@ -112,11 +111,20 @@ export function getCmdInsertExample(place: InsertionPlace, tagConf: TagConfigura
         if (!allowedToInsert(state)) return false;
         
         const f = place === InsertionPlace.Above ? insertAbove : insertBelow;
+        let content;
+        if (tagConf.code.openTag === `\`\`\`coq\n`) {
+            content = 'Example example: True.\nProof.\n\nQed.';
+        } else if (tagConf.code.openTag === `\`\`\`lean\n`) {
+            content = 'Example "example"\nGiven:\nAssume:\nConclusion:\nProof:\n\nQED';
+        } else {
+            return false; // No other language is currently supported besides rocq and lean.
+        }
+
         const trans = f(state, 
                         state.tr, 
                         WaterproofSchema.nodes.code, 
                         tagConf,
-                        "Example example: True.\nProof.\n\nQed.");
+                        content);
 
         if (trans === undefined) { return false; }
         
