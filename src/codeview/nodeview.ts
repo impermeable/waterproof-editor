@@ -43,6 +43,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		getPos: (() => number | undefined),
 		schema: Schema,
 		completions: Array<Completion>,
+		beforeRegex: RegExp,
 		symbols: Array<Completion>,
 		initialThemeStyle: ThemeStyle,
 		private readonly languageConfig?: LanguageConfiguration
@@ -70,15 +71,10 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 				return completionResult;
 			}
 
-			// Matches bullet sequences
-			const bullet = context.matchBefore(/^\s*(?:\*+|\++|-+|·) /);
-			// Matches a curly brace
-			const brace = context.matchBefore(/^\s*{ /);
-			// Matches the end of a sentence (assuming no periods in the sentence)
-			const endOfSentence = context.matchBefore(/\.\s+/);
 
-			// Completions start when the cursor is after a bullet or a focus brace '{'
-			if (bullet !== null || brace !== null || endOfSentence !== null) {
+			const match = context.matchBefore(beforeRegex);
+			// Completions start when the part before the cursor matches the beforeRegex pattern
+			if (match !== null) {
 				return completionResult;
 			}
 

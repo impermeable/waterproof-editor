@@ -10,7 +10,7 @@ export type { MessageHandlerEditor } from "./MessageHandlerEditor";
 
 export * from "./types";
 
-export type { WaterproofCompletion, WaterproofSymbol } from "./Completions";
+export type { WaterproofCompletion, WaterproofSymbol, WaterproofCompletionConfig } from "./Completions";
 
 export type { Completion } from "@codemirror/autocomplete";
 

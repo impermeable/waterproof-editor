@@ -2,7 +2,7 @@ import { HighlightStyle, LanguageSupport } from "@codemirror/language";
 import { EditorState } from "prosemirror-state";
 import { Block } from "../document";
 import { DocumentSerializer } from "../serialization/DocumentSerializer";
-import { WaterproofCompletion, WaterproofSymbol } from "./Completions";
+import { WaterproofCompletionConfig, WaterproofSymbol } from "./Completions";
 import { DocChange, WrappingDocChange } from "./DocChange";
 import { Severity } from "./Severity";
 
@@ -132,8 +132,14 @@ export type LanguageConfiguration = {
  * - `mapping` is a constructor for the WaterproofMapping class, which handles the mapping between the ProseMirror document and the text document in the host application.
  */
 export type WaterproofEditorConfig = {
-    /** Set of  (static) completions that should be shown to the user. */
-    completions: Array<WaterproofCompletion>,
+    /** 
+     * (Static) completions that should be shown to the user.
+     * The before regex can be used to indicate *when* the completion window
+     * should open.
+     * For example `^\\s*\\*+ ` opens the completion menu after any number of bullets `*` have
+     * been entered after variable amount of whitespace after the start of the line.
+    */
+    completionConfig: WaterproofCompletionConfig,
     /** Set of (static) symbol completions that should be shown to the user. */
     symbols: Array<WaterproofSymbol>,
     /** How the editor communicates to the parent process */

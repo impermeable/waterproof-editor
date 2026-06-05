@@ -11,6 +11,11 @@ export type WaterproofCompletion = {
     template: string
 }
 
+export type WaterproofCompletionConfig = {
+    beforeRegex: string,
+    completions: Array<WaterproofCompletion>
+}
+
 /**
  * Completion that can always be inserted. 
  * Does not support templating.

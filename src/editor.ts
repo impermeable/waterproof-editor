@@ -288,7 +288,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
 			updateStatusPlugin(this),
 			mathPlugin,
 			switchableViewPlugin(this._editorConfig),
-			codePlugin(this._editorConfig.completions, this._editorConfig.symbols, this, this.initialThemeStyle, this._editorConfig.languageConfig),
+			codePlugin(this._editorConfig.completionConfig, this._editorConfig.symbols, this, this.initialThemeStyle, this._editorConfig.languageConfig),
 			documentProgressDecoratorPlugin,
 			menuPlugin(this._userOS, this._editorConfig.tagConfiguration, this._editorConfig.menubarEntries),
 			keymap({
