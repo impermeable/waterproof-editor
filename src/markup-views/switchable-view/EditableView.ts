@@ -48,7 +48,7 @@ export class EditableView extends EmbeddedCodeMirrorEditor {
 				CodeMirror.updateListener.of(update => this.forwardUpdate(update)),
 				placeholder("Empty..."),
 				autocompletion({
-					// In the markdown / coqdoc editing add the symbol and emoji completions.
+					// In the markdown / code editing add the symbol and emoji completions.
 					// override: [symbolCompletionSource],
 					icons: false,
 					addToOptions: [renderIcon]

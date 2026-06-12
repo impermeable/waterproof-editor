@@ -34,7 +34,7 @@ import { deleteSelection } from "./commands/commands";
 import { Mapping } from "./mapping";
 import { ProgressBar } from "./progressBar";
 
-/** Type that contains a coq diagnostics object fit for use in the ProseMirror editor context. */
+/** Type that contains a diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {message: string, start: number, end: number, severity: Severity};
 
 /**
@@ -430,7 +430,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
 	public handleCompletions(completions: Array<Completion>) {
 		const state = this._view?.state;
 		if (!state) return;
-		// Apply autocomplete to all coq cells
+		// Apply autocomplete to all code cells
 		CODE_PLUGIN_KEY
 			.getState(state)
 			?.activeNodeViews
@@ -744,7 +744,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
 
 	private informCodemirrorViews() {
 		if (this._view === undefined) return;
-        // Get the available coq views
+        // Get the available code views
 		const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
 		if (views === undefined) return;
 		for (const view of views) view.dispatchEmpty();
