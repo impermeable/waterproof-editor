@@ -4,7 +4,6 @@ import { allowedToInsert, insertAbove, insertBelow, insertCompositeNodeBelow, in
 import { WaterproofSchema } from "../schema";
 import { InsertionPlace } from "./types";
 import { TagConfiguration } from "../api";
-import { needsNewlineAfter, needsNewlineBefore } from "./utils";
 
 export function getCmdInsertMarkdown(place: InsertionPlace, tagConf: TagConfiguration) {
     return (state: EditorState, dispatch?: ((tr: Transaction) => void), _view?: EditorView): boolean => {
