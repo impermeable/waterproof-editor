@@ -8,3 +8,9 @@
     padding-right: 0.6em;
     box-sizing: content-box;
 }
+
+/* Keep alias/help detail text visually secondary to the best completion label. */
+.cm-tooltip-autocomplete .cm-completionDetail {
+    color: var(--wp-quickInputForeground);
+    opacity: 0.72;
+}
