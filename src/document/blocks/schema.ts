@@ -19,7 +19,7 @@ export const markdown = (content: string): ProseNode => {
     return WaterproofSchema.nodes.markdown.create({}, text(content));
 }
 
-/** Construct coqcode prosemirror node. */
+/** Construct code prosemirror node. */
 export const code = (content: string): ProseNode => {
     return WaterproofSchema.nodes.code.create({}, text(content));
 }

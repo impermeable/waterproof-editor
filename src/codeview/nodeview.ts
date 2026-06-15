@@ -273,7 +273,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 		// Editors outer node is dom
 		this.dom = this._codemirror.dom;
 
-		// Fix the coqblock not being selectable when editing the markdown blocks.
+		// Fix the code block not being selectable when editing the markdown blocks.
 		this.dom.addEventListener("click", () => {
 			this._codemirror?.focus();
 			this.setEditPermission();
@@ -415,7 +415,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 	}
 
 	/**
-	 * Add a new coq error to this view
+	 * Add a new diagnostic to this view
 	 * @param from The from position of the error.
 	 * @param to The to postion of the error (should be larger than `from`).
 	 * @param message The message attached to this error.
