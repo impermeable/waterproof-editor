@@ -282,6 +282,74 @@ test("Insert code below markdown inside input area adds trailing newline after c
     ]);
 });
 
+// Places the text cursor inside the `nth` (0-based) node whose type name is `typeName`.
+function putCursorInside(view: EditorView, typeName: string, nth: number) {
+    let seen = 0;
+    let target: number | null = null;
+    view.state.doc.descendants((node, pos) => {
+        if (node.type.name === typeName) {
+            if (seen === nth) target = pos + 1; // +1 = inside the node
+            seen++;
+        }
+        return true;
+    });
+    if (target === null) throw new Error(`No ${typeName}[${nth}] found`);
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, target)));
+}
+
+test("Insert code between two adjacent cells keeps trailing newline after the code cell (rocq version)", () => {
+    // AI-generated regression test for the bug reported on v0.14.1: a markdown cell can end up directly
+    // after the closing fence of a code cell (no separating newline), which is invalid
+    // because code.closeRequiresNewline is true (closeTag "\n```").
+    //
+    // Reproduction (Rocq configuration), starting from a single code cell:
+    //   1. Insert markdown below the code cell      -> [code][newline][markdown]
+    //   2. Insert markdown below the code cell again -> [code][newline][markdown][markdown]
+    //      (the new markdown lands *after* the code's trailing newline, so the two markdown
+    //       cells become directly adjacent siblings)
+    //   3. Insert a code cell below the FIRST markdown cell.
+    //
+    // On step 3 the new code node's following sibling is a markdown cell (not a newline) and
+    // the parent is `doc`, so insertBelow's trailing-newline clause is skipped and the code
+    // node ends up glued to the next markdown cell: [...][code][markdown].
+    const rocqConf = configuration("coq");
+    const startSingleCode = {"doc":{"type":"doc","content":[{"type":"code","content":[{"type":"text","text":"Goal True."}]}]},"selection":{"type":"text","anchor":11,"head":11}};
+    const view = new EditorView(null, {state: EditorState.fromJSON({schema: WaterproofSchema}, startSingleCode)});
+
+    const insertMarkdownBelow = getCmdInsertMarkdown(InsertionPlace.Below, rocqConf);
+    const insertCodeBelow = getCmdInsertCode(InsertionPlace.Below, rocqConf);
+
+    // Step 1 & 2: insert markdown below the code cell twice (cursor stays in the code cell).
+    putCursorInside(view, "code", 0);
+    expect(insertMarkdownBelow(view.state, view.dispatch, view)).toBe(true);
+    putCursorInside(view, "code", 0);
+    expect(insertMarkdownBelow(view.state, view.dispatch, view)).toBe(true);
+
+    // Sanity: we now have two directly-adjacent markdown cells after the code's newline.
+    expect(view.state.toJSON().doc.content).toStrictEqual([
+        {"type":"code","content":[{"type":"text","text":"Goal True."}]},
+        {"type":"newline"},
+        {"type":"markdown"},
+        {"type":"markdown"}
+    ]);
+
+    // Step 3: insert a code cell below the first markdown cell.
+    putCursorInside(view, "markdown", 0);
+    expect(insertCodeBelow(view.state, view.dispatch, view)).toBe(true);
+
+    // The inserted code cell MUST be followed by a newline node so its closing fence
+    // does not glue to the trailing markdown cell.
+    expect(view.state.toJSON().doc.content).toStrictEqual([
+        {"type":"code","content":[{"type":"text","text":"Goal True."}]},
+        {"type":"newline"},
+        {"type":"markdown"},
+        {"type":"newline"},
+        {"type":"code"},
+        {"type":"newline"}, // <-- missing with the bug: code ends up directly before the markdown
+        {"type":"markdown"}
+    ]);
+});
+
 test("Insert code above markdown inside input area adds leading newline before code cell (rocq version)", () => {
     // AI generated regression test
     // Symmetric to the insertBelow bug: when the new code cell becomes the first child of
