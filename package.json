@@ -89,7 +89,8 @@
     },
     "eslint": {
       "brace-expansion": "2.1.0"
-    }
+    },
+    "js-yaml": "4.2.0"
   },
   "peerDependencies": {
     "@codemirror/autocomplete": "6.18.1",
