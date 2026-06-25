@@ -3,30 +3,33 @@ import { Block, BlockRange } from "./blocks";
 /**
  * Convert a list of blocks to a prosemirror compatible node list.
  * @param blocks Input array of blocks.
- * @returns ProseMirror nodes. 
+ * @returns ProseMirror nodes.
  */
 export function blocksToProseMirrorNodes(blocks: Block[]) {
-    return blocks.map((block) => block.toProseMirror());
+  return blocks.map((block) => block.toProseMirror());
 }
 
 /**
- * Helper function to sort block type objects. Will sort based on the range object of the block. 
+ * Helper function to sort block type objects. Will sort based on the range object of the block.
  * Sorts in ascending (`range.from`) order.
  * @param blocks Blocks to sort.
  * @returns Sorted array of blocks.
  */
 export function sortBlocks(blocks: Block[]) {
-    return blocks.sort((a, b) => a.range.from - b.range.from);
+  return blocks.sort((a, b) => a.range.from - b.range.from);
 }
 
 /**
  * Map `f` over every consecutive pair from the `input` array.
- * @param input Input array. 
+ * @param input Input array.
  * @param f Function to map over the pairs.
  * @returns The result of mapping `f` over every consecutive pair. Will return an empty array if the input array has length < 2.
  */
-export function iteratePairs<ArrayType, FunctionReturnType>(input: Array<ArrayType>, f: (a: ArrayType, b: ArrayType) => FunctionReturnType) {
-    return input.slice(0, -1).map((a, i) => f(a, input[i + 1]));
+export function iteratePairs<ArrayType, FunctionReturnType>(
+  input: Array<ArrayType>,
+  f: (a: ArrayType, b: ArrayType) => FunctionReturnType,
+) {
+  return input.slice(0, -1).map((a, i) => f(a, input[i + 1]));
 }
 
 /**
@@ -35,49 +38,75 @@ export function iteratePairs<ArrayType, FunctionReturnType>(input: Array<ArrayTy
  * @param inputDocument The document the blocks are part of.
  * @returns The ranges between the blocks.
  */
-export const extractInterBlockRanges = (blocks: Array<Block>, inputDocument: string, parentOffset: number = 0): {from: number, to: number}[] => {
-    let ranges =  iteratePairs(blocks, (blockA, blockB) => {
-        return { from: blockA.range.to, to: blockB.range.from };
-    }).filter(range => range.from < range.to); // Filter out empty ranges.
-    // Add first range if it exists
-    if (blocks.length > 0 && blocks[0].range.from > 0) ranges = [{from: 0, to: blocks[0].range.from - parentOffset}, ...ranges];
-    // Add last range if it exists
-    const lastBlock = blocks.at(-1);
-    if (lastBlock && (lastBlock.range.to - parentOffset) < inputDocument.length) ranges = [...ranges, {from: lastBlock.range.to - parentOffset, to: inputDocument.length}];
+export const extractInterBlockRanges = (
+  blocks: Array<Block>,
+  inputDocument: string,
+  parentOffset: number = 0,
+): { from: number; to: number }[] => {
+  let ranges = iteratePairs(blocks, (blockA, blockB) => {
+    return { from: blockA.range.to, to: blockB.range.from };
+  }).filter((range) => range.from < range.to); // Filter out empty ranges.
+  // Add first range if it exists
+  if (blocks.length > 0 && blocks[0].range.from > 0)
+    ranges = [{ from: 0, to: blocks[0].range.from - parentOffset }, ...ranges];
+  // Add last range if it exists
+  const lastBlock = blocks.at(-1);
+  if (lastBlock && lastBlock.range.to - parentOffset < inputDocument.length)
+    ranges = [
+      ...ranges,
+      { from: lastBlock.range.to - parentOffset, to: inputDocument.length },
+    ];
 
-    // If there are no blocks found then we add the rest as a range.
-    if (blocks.length === 0 && inputDocument.length > 0) ranges = [{from: 0, to: inputDocument.length}];
+  // If there are no blocks found then we add the rest as a range.
+  if (blocks.length === 0 && inputDocument.length > 0)
+    ranges = [{ from: 0, to: inputDocument.length }];
 
-    return ranges;
-}
+  return ranges;
+};
 
-export function maskInputAndHints(inputDocument: string, blocks: Block[]): string {
-    let maskedString = inputDocument;
-    for (const block of blocks) {
-        maskedString = maskedString.substring(0, block.range.from) + " ".repeat(block.range.to - block.range.from) + maskedString.substring(block.range.to);
-    }
-    return maskedString;
+export function maskInputAndHints(
+  inputDocument: string,
+  blocks: Block[],
+): string {
+  let maskedString = inputDocument;
+  for (const block of blocks) {
+    maskedString =
+      maskedString.substring(0, block.range.from) +
+      " ".repeat(block.range.to - block.range.from) +
+      maskedString.substring(block.range.to);
+  }
+  return maskedString;
 }
 
 /**
  * Create blocks based on ranges.
- * 
+ *
  * Extracts the text content of the ranges and creates blocks from them.
  */
 export function extractBlocksUsingRanges<BlockType extends Block>(
-    inputDocument: string, 
-    ranges: {from: number, to: number}[], 
-    BlockConstructor: new (content: string, range: { from: number, to: number }, innerRange: BlockRange, lineStart: number) => BlockType,
-    parentOffset: number = 0): BlockType[]
-{
-    const blocks = ranges.map((range) => {
-        const content = inputDocument.slice(range.from, range.to);
-        const eRange = { from: range.from + parentOffset, to: range.to + parentOffset };
-        // Fixme: inner range is currently just the same as the outer range (fine for markdown)
-        const iRange = { from: eRange.from, to: eRange.to };
-        return new BlockConstructor(content, eRange, iRange, 0);
-    }).filter(block => {
-        return block.range.from !== block.range.to;
+  inputDocument: string,
+  ranges: { from: number; to: number }[],
+  BlockConstructor: new (
+    content: string,
+    range: { from: number; to: number },
+    innerRange: BlockRange,
+    lineStart: number,
+  ) => BlockType,
+  parentOffset: number = 0,
+): BlockType[] {
+  const blocks = ranges
+    .map((range) => {
+      const content = inputDocument.slice(range.from, range.to);
+      const eRange = {
+        from: range.from + parentOffset,
+        to: range.to + parentOffset,
+      };
+      // Fixme: inner range is currently just the same as the outer range (fine for markdown)
+      const iRange = { from: eRange.from, to: eRange.to };
+      return new BlockConstructor(content, eRange, iRange, 0);
+    })
+    .filter((block) => {
+      return block.range.from !== block.range.to;
     });
-    return blocks;
+  return blocks;
 }

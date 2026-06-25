@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import process from "process";
 import * as esbuild from "esbuild";
-import pkgJson from "./package.json" with {type: "json"};
+import pkgJson from "./package.json" with { type: "json" };
 
 const watch = process.argv.includes("--watch");
 const minify = process.argv.includes("--minify");
@@ -22,12 +22,12 @@ const sharedConfig = {
     ".woff": fontLoader,
     ".woff2": fontLoader,
     ".ttf": fontLoader,
-    ".grammar": "file"
+    ".grammar": "file",
   },
   external: [
     // We mark all the peerDependencies as external, that way they won't be included in the bundle
     // but remain of the form `import ... from ...`
-    ...Object.keys(pkgJson.peerDependencies)
+    ...Object.keys(pkgJson.peerDependencies),
   ],
   dropLabels: debugBuild ? [] : ["DEBUG"],
   minify,
@@ -35,18 +35,20 @@ const sharedConfig = {
     {
       name: "log build status",
       setup(build) {
-        build.onEnd(result => {
+        build.onEnd((result) => {
           const errCount = result.errors.length;
           if (errCount > 0) {
-            console.error(`❌ Build failed with ${errCount} error${errCount > 1 ? "s" : ""}`);
+            console.error(
+              `❌ Build failed with ${errCount} error${errCount > 1 ? "s" : ""}`,
+            );
           } else {
             console.log("✅ Build finished");
           }
         });
-      }
+      },
     },
-  ]
-}
+  ],
+};
 
 if (!watch) {
   // This builds, bundles and optionally minifies the editor package
@@ -56,5 +58,3 @@ if (!watch) {
   console.log("Watching for file changes...");
   ctx.watch();
 }
-
-

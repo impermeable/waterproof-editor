@@ -5,12 +5,16 @@ import { EditorState, Transaction } from "prosemirror-state";
  * Enum for the insertion place, can be either `Above` or `Below` the currently selected cell.
  */
 export enum InsertionPlace {
-    Above, 
-    Below,
+  Above,
+  Below,
 }
 
 /**
  * Insertion function type. This type of function is passed to the `get...Command` functions. The function will insert
  * the correct NodeType either above or below the selected node.
  */
-export type InsertionFunction = (state: EditorState, trans: Transaction, ...nodeType: NodeType[]) => Transaction;
+export type InsertionFunction = (
+  state: EditorState,
+  trans: Transaction,
+  ...nodeType: NodeType[]
+) => Transaction;
