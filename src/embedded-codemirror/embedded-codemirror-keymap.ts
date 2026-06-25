@@ -1,96 +1,212 @@
-import { cursorGroupLeft, selectGroupLeft, cursorLineBoundaryLeft, selectLineBoundaryLeft, cursorGroupRight, selectGroupRight, cursorLineBoundaryRight, selectLineBoundaryRight, cursorDocStart, selectDocStart, cursorPageUp, selectPageUp, cursorDocEnd, selectDocEnd, cursorPageDown, selectPageDown, cursorLineBoundaryBackward, selectLineBoundaryBackward, cursorLineBoundaryForward, selectLineBoundaryForward, insertNewlineAndIndent, deleteCharBackward, deleteCharForward, deleteGroupBackward, deleteGroupForward, cursorCharLeft, cursorCharRight, cursorLineDown, cursorLineUp, selectCharLeft, selectCharRight, selectLineDown, selectLineUp, selectAll, toggleComment, moveLineDown, moveLineUp } from "@codemirror/commands";
+import {
+  cursorGroupLeft,
+  selectGroupLeft,
+  cursorLineBoundaryLeft,
+  selectLineBoundaryLeft,
+  cursorGroupRight,
+  selectGroupRight,
+  cursorLineBoundaryRight,
+  selectLineBoundaryRight,
+  cursorDocStart,
+  selectDocStart,
+  cursorPageUp,
+  selectPageUp,
+  cursorDocEnd,
+  selectDocEnd,
+  cursorPageDown,
+  selectPageDown,
+  cursorLineBoundaryBackward,
+  selectLineBoundaryBackward,
+  cursorLineBoundaryForward,
+  selectLineBoundaryForward,
+  insertNewlineAndIndent,
+  deleteCharBackward,
+  deleteCharForward,
+  deleteGroupBackward,
+  deleteGroupForward,
+  cursorCharLeft,
+  cursorCharRight,
+  cursorLineDown,
+  cursorLineUp,
+  selectCharLeft,
+  selectCharRight,
+  selectLineDown,
+  selectLineUp,
+  selectAll,
+  toggleComment,
+  moveLineDown,
+  moveLineUp,
+} from "@codemirror/commands";
 import { KeyBinding } from "@codemirror/view";
 import { indentUnit } from "@codemirror/language";
-import { EditorState, StateCommand, SelectionRange, ChangeSpec, Line, EditorSelection } from "@codemirror/state"
-import { acceptCompletion, completionKeymap, completionStatus, currentCompletions } from "@codemirror/autocomplete";
+import {
+  EditorState,
+  StateCommand,
+  SelectionRange,
+  ChangeSpec,
+  Line,
+  EditorSelection,
+} from "@codemirror/state";
+import {
+  acceptCompletion,
+  completionKeymap,
+  completionStatus,
+  currentCompletions,
+} from "@codemirror/autocomplete";
 
-function changeFirstLine(state: EditorState, f: (line: Line, changes: ChangeSpec[], range: SelectionRange) => void) {
-    return state.changeByRange(range => {
-        const changes: ChangeSpec[] = []
-        const line = state.doc.lineAt(range.from)
-        f(line, changes, range)
-        const changeSet = state.changes(changes)
-        return {
-            changes,
-            range: EditorSelection.range(changeSet.mapPos(range.anchor, 1), changeSet.mapPos(range.head, 1))
-        };
-    });
+function changeFirstLine(
+  state: EditorState,
+  f: (line: Line, changes: ChangeSpec[], range: SelectionRange) => void,
+) {
+  return state.changeByRange((range) => {
+    const changes: ChangeSpec[] = [];
+    const line = state.doc.lineAt(range.from);
+    f(line, changes, range);
+    const changeSet = state.changes(changes);
+    return {
+      changes,
+      range: EditorSelection.range(
+        changeSet.mapPos(range.anchor, 1),
+        changeSet.mapPos(range.head, 1),
+      ),
+    };
+  });
 }
 
-export const indentMoreCustom: StateCommand = ({state, dispatch}) => {
-	if (state.readOnly) return false;
-	dispatch(state.update(changeFirstLine(state, (line, changes) => {
-	    changes.push({from: line.from, insert: state.facet(indentUnit)})
-	}), {userEvent: "input.indent"}))
-	return true
-}
+export const indentMoreCustom: StateCommand = ({ state, dispatch }) => {
+  if (state.readOnly) return false;
+  dispatch(
+    state.update(
+      changeFirstLine(state, (line, changes) => {
+        changes.push({ from: line.from, insert: state.facet(indentUnit) });
+      }),
+      { userEvent: "input.indent" },
+    ),
+  );
+  return true;
+};
 
 /**
  * Filtered set of keybindings taken from
  * https://github.com/codemirror/commands/blob/e27916c9b09d2cedd7e0c9770bff04eeb3696e69/src/commands.ts#L878
  */
 export const keybindings: KeyBinding[] = [
-    ...completionKeymap,
-    { key: "Mod-A", run: selectAll, preventDefault: true },
-    { key: "ArrowLeft", run: cursorCharLeft, shift: selectCharLeft, preventDefault: true },
-    { key: "ArrowRight", run: cursorCharRight, shift: selectCharRight, preventDefault: true },
-    { key: "ArrowUp", run: cursorLineUp, shift: selectLineUp, preventDefault: true },
-    { key: "ArrowDown", run: cursorLineDown, shift: selectLineDown, preventDefault: true },
+  ...completionKeymap,
+  { key: "Mod-A", run: selectAll, preventDefault: true },
+  {
+    key: "ArrowLeft",
+    run: cursorCharLeft,
+    shift: selectCharLeft,
+    preventDefault: true,
+  },
+  {
+    key: "ArrowRight",
+    run: cursorCharRight,
+    shift: selectCharRight,
+    preventDefault: true,
+  },
+  {
+    key: "ArrowUp",
+    run: cursorLineUp,
+    shift: selectLineUp,
+    preventDefault: true,
+  },
+  {
+    key: "ArrowDown",
+    run: cursorLineDown,
+    shift: selectLineDown,
+    preventDefault: true,
+  },
 
-    { key: "Mod-ArrowLeft", mac: "Alt-ArrowLeft", run: cursorGroupLeft, shift: selectGroupLeft, preventDefault: true },
-    { mac: "Cmd-ArrowLeft", run: cursorLineBoundaryLeft, shift: selectLineBoundaryLeft, preventDefault: true },
+  {
+    key: "Mod-ArrowLeft",
+    mac: "Alt-ArrowLeft",
+    run: cursorGroupLeft,
+    shift: selectGroupLeft,
+    preventDefault: true,
+  },
+  {
+    mac: "Cmd-ArrowLeft",
+    run: cursorLineBoundaryLeft,
+    shift: selectLineBoundaryLeft,
+    preventDefault: true,
+  },
 
-    { key: "Mod-ArrowRight", mac: "Alt-ArrowRight", run: cursorGroupRight, shift: selectGroupRight, preventDefault: true },
-    { mac: "Cmd-ArrowRight", run: cursorLineBoundaryRight, shift: selectLineBoundaryRight, preventDefault: true },
+  {
+    key: "Mod-ArrowRight",
+    mac: "Alt-ArrowRight",
+    run: cursorGroupRight,
+    shift: selectGroupRight,
+    preventDefault: true,
+  },
+  {
+    mac: "Cmd-ArrowRight",
+    run: cursorLineBoundaryRight,
+    shift: selectLineBoundaryRight,
+    preventDefault: true,
+  },
 
-    { key: "PageUp", run: cursorPageUp, shift: selectPageUp },
-    { key: "PageDown", run: cursorPageDown, shift: selectPageDown },
+  { key: "PageUp", run: cursorPageUp, shift: selectPageUp },
+  { key: "PageDown", run: cursorPageDown, shift: selectPageDown },
 
-    { key: "Home", run: cursorLineBoundaryBackward, shift: selectLineBoundaryBackward, preventDefault: true },
-    { key: "Mod-Home", run: cursorDocStart, shift: selectDocStart },
+  {
+    key: "Home",
+    run: cursorLineBoundaryBackward,
+    shift: selectLineBoundaryBackward,
+    preventDefault: true,
+  },
+  { key: "Mod-Home", run: cursorDocStart, shift: selectDocStart },
 
-    { key: "End", run: cursorLineBoundaryForward, shift: selectLineBoundaryForward, preventDefault: true },
-    { key: "Mod-End", run: cursorDocEnd, shift: selectDocEnd },
+  {
+    key: "End",
+    run: cursorLineBoundaryForward,
+    shift: selectLineBoundaryForward,
+    preventDefault: true,
+  },
+  { key: "Mod-End", run: cursorDocEnd, shift: selectDocEnd },
 
-    { key: "Mod-/", run: toggleComment },
+  { key: "Mod-/", run: toggleComment },
 
-    { key: "Alt-ArrowDown", run: moveLineDown},
-    { key: "Alt-ArrowUp", run: moveLineUp},
+  { key: "Alt-ArrowDown", run: moveLineDown },
+  { key: "Alt-ArrowUp", run: moveLineUp },
 
-    { key: "Enter", run: insertNewlineAndIndent },
+  { key: "Enter", run: insertNewlineAndIndent },
 
-    { key: "Backspace", run: deleteCharBackward, shift: deleteCharBackward },
-    { key: "Delete", run: deleteCharForward },
-    { key: "Mod-Backspace", mac: "Alt-Backspace", run: deleteGroupBackward },
-    { key: "Mod-Delete", mac: "Alt-Delete", run: deleteGroupForward },
+  { key: "Backspace", run: deleteCharBackward, shift: deleteCharBackward },
+  { key: "Delete", run: deleteCharForward },
+  { key: "Mod-Backspace", mac: "Alt-Backspace", run: deleteGroupBackward },
+  { key: "Mod-Delete", mac: "Alt-Delete", run: deleteGroupForward },
 
-    { key: "Mod-Delete", mac: "Alt-Delete", run: deleteGroupForward },
-    { 	key: "Tab",
-        run: (target) => {
-            // See if there is an active completion selected...
-            const status = completionStatus(target.state);
-            if (status !== null) {
-                // if so, we accept the completion
-                return acceptCompletion(target);
-            }
-            // if not, we fall back to the indent behaviour of the tab key
-            return indentMoreCustom(target);
-        }
+  { key: "Mod-Delete", mac: "Alt-Delete", run: deleteGroupForward },
+  {
+    key: "Tab",
+    run: (target) => {
+      // See if there is an active completion selected...
+      const status = completionStatus(target.state);
+      if (status !== null) {
+        // if so, we accept the completion
+        return acceptCompletion(target);
+      }
+      // if not, we fall back to the indent behaviour of the tab key
+      return indentMoreCustom(target);
     },
-    {
-        key: "Space",
-        run: (target) => {
-            const status = completionStatus(target.state);
-            const anyTactic = currentCompletions(target.state).some(c => c.detail === "tactic");
+  },
+  {
+    key: "Space",
+    run: (target) => {
+      const status = completionStatus(target.state);
+      const anyTactic = currentCompletions(target.state).some(
+        (c) => c.detail === "tactic",
+      );
 
-            // Accept completion on space, unless no completion active or it's a tactic
-            // (tactics can contain spaces :D)
-            if (status !== null && !anyTactic) {
-                acceptCompletion(target);
-            }
+      // Accept completion on space, unless no completion active or it's a tactic
+      // (tactics can contain spaces :D)
+      if (status !== null && !anyTactic) {
+        acceptCompletion(target);
+      }
 
-            // Return false so space character is always inserted
-            return false;
-        }
-    }
-]
+      // Return false so space character is always inserted
+      return false;
+    },
+  },
+];

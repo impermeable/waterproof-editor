@@ -1,4 +1,4 @@
-import { NodeSpec } from "prosemirror-model"
+import { NodeSpec } from "prosemirror-model";
 
 /* 
 	New schema specs for math-inline and math-display nodes (prosemirror-math)
@@ -7,24 +7,28 @@ import { NodeSpec } from "prosemirror-model"
 
 // Schema spec for math inline nodes.
 export const mathInlineSpec: NodeSpec = {
-	group: "inline math",
-	content: "text*",
-	inline: true,
-	atom: true,
-	toDOM: () => ["math-inline", { class: "math-node" }, 0],
-	parseDOM: [{
-		tag: "math-inline"
-	}]
-}
+  group: "inline math",
+  content: "text*",
+  inline: true,
+  atom: true,
+  toDOM: () => ["math-inline", { class: "math-node" }, 0],
+  parseDOM: [
+    {
+      tag: "math-inline",
+    },
+  ],
+};
 
 // Schema spec for math display block nodes.
 export const mathDisplaySpec: NodeSpec = {
-	group: "block math",
-	content: "text*",
-	atom: true,
-	code: true,
-	toDOM: () => ["math-display", { class: "math-node" }, 0],
-	parseDOM: [{
-		tag: "math-display"
-	}]
-}
+  group: "block math",
+  content: "text*",
+  atom: true,
+  code: true,
+  toDOM: () => ["math-display", { class: "math-node" }, 0],
+  parseDOM: [
+    {
+      tag: "math-display",
+    },
+  ],
+};

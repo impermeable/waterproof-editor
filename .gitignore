@@ -1,6 +1,5 @@
 node_modules/
 dist/
-.vscode/settings.json
 .DS_store
 __tests_output__/
 tsconfig.tsbuildinfo

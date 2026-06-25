@@ -5,33 +5,43 @@ import { WaterproofSchema } from "../../src/schema";
 import { Node as ProseNode } from "prosemirror-model";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 
-function root (childNodes: ProseNode[]) {
-    return WaterproofSchema.nodes.doc.create({}, childNodes);
+function root(childNodes: ProseNode[]) {
+  return WaterproofSchema.nodes.doc.create({}, childNodes);
 }
 
 function constructDocument(blocks: Block[]): ProseNode {
-    const documentContent: ProseNode[] = blocks.map(block => block.toProseMirror());
-    return root(documentContent);
+  const documentContent: ProseNode[] = blocks.map((block) =>
+    block.toProseMirror(),
+  );
+  return root(documentContent);
 }
 
 test("BlockAt with simple .mv file", () => {
-    const doc = "# Test\n```coq\nTest.\n```\n<input-area>\n```coq\nTestingtest.\n```\n</input-area>";
+  const doc =
+    "# Test\n```coq\nTest.\n```\n<input-area>\n```coq\nTestingtest.\n```\n</input-area>";
 
-    const blocks = parse(doc, {language: "coq"});
+  const blocks = parse(doc, { language: "coq" });
 
-    const mapping = new Mapping(blocks, 0, configuration("coq"), new DefaultTagSerializer(configuration("coq")));
-    const proseDoc = constructDocument(blocks);
-    const tree = mapping.getMapping();
+  const mapping = new Mapping(
+    blocks,
+    0,
+    configuration("coq"),
+    new DefaultTagSerializer(configuration("coq")),
+  );
+  const proseDoc = constructDocument(blocks);
+  const tree = mapping.getMapping();
 
-    tree.traverseDepthFirst(treeNode => {
-        if (treeNode === tree.root) return;
-        
-        expect(proseDoc.nodeAt(treeNode.pmRange.from)?.type.name).toBe(treeNode.type);
-    });
+  tree.traverseDepthFirst((treeNode) => {
+    if (treeNode === tree.root) return;
+
+    expect(proseDoc.nodeAt(treeNode.pmRange.from)?.type.name).toBe(
+      treeNode.type,
+    );
+  });
 });
 
 test("BlockAt for full tutorial", () => {
-    const tutorial = `# Waterproof Tutorial
+  const tutorial = `# Waterproof Tutorial
 
 Try to solve the exercises below by inspecting the examples. Not sure how to start? You can type **Ctrl + space** or **Command + space** to get a list of possible options.<hint title="📦 Import libraries (click to open/close)">
 \`\`\`coq
@@ -598,16 +608,23 @@ Proof.
 \`\`\`coq
 Qed.
 \`\`\`
-`
-    const blocks = parse(tutorial, {language: "coq"});
+`;
+  const blocks = parse(tutorial, { language: "coq" });
 
-    const mapping = new Mapping(blocks, 0, configuration("coq"), new DefaultTagSerializer(configuration("coq")));
-    const proseDoc = constructDocument(blocks);
-    const tree = mapping.getMapping();
+  const mapping = new Mapping(
+    blocks,
+    0,
+    configuration("coq"),
+    new DefaultTagSerializer(configuration("coq")),
+  );
+  const proseDoc = constructDocument(blocks);
+  const tree = mapping.getMapping();
 
-    tree.traverseDepthFirst(treeNode => {
-        if (treeNode === tree.root) return;
+  tree.traverseDepthFirst((treeNode) => {
+    if (treeNode === tree.root) return;
 
-        expect(proseDoc.nodeAt(treeNode.pmRange.from)?.type.name).toBe(treeNode.type);
-    });
+    expect(proseDoc.nodeAt(treeNode.pmRange.from)?.type.name).toBe(
+      treeNode.type,
+    );
+  });
 });

@@ -9,7 +9,7 @@ import "./style.css";
 // for hints
 import "./hints.css";
 
-// for containers 
+// for containers
 import "./container.css";
 
 // for menubar

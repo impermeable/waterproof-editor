@@ -1,9 +1,9 @@
 // Importing necessary modules from prosemirror-state and prosemirror-view
-import { EditorState, Plugin, PluginKey, PluginSpec } from 'prosemirror-state';
-import { Decoration, DecorationSet } from 'prosemirror-view';
-import { findDescendantsWithType } from './utilities';
-import { InputAreaStatus, Severity } from './api';
-import { WaterproofEditor } from './editor';
+import { EditorState, Plugin, PluginKey, PluginSpec } from "prosemirror-state";
+import { Decoration, DecorationSet } from "prosemirror-view";
+import { findDescendantsWithType } from "./utilities";
+import { InputAreaStatus, Severity } from "./api";
+import { WaterproofEditor } from "./editor";
 
 // Define interface for UpdateStatusPluginState
 export interface IUpdateStatusPluginState {
@@ -11,7 +11,9 @@ export interface IUpdateStatusPluginState {
 }
 
 // Key to identify the plugin within ProseMirror's plugin system
-export const UPDATE_STATUS_PLUGIN_KEY = new PluginKey<IUpdateStatusPluginState>('prosemirror-status-update');
+export const UPDATE_STATUS_PLUGIN_KEY = new PluginKey<IUpdateStatusPluginState>(
+  "prosemirror-status-update",
+);
 
 // Helper function to convert status updates to appropriate CSS classes
 const statusToDecoration = (status: InputAreaStatus): string => {
@@ -19,35 +21,39 @@ const statusToDecoration = (status: InputAreaStatus): string => {
 };
 
 // Plugin specification
-const UpdateStatusPluginSpec = (editor: WaterproofEditor): PluginSpec<IUpdateStatusPluginState> => {
+const UpdateStatusPluginSpec = (
+  editor: WaterproofEditor,
+): PluginSpec<IUpdateStatusPluginState> => {
   return {
     key: UPDATE_STATUS_PLUGIN_KEY,
     state: {
       // The function to initialize the plugin state
-      init(_config, _instance){
+      init(_config, _instance) {
         return {
           status: [],
         };
       },
       // Function to apply updates to the plugin state
-      apply(tr, value, _oldState, _newState){
+      apply(tr, value, _oldState, _newState) {
         const newStatus = tr.getMeta(UPDATE_STATUS_PLUGIN_KEY);
         if (newStatus === undefined) {
           return value;
         } else {
           // newValues contains the values from newStatus, unless that value is NotInView,
           // then we use the previous value
-          const newValues = newStatus.map((status : InputAreaStatus, index : number) => {
-            if (status === InputAreaStatus.OutOfView) {
-              return value.status[index];
-            }
-            return status;
-          });
+          const newValues = newStatus.map(
+            (status: InputAreaStatus, index: number) => {
+              if (status === InputAreaStatus.OutOfView) {
+                return value.status[index];
+              }
+              return status;
+            },
+          );
           return {
             status: newValues,
           };
         }
-      }
+      },
     },
     props: {
       // Function to compute decorations based on the plugin state
@@ -56,9 +62,14 @@ const UpdateStatusPluginSpec = (editor: WaterproofEditor): PluginSpec<IUpdateSta
         if (statusUpdate && statusUpdate.length > 0) {
           // Get all input nodes in the document
           const inputNodeType = state.schema.nodes.input;
-          const inputNodes = findDescendantsWithType(state.doc, true, inputNodeType);
+          const inputNodes = findDescendantsWithType(
+            state.doc,
+            true,
+            inputNodeType,
+          );
 
-          if (!inputNodes || statusUpdate.length !== inputNodes.length) return null;
+          if (!inputNodes || statusUpdate.length !== inputNodes.length)
+            return null;
 
           const decorations: Decoration[] = [];
           inputNodes.forEach((inputNode, index) => {
@@ -73,7 +84,9 @@ const UpdateStatusPluginSpec = (editor: WaterproofEditor): PluginSpec<IUpdateSta
                 const thingies = editor.getDiagnosticsInRange(start, end, 1);
                 let className = statusToDecoration(newStatusUpdate);
                 if (thingies.length > 0) {
-                  if (thingies.find((value) => value.severity == Severity.Error)) {
+                  if (
+                    thingies.find((value) => value.severity == Severity.Error)
+                  ) {
                     // Error in code.
                     className += " contains-error";
                   } else {
@@ -95,7 +108,9 @@ const UpdateStatusPluginSpec = (editor: WaterproofEditor): PluginSpec<IUpdateSta
       },
     },
   };
-}
+};
 
 // Create a new instance of the plugin
-export const updateStatusPlugin = (editor: WaterproofEditor) => { return new Plugin(UpdateStatusPluginSpec(editor)) };
+export const updateStatusPlugin = (editor: WaterproofEditor) => {
+  return new Plugin(UpdateStatusPluginSpec(editor));
+};
