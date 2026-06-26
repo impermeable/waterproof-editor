@@ -59,6 +59,11 @@
 	  "backgroundColor": "var(--wp-editorInlayHintBackground)"
 	},
 
+	".cm-gutter-lint": {
+	  "width": "unset",
+	  "minWidth": "0"
+	},
+
 	".cm-activeLineGutter": {
 	  "backgroundColor": "var(--wp-editorLightBulbForeground)"
 	},
