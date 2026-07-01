@@ -1,0 +1,33 @@
+/* Interactive table: groups multiple interactive cells (buttons + code). */
+.interactive-table {
+    display: block;
+    position: relative;
+    margin: 4px 0;
+    padding: 8px;
+    border: 1px solid var(--wp-listFilterWidgetBackground);
+    border-radius: 4px;
+}
+
+/* A single interactive cell: a toggle button followed by its code cell. */
+.interactive-cell {
+    display: block;
+    position: relative;
+    margin: 4px 0;
+}
+
+/* The toggle button injected in front of the code by the interactive plugin. */
+.interactive-cell-button {
+    display: inline-block;
+    margin-bottom: 4px;
+    padding: 2px 10px;
+    cursor: pointer;
+    border: 1px solid var(--wp-button-border, transparent);
+    border-radius: 4px;
+    background: var(--wp-button-background, #0e639c);
+    color: var(--wp-button-foreground, #ffffff);
+    font-size: 0.9em;
+}
+
+.interactive-cell-button:hover {
+    background: var(--wp-button-hoverBackground, #1177bb);
+}

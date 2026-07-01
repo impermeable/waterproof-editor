@@ -4,6 +4,8 @@ import {
   CodeBlock,
   HintBlock,
   InputAreaBlock,
+  InteractiveCellBlock,
+  InteractiveTableBlock,
   MarkdownBlock,
   MathDisplayBlock,
   NewlineBlock,
@@ -96,6 +98,16 @@ export function parse(
   const latexBlockOpenClose = "$$",
     latexBlockOpenCloseLength = latexBlockOpenClose.length;
 
+  // Interactive table / cell tags. These support one level of nesting
+  // (table > cell > code) and are parsed via a dedicated scan (see
+  // `parseInteractiveTable`) rather than the character-by-character state machine.
+  const interactiveTableOpenPrefix = '<interactive-table name="';
+  const interactiveTableOpenSuffix = '">';
+  const interactiveTableClose = "</interactive-table>";
+  const interactiveCellOpenPrefix = '<interactive-cell text="';
+  const interactiveCellOpenSuffix = '">';
+  const interactiveCellClose = "</interactive-cell>";
+
   // Push block to the stack.
   function pushBlock(block: Block) {
     // When in nested mode we push to the innerBlock stack, otherwise we push to the block stack
@@ -166,6 +178,89 @@ export function parse(
 
   function opensLaTeXBlock(): boolean {
     return lookAhead(latexBlockOpenClose);
+  }
+
+  function opensInteractiveTable(): boolean {
+    return lookAhead(interactiveTableOpenPrefix);
+  }
+
+  /** Count the number of newlines in `document` in the half-open range [from, to). */
+  function countNewlines(from: number, to: number): number {
+    let count = 0;
+    for (let k = from; k < to; k++) {
+      if (document[k] === "\n") count++;
+    }
+    return count;
+  }
+
+  /**
+   * Parse an interactive table starting at `start` (which must point at the
+   * `<interactive-table name="` prefix). Each contained `<interactive-cell>` is
+   * expected to wrap exactly one fenced code block. All ranges are absolute
+   * offsets into `document`.
+   * @returns The constructed block and the index right after the closing tag.
+   */
+  function parseInteractiveTable(start: number): {
+    block: InteractiveTableBlock;
+    end: number;
+  } {
+    const nameStart = start + interactiveTableOpenPrefix.length;
+    const nameEnd = document.indexOf(interactiveTableOpenSuffix, nameStart);
+    const name = document.slice(nameStart, nameEnd);
+    const innerStart = nameEnd + interactiveTableOpenSuffix.length;
+    const closeIdx = document.indexOf(interactiveTableClose, innerStart);
+    const innerEnd = closeIdx;
+    const end = closeIdx + interactiveTableClose.length;
+
+    const cells: Block[] = [];
+    let cursor = innerStart;
+    for (;;) {
+      const cellOpen = document.indexOf(interactiveCellOpenPrefix, cursor);
+      if (cellOpen === -1 || cellOpen >= innerEnd) break;
+
+      const textStart = cellOpen + interactiveCellOpenPrefix.length;
+      const textEnd = document.indexOf(interactiveCellOpenSuffix, textStart);
+      const cellText = document.slice(textStart, textEnd);
+      const cellInnerStart = textEnd + interactiveCellOpenSuffix.length;
+      const cellCloseIdx = document.indexOf(interactiveCellClose, cellInnerStart);
+      const cellInnerEnd = cellCloseIdx;
+      const cellEnd = cellCloseIdx + interactiveCellClose.length;
+
+      // Extract the single fenced code block inside the cell.
+      const codeOpenIdx = document.indexOf(codeBlockOpen, cellInnerStart);
+      const codeContentStart = codeOpenIdx + codeBlockOpenLength;
+      const codeCloseIdx = document.indexOf(codeBlockClose, codeContentStart);
+      const codeContentEnd = codeCloseIdx;
+      const codeText = document.slice(codeContentStart, codeContentEnd);
+
+      const codeBlock = new CodeBlock(
+        codeText,
+        { from: codeOpenIdx, to: codeCloseIdx + codeBlockCloseLength },
+        { from: codeContentStart, to: codeContentEnd },
+        countNewlines(startParsingFrom, codeContentStart),
+      );
+
+      const cellBlock = new InteractiveCellBlock(
+        document.slice(cellInnerStart, cellInnerEnd),
+        cellText,
+        { from: cellOpen, to: cellEnd },
+        { from: cellInnerStart, to: cellInnerEnd },
+        countNewlines(startParsingFrom, cellInnerStart),
+        [codeBlock],
+      );
+      cells.push(cellBlock);
+      cursor = cellEnd;
+    }
+
+    const block = new InteractiveTableBlock(
+      document.slice(innerStart, innerEnd),
+      name,
+      { from: start, to: end },
+      { from: innerStart, to: innerEnd },
+      countNewlines(startParsingFrom, start),
+      cells,
+    );
+    return { block, end };
   }
 
   function closesCodeBlock(): boolean {
@@ -249,6 +344,14 @@ export function parse(
       rangeStartNested = i;
       state = ParserState.HintTitle;
       nested = NestedState.Hint;
+    } else if (nested === NestedState.None && opensInteractiveTable()) {
+      closeMarkdown();
+      const { block, end } = parseInteractiveTable(i);
+      pushBlock(block);
+      // Keep the newline counter in sync with the content we skipped over.
+      newlineCounter += countNewlines(i, end);
+      i = end;
+      backToMarkdown();
     } else if (nested === NestedState.None && opensInputAreaBlock()) {
       closeMarkdown();
       setRangeStart();

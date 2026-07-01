@@ -95,6 +95,14 @@ export type TagConfiguration = {
     openTag: (name: string) => string;
     closeTag: string;
   } & RequiresNewline;
+  interactiveTable: {
+    openTag: (name: string) => string;
+    closeTag: string;
+  } & RequiresNewline;
+  interactiveCell: {
+    openTag: (cellText: string) => string;
+    closeTag: string;
+  } & RequiresNewline;
 };
 
 export class NodeUpdateError extends Error {

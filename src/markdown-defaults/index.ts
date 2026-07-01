@@ -42,5 +42,17 @@ export function configuration(languageId: string): TagConfiguration {
       openRequiresNewline: false,
       closeRequiresNewline: false,
     },
+    interactiveTable: {
+      openTag: (name: string) => `<interactive-table name="${name}">`,
+      closeTag: "</interactive-table>",
+      openRequiresNewline: false,
+      closeRequiresNewline: false,
+    },
+    interactiveCell: {
+      openTag: (cellText: string) => `<interactive-cell text="${cellText}">`,
+      closeTag: "</interactive-cell>",
+      openRequiresNewline: false,
+      closeRequiresNewline: false,
+    },
   };
 }

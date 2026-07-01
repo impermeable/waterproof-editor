@@ -35,6 +35,7 @@ import {
 } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
+import { createInteractivePlugin } from "./interactive-view";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
 import { WaterproofSchema } from "./schema";
 import {
@@ -361,6 +362,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
     return [
       history(),
       createHintPlugin(),
+      createInteractivePlugin(),
       inputAreaPlugin,
       updateStatusPlugin(this),
       mathPlugin,

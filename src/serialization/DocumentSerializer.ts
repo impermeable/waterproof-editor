@@ -126,6 +126,39 @@ export abstract class DocumentSerializer {
     },
   ): string;
 
+  /**
+   * Describes how to turn an interactive table node into a string representation.
+   * This node contains interactive cells, so you probably want to serialize its children.
+   * The table's name can be retrieved via `tableNode.attrs.name`.
+   * @param tableNode The interactive table node that is going to be serialized
+   * @param parentNode The parent node of this node (if it has one)
+   * @param neighbors Function that upon calling will return the neighbors of the node being serialized.
+   */
+  abstract serializeInteractiveTable(
+    tableNode: Node,
+    parentNode: string | null,
+    neighbors: (skipNewlines: boolean) => {
+      nodeAbove: string | null;
+      nodeBelow: string | null;
+    },
+  ): string;
+
+  /**
+   * Describes how to turn an interactive cell node into a string representation.
+   * This node contains a single code node. The cell's button label can be retrieved via `cellNode.attrs.cellText`.
+   * @param cellNode The interactive cell node that is going to be serialized
+   * @param parentNode The parent node of this node (if it has one)
+   * @param neighbors Function that upon calling will return the neighbors of the node being serialized.
+   */
+  abstract serializeInteractiveCell(
+    cellNode: Node,
+    parentNode: string | null,
+    neighbors: (skipNewlines: boolean) => {
+      nodeAbove: string | null;
+      nodeBelow: string | null;
+    },
+  ): string;
+
   serializeText(node: Node): string {
     return node.textContent;
   }
@@ -163,6 +196,10 @@ export abstract class DocumentSerializer {
         return this.serializeHint(node, parent, neighbors);
       case WaterproofSchema.nodes.container:
         return this.serializeContainer(node, parent, neighbors);
+      case WaterproofSchema.nodes.interactive_table:
+        return this.serializeInteractiveTable(node, parent, neighbors);
+      case WaterproofSchema.nodes.interactive_cell:
+        return this.serializeInteractiveCell(node, parent, neighbors);
       case WaterproofSchema.nodes.text:
         return this.serializeText(node);
       case WaterproofSchema.nodes.newline:
@@ -275,6 +312,24 @@ export class DefaultTagSerializer extends DocumentSerializer {
       this.tagConf.container.openTag(name) +
       this.serializeFragment(node.content, "container") +
       this.tagConf.container.closeTag
+    );
+  }
+
+  serializeInteractiveTable(node: Node): string {
+    const name = node.attrs.name as string;
+    return (
+      this.tagConf.interactiveTable.openTag(name) +
+      this.serializeFragment(node.content, "interactive_table") +
+      this.tagConf.interactiveTable.closeTag
+    );
+  }
+
+  serializeInteractiveCell(node: Node): string {
+    const cellText = node.attrs.cellText as string;
+    return (
+      this.tagConf.interactiveCell.openTag(cellText) +
+      this.serializeFragment(node.content, "interactive_cell") +
+      this.tagConf.interactiveCell.closeTag
     );
   }
 }

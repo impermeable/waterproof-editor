@@ -9,6 +9,8 @@ export enum BLOCK_NAME {
   CODE = "code",
   NEWLINE = "newline",
   CONTAINER = "container",
+  INTERACTIVE_TABLE = "interactive_table",
+  INTERACTIVE_CELL = "interactive_cell"
 }
 
 export interface BlockRange {

@@ -4,6 +4,8 @@ import {
   ContainerBlock,
   HintBlock,
   InputAreaBlock,
+  InteractiveCellBlock,
+  InteractiveTableBlock,
   MarkdownBlock,
   MathDisplayBlock,
   NewlineBlock,
@@ -23,3 +25,11 @@ export const isNewlineBlock = (block: Block): block is NewlineBlock =>
   block.type === BLOCK_NAME.NEWLINE;
 export const isContainerBlock = (block: Block): block is ContainerBlock =>
   block.type === BLOCK_NAME.CONTAINER;
+export const isInteractiveCellBlock = (
+  block: Block,
+): block is InteractiveCellBlock =>
+  block.type === BLOCK_NAME.INTERACTIVE_CELL;
+export const isInteractiveTableBlock = (
+  block: Block,
+): block is InteractiveTableBlock =>
+  block.type === BLOCK_NAME.INTERACTIVE_TABLE;

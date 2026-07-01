@@ -6,6 +6,8 @@ import {
   container,
   hint,
   inputArea,
+  interactiveCell,
+  interactiveTable,
   markdown,
   mathDisplay,
   newline,
@@ -269,6 +271,95 @@ export class ContainerBlock implements Block {
   debugPrint(level: number): void {
     console.log(
       `${indentation(level)}ContainerBlock(${this.name}) {${debugInfo(this)}} [`,
+    );
+    this.innerBlocks.forEach((block) => block.debugPrint(level + 1));
+    console.log(`${indentation(level)}]`);
+  }
+}
+
+/**
+ * InteractiveCellBlocks wrap a single code cell and render as a labelled toggle button.
+ * Clicking the button (handled by the interactive plugin) mutates the inner code cell.
+ * The `cellText` is the label displayed on the button.
+ */
+export class InteractiveCellBlock implements Block {
+  public type = BLOCK_NAME.INTERACTIVE_CELL;
+  public innerBlocks: Block[];
+
+  constructor(
+    public stringContent: string,
+    public cellText: string,
+    public range: BlockRange,
+    public innerRange: BlockRange,
+    public lineStart: number,
+    childBlocks:
+      | Block[]
+      | ((
+          innerContent: string,
+          innerRange: BlockRange,
+          lineStartOffset: number,
+        ) => Block[]),
+  ) {
+    if (typeof childBlocks === "function") {
+      this.innerBlocks = childBlocks(stringContent, innerRange, lineStart);
+    } else {
+      this.innerBlocks = childBlocks;
+    }
+  }
+
+  toProseMirror() {
+    // An interactive cell contains exactly one code node (per the schema).
+    const childNodes = this.innerBlocks.map((block) => block.toProseMirror());
+    return interactiveCell(this.cellText, childNodes);
+  }
+
+  // Debug print function.
+  debugPrint(level: number): void {
+    console.log(
+      `${indentation(level)}InteractiveCellBlock {${debugInfo(this)}} {cellText="${this.cellText}"} [`,
+    );
+    this.innerBlocks.forEach((block) => block.debugPrint(level + 1));
+    console.log(`${indentation(level)}]`);
+  }
+}
+
+/**
+ * InteractiveTableBlocks group multiple {@link InteractiveCellBlock}s together.
+ * They carry a `name` to identify the table.
+ */
+export class InteractiveTableBlock implements Block {
+  public type: BLOCK_NAME = BLOCK_NAME.INTERACTIVE_TABLE;
+  public innerBlocks: Block[];
+
+  constructor(
+    public stringContent: string,
+    public name: string,
+    public range: BlockRange,
+    public innerRange: BlockRange,
+    public lineStart: number,
+    childBlocks:
+      | Block[]
+      | ((
+          innerContent: string,
+          innerRange: BlockRange,
+          lineStartOffset: number,
+        ) => Block[]),
+  ) {
+    if (typeof childBlocks === "function") {
+      this.innerBlocks = childBlocks(stringContent, innerRange, lineStart);
+    } else {
+      this.innerBlocks = childBlocks;
+    }
+  }
+
+  toProseMirror() {
+    const childNodes = this.innerBlocks.map((block) => block.toProseMirror());
+    return interactiveTable(this.name, childNodes);
+  }
+
+  debugPrint(level: number): void {
+    console.log(
+      `${indentation(level)}InteractiveTableBlock(${this.name}) {${debugInfo(this)}} [`,
     );
     this.innerBlocks.forEach((block) => block.debugPrint(level + 1));
     console.log(`${indentation(level)}]`);

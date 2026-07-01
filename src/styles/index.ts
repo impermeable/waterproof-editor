@@ -12,6 +12,9 @@ import "./hints.css";
 // for containers
 import "./container.css";
 
+// for interactive tables (buttons mapped to code cells)
+import "./interactive-table.css";
+
 // for menubar
 import "./menubar.css";
 

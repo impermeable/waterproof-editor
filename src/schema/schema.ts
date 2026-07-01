@@ -8,6 +8,8 @@ export const SchemaCell = {
   Code: "code",
   Newline: "newline",
   Container: "container",
+  InteractiveTable: "interactive_table",
+  InteractiveCell: "interactive_cell"
 } as const;
 
 export type SchemaKeys = keyof typeof SchemaCell;
@@ -125,6 +127,46 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text">({
       },
       toDOM: (node) => {
         return ["div", { class: "container", "data-name": node.attrs.name }, 0];
+      },
+    },
+    //#endregion
+
+    /////// INTERACTIVE_CELL //////
+    //#region interactive_cell
+    // A single interactive cell: renders as a container holding a code cell.
+    // A toggle button is injected in front of the code by the interactive plugin
+    // (see `src/interactive-view`). The `cellText` attribute is the button label.
+    interactive_cell: {
+      content: "code",
+      group: "interactive_cell",
+      attrs: {
+        cellText: { default: "" },
+      },
+      toDOM: (node) => {
+        return [
+          "div",
+          { class: "interactive-cell", "data-cell-text": node.attrs.cellText },
+          0,
+        ];
+      },
+    },
+    //#endregion
+
+    /////// INTERACTIVE_TABLE //////
+    //#region interactive_table
+    // Groups multiple interactive cells together (each rendered with its own button).
+    interactive_table: {
+      content: "interactive_cell+",
+      group: "cell",
+      attrs: {
+        name: { default: "" },
+      },
+      toDOM: (node) => {
+        return [
+          "div",
+          { class: "interactive-table", "data-name": node.attrs.name },
+          0,
+        ];
       },
     },
     //#endregion
