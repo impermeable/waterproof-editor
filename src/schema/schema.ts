@@ -141,13 +141,15 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text">({
       group: "interactive_cell",
       attrs: {
         cellText: { default: "" },
+        // When true, the inner code cell is hidden in the editor (only the
+        // button is shown). The code still lives on disk and is executed.
+        hidden: { default: false },
       },
       toDOM: (node) => {
-        return [
-          "div",
-          { class: "interactive-cell", "data-cell-text": node.attrs.cellText },
-          0,
-        ];
+        const cls = node.attrs.hidden
+          ? "interactive-cell interactive-cell--hidden"
+          : "interactive-cell";
+        return ["div", { class: cls, "data-cell-text": node.attrs.cellText }, 0];
       },
     },
     //#endregion

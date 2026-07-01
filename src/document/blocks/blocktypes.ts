@@ -289,6 +289,7 @@ export class InteractiveCellBlock implements Block {
   constructor(
     public stringContent: string,
     public cellText: string,
+    public hidden: boolean,
     public range: BlockRange,
     public innerRange: BlockRange,
     public lineStart: number,
@@ -310,13 +311,13 @@ export class InteractiveCellBlock implements Block {
   toProseMirror() {
     // An interactive cell contains exactly one code node (per the schema).
     const childNodes = this.innerBlocks.map((block) => block.toProseMirror());
-    return interactiveCell(this.cellText, childNodes);
+    return interactiveCell(this.cellText, this.hidden, childNodes);
   }
 
   // Debug print function.
   debugPrint(level: number): void {
     console.log(
-      `${indentation(level)}InteractiveCellBlock {${debugInfo(this)}} {cellText="${this.cellText}"} [`,
+      `${indentation(level)}InteractiveCellBlock {${debugInfo(this)}} {cellText="${this.cellText}", hidden=${this.hidden}} [`,
     );
     this.innerBlocks.forEach((block) => block.debugPrint(level + 1));
     console.log(`${indentation(level)}]`);

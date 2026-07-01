@@ -326,8 +326,9 @@ export class DefaultTagSerializer extends DocumentSerializer {
 
   serializeInteractiveCell(node: Node): string {
     const cellText = node.attrs.cellText as string;
+    const hidden = node.attrs.hidden as boolean;
     return (
-      this.tagConf.interactiveCell.openTag(cellText) +
+      this.tagConf.interactiveCell.openTag(cellText, hidden) +
       this.serializeFragment(node.content, "interactive_cell") +
       this.tagConf.interactiveCell.closeTag
     );

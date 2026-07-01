@@ -43,9 +43,13 @@ export const container = (name: string, childNodes: ProseNode[]): ProseNode => {
 /** Construct interactive cell prosemirror node (holds a single code node). */
 export const interactiveCell = (
   cellText: string,
+  hidden: boolean,
   childNodes: ProseNode[],
 ): ProseNode => {
-  return WaterproofSchema.nodes.interactive_cell.create({ cellText }, childNodes);
+  return WaterproofSchema.nodes.interactive_cell.create(
+    { cellText, hidden },
+    childNodes,
+  );
 };
 
 /** Construct interactive table prosemirror node (holds interactive cells). */

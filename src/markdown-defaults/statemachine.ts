@@ -104,8 +104,7 @@ export function parse(
   const interactiveTableOpenPrefix = '<interactive-table name="';
   const interactiveTableOpenSuffix = '">';
   const interactiveTableClose = "</interactive-table>";
-  const interactiveCellOpenPrefix = '<interactive-cell text="';
-  const interactiveCellOpenSuffix = '">';
+  const interactiveCellOpen = "<interactive-cell";
   const interactiveCellClose = "</interactive-cell>";
 
   // Push block to the stack.
@@ -215,37 +214,43 @@ export function parse(
     const cells: Block[] = [];
     let cursor = innerStart;
     for (;;) {
-      const cellOpen = document.indexOf(interactiveCellOpenPrefix, cursor);
+      const cellOpen = document.indexOf(interactiveCellOpen, cursor);
       if (cellOpen === -1 || cellOpen >= innerEnd) break;
 
-      const textStart = cellOpen + interactiveCellOpenPrefix.length;
-      const textEnd = document.indexOf(interactiveCellOpenSuffix, textStart);
-      const cellText = document.slice(textStart, textEnd);
-      const cellInnerStart = textEnd + interactiveCellOpenSuffix.length;
+      // Parse the (possibly multi-attribute) open tag: <interactive-cell text="..." hidden="true">
+      const tagEnd = document.indexOf(">", cellOpen);
+      const openTag = document.slice(cellOpen, tagEnd + 1);
+      const cellText = /text="([^"]*)"/.exec(openTag)?.[1] ?? "";
+      const hidden = /hidden="true"/.test(openTag);
+      const cellInnerStart = tagEnd + 1;
       const cellCloseIdx = document.indexOf(interactiveCellClose, cellInnerStart);
-      const cellInnerEnd = cellCloseIdx;
       const cellEnd = cellCloseIdx + interactiveCellClose.length;
 
-      // Extract the single fenced code block inside the cell.
+      // Extract the single fenced code block inside the cell. Any whitespace/newlines
+      // surrounding the fence (the serializer places it on its own lines) belong to the
+      // cell's open/close tags, so the cell's inner range is the code fence itself.
       const codeOpenIdx = document.indexOf(codeBlockOpen, cellInnerStart);
       const codeContentStart = codeOpenIdx + codeBlockOpenLength;
       const codeCloseIdx = document.indexOf(codeBlockClose, codeContentStart);
       const codeContentEnd = codeCloseIdx;
       const codeText = document.slice(codeContentStart, codeContentEnd);
+      const codeFenceFrom = codeOpenIdx;
+      const codeFenceTo = codeCloseIdx + codeBlockCloseLength;
 
       const codeBlock = new CodeBlock(
         codeText,
-        { from: codeOpenIdx, to: codeCloseIdx + codeBlockCloseLength },
+        { from: codeFenceFrom, to: codeFenceTo },
         { from: codeContentStart, to: codeContentEnd },
         countNewlines(startParsingFrom, codeContentStart),
       );
 
       const cellBlock = new InteractiveCellBlock(
-        document.slice(cellInnerStart, cellInnerEnd),
+        document.slice(codeFenceFrom, codeFenceTo),
         cellText,
+        hidden,
         { from: cellOpen, to: cellEnd },
-        { from: cellInnerStart, to: cellInnerEnd },
-        countNewlines(startParsingFrom, cellInnerStart),
+        { from: codeFenceFrom, to: codeFenceTo },
+        countNewlines(startParsingFrom, codeFenceFrom),
         [codeBlock],
       );
       cells.push(cellBlock);

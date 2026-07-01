@@ -100,7 +100,7 @@ export type TagConfiguration = {
     closeTag: string;
   } & RequiresNewline;
   interactiveCell: {
-    openTag: (cellText: string) => string;
+    openTag: (cellText: string, hidden: boolean) => string;
     closeTag: string;
   } & RequiresNewline;
 };

@@ -49,8 +49,14 @@ export function configuration(languageId: string): TagConfiguration {
       closeRequiresNewline: false,
     },
     interactiveCell: {
-      openTag: (cellText: string) => `<interactive-cell text="${cellText}">`,
-      closeTag: "</interactive-cell>",
+      // The trailing/leading newlines put the inner code fence on its own lines,
+      // which the fenced-code (```) syntax requires. They are part of the cell's
+      // tags (not its content), so the code cell stays contiguous in the mapping.
+      openTag: (cellText: string, hidden: boolean) =>
+        hidden
+          ? `<interactive-cell text="${cellText}" hidden="true">\n`
+          : `<interactive-cell text="${cellText}">\n`,
+      closeTag: "\n</interactive-cell>",
       openRequiresNewline: false,
       closeRequiresNewline: false,
     },

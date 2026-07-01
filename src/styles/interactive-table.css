@@ -31,3 +31,12 @@
 .interactive-cell-button:hover {
     background: var(--wp-button-hoverBackground, #1177bb);
 }
+
+/* A hidden interactive cell shows only its toggle button; the code cell (and any
+   other rendered content) is collapsed away. The code remains in the document
+   and is still executed.
+   NOTE: `!important` is required because CodeMirror 6's base theme sets
+   `.cm-editor { display: flex !important }`, which would otherwise win. */
+.interactive-cell--hidden > *:not(.interactive-cell-button) {
+    display: none !important;
+}
