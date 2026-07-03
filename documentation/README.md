@@ -46,6 +46,7 @@ More information can be found [here](./UsingWaterproofEditor.md).
 
 In order to make a release, do the following:
 
+0. Login using `npm login`
 1. Run `npm pack`, checking that the tarball does not contain unneeded files.
 2. Use `npm install path-to-pack.tgz` in `waterproof-vscode` and test the extension with the packaged version installed.
 3. Run `npm publish --access public` to publish.
