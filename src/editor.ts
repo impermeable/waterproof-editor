@@ -35,7 +35,11 @@ import {
 } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
-import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
+import {
+  INPUT_AREA_PLUGIN_KEY,
+  inputAreaPlugin,
+  isPositionEditable,
+} from "./inputArea";
 import { WaterproofSchema } from "./schema";
 import {
   SWITCHABLE_VIEW_PLUGIN_KEY,
@@ -326,8 +330,11 @@ export class WaterproofEditor implements MessageHandlerEditor {
 
           const posAtDomTarget = view.posAtDOM(domTarget, 0);
           const nodeAtDomTarget = view.state.doc.resolve(posAtDomTarget).node();
-          if (nodeAtDomTarget.type === WaterproofSchema.nodes.math_display)
-            return;
+          if (nodeAtDomTarget.type === WaterproofSchema.nodes.math_display) {
+            // If the node is not editable, we tell ProseMirror that we have handled the event,
+            // this makes it so that single clicking does not select the whole math node.
+            return !isPositionEditable(view.state, posAtDomTarget);
+          }
 
           event.preventDefault();
         },

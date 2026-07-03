@@ -4,6 +4,7 @@ import { RenderedView } from "./RenderedView";
 import { NodeSelection, PluginKey } from "prosemirror-state";
 import { Node as PNode } from "prosemirror-model";
 import { WaterproofSchema } from "../../schema";
+import { isPositionEditable } from "../../inputArea";
 
 /**
  * Abstract class for a switchable view.
@@ -88,12 +89,13 @@ export class SwitchableView implements NodeView {
     // eventHandler for the onclick event.
     // Creates a new node selection that selects 'this' node.
     const eventHandler = () => {
-      const tr = outerView.state.tr;
       const pos = getPos();
       if (pos === undefined) {
         console.error("why pos undefined?!");
         return;
       }
+      if (!isPositionEditable(outerView.state, pos)) return;
+      const tr = outerView.state.tr;
       const nodeSel = new NodeSelection(outerView.state.doc.resolve(pos));
       tr.setSelection(nodeSel);
       outerView.dispatch(tr);
