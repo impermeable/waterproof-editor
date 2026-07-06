@@ -37,7 +37,7 @@ export function insertCompositeNodeBelow(
   wrapNodeType: NodeType | undefined,
   tagConf: TagConfiguration,
   hintTitle: string = "💡 Hint",
-  content: string = ""
+  content: string = "",
 ): Transaction | undefined {
   const sel = state.selection;
   let trans: Transaction = tr;
@@ -47,11 +47,11 @@ export function insertCompositeNodeBelow(
 
   const insertNewlineBeforeIfNotExists = needsNewlineBefore(
     outerNodeType,
-    tagConf
+    tagConf,
   );
   const insertNewlineAfterIfNotExists = needsNewlineAfter(
     outerNodeType,
-    tagConf
+    tagConf,
   );
 
   const parentAndIndex = getParentAndIndex(sel);
@@ -160,7 +160,7 @@ export function insertCompositeNodeAbove(
   wrapNodeType: NodeType | undefined,
   tagConf: TagConfiguration,
   hintTitle: string = "💡 Hint",
-  content: string = ""
+  content: string = "",
 ): Transaction | undefined {
   const sel = state.selection;
   let trans: Transaction = tr;
@@ -170,11 +170,11 @@ export function insertCompositeNodeAbove(
 
   const insertNewlineBeforeIfNotExists = needsNewlineBefore(
     outerNodeType,
-    tagConf
+    tagConf,
   );
   const insertNewlineAfterIfNotExists = needsNewlineAfter(
     outerNodeType,
-    tagConf
+    tagConf,
   );
 
   const parentAndIndex = getParentAndIndex(sel);

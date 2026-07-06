@@ -11,12 +11,12 @@ import { TagConfiguration } from "../api";
 
 export function getCmdInsertMarkdown(
   place: InsertionPlace,
-  tagConf: TagConfiguration
+  tagConf: TagConfiguration,
 ) {
   return (
     state: EditorState,
     dispatch?: (tr: Transaction) => void,
-    _view?: EditorView
+    _view?: EditorView,
   ): boolean => {
     // Early return when inserting is not allowed
     if (!allowedToInsert(state)) return false;
@@ -34,7 +34,7 @@ export function getCmdInsertMarkdown(
       state.tr,
       WaterproofSchema.nodes.markdown,
       undefined,
-      tagConf
+      tagConf,
     );
 
     if (trans === undefined) {
@@ -51,12 +51,12 @@ export function getCmdInsertMarkdown(
 
 export function getCmdInsertLatex(
   place: InsertionPlace,
-  tagConf: TagConfiguration
+  tagConf: TagConfiguration,
 ) {
   return (
     state: EditorState,
     dispatch?: (tr: Transaction) => void,
-    _view?: EditorView
+    _view?: EditorView,
   ): boolean => {
     // Early return when inserting is not allowed.
     if (!allowedToInsert(state)) return false;
@@ -70,7 +70,7 @@ export function getCmdInsertLatex(
       state.tr,
       WaterproofSchema.nodes.math_display,
       undefined,
-      tagConf
+      tagConf,
     );
 
     if (trans === undefined) {
@@ -87,12 +87,12 @@ export function getCmdInsertLatex(
 
 export function getCmdInsertCode(
   place: InsertionPlace,
-  tagConf: TagConfiguration
+  tagConf: TagConfiguration,
 ) {
   return (
     state: EditorState,
     dispatch?: (tr: Transaction) => void,
-    _view?: EditorView
+    _view?: EditorView,
   ): boolean => {
     // Again, early return when inserting is not allowed.
     if (!allowedToInsert(state)) return false;
@@ -106,7 +106,7 @@ export function getCmdInsertCode(
       state.tr,
       WaterproofSchema.nodes.code,
       undefined,
-      tagConf
+      tagConf,
     );
 
     if (trans === undefined) {
@@ -123,12 +123,12 @@ export function getCmdInsertCode(
 
 export function getCmdInsertCodeHint(
   place: InsertionPlace,
-  tagConf: TagConfiguration
+  tagConf: TagConfiguration,
 ) {
   return (
     state: EditorState,
     dispatch?: (tr: Transaction) => void,
-    _view?: EditorView
+    _view?: EditorView,
   ): boolean => {
     // Early return when inserting is not allowed.
     if (!allowedToInsert(state)) return false;
@@ -145,7 +145,7 @@ export function getCmdInsertCodeHint(
       WaterproofSchema.nodes.code,
       wrapper,
       tagConf,
-      "🛠️ Technical details"
+      "🛠️ Technical details",
     );
 
     if (trans === undefined) {
@@ -162,12 +162,12 @@ export function getCmdInsertCodeHint(
 
 export function getCmdInsertTextHint(
   place: InsertionPlace,
-  tagConf: TagConfiguration
+  tagConf: TagConfiguration,
 ) {
   return (
     state: EditorState,
     dispatch?: (tr: Transaction) => void,
-    _view?: EditorView
+    _view?: EditorView,
   ): boolean => {
     // Early return when inserting is not allowed.
     if (!allowedToInsert(state)) return false;
@@ -183,7 +183,7 @@ export function getCmdInsertTextHint(
       state.tr,
       WaterproofSchema.nodes.markdown,
       wrapper,
-      tagConf
+      tagConf,
     );
 
     if (trans === undefined) {
@@ -200,12 +200,12 @@ export function getCmdInsertTextHint(
 
 export function getCmdInsertExample(
   place: InsertionPlace,
-  tagConf: TagConfiguration
+  tagConf: TagConfiguration,
 ) {
   return (
     state: EditorState,
     dispatch?: (tr: Transaction) => void,
-    _view?: EditorView
+    _view?: EditorView,
   ): boolean => {
     // Again, early return when inserting is not allowed.
     if (!allowedToInsert(state)) return false;
@@ -231,7 +231,7 @@ export function getCmdInsertExample(
       undefined,
       tagConf,
       undefined,
-      content
+      content,
     );
 
     if (trans === undefined) {
