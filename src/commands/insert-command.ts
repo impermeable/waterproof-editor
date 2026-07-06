@@ -1,6 +1,6 @@
 import { EditorState, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
-import { allowedToInsert, insertAbove, insertBelow, insertCompositeNodeBelow, insertCompositeNodeAbove } from "./command-helpers";
+import { allowedToInsert, insertCompositeNodeBelow, insertCompositeNodeAbove } from "./command-helpers";
 import { WaterproofSchema } from "../schema";
 import { InsertionPlace } from "./types";
 import { TagConfiguration } from "../api";
@@ -17,14 +17,16 @@ export function getCmdInsertMarkdown(place: InsertionPlace, tagConf: TagConfigur
 
         const trans = f(state, state.tr, WaterproofSchema.nodes.markdown, undefined, tagConf);
 
-        if (trans === undefined) { return false; }
-        
-        // If the dispatch is given and transaction is not undefined dispatch it.
-        if (dispatch && trans) dispatch(trans);
-
-        // successful command.
-        return true;
+    if (trans === undefined) {
+      return false;
     }
+
+    // If the dispatch is given and transaction is not undefined dispatch it.
+    if (dispatch && trans) dispatch(trans);
+
+    // successful command.
+    return true;
+  };
 }
 
 export function getCmdInsertLatex(place: InsertionPlace, tagConf: TagConfiguration) {
@@ -35,14 +37,17 @@ export function getCmdInsertLatex(place: InsertionPlace, tagConf: TagConfigurati
         const f = place  === InsertionPlace.Above ? insertCompositeNodeAbove : insertCompositeNodeBelow; 
         const trans = f(state, state.tr, WaterproofSchema.nodes.math_display, undefined, tagConf);
 
-        if (trans === undefined) { return false; }
-        
-        // Dispatch the transaction when dispatch is given and transaction is not undefined.
-        if (dispatch && trans) dispatch(trans);
 
-        // Indicate successful command.
-        return true;
+    if (trans === undefined) {
+      return false;
     }
+
+    // Dispatch the transaction when dispatch is given and transaction is not undefined.
+    if (dispatch && trans) dispatch(trans);
+
+    // Indicate successful command.
+    return true;
+  };
 }
 
 export function getCmdInsertCode(place: InsertionPlace, tagConf: TagConfiguration) {
@@ -121,12 +126,14 @@ export function getCmdInsertExample(place: InsertionPlace, tagConf: TagConfigura
 
         const trans = f(state, state.tr, WaterproofSchema.nodes.code, undefined, tagConf, undefined, content);
 
-        if (trans === undefined) { return false; }
-        
+        if (trans === undefined) {
+        return false;
+        }
+
         // If dispatch is given and transaction is set, dispatch the transaction.
         if (dispatch && trans) dispatch(trans);
 
         // Indicate that this command was successful.
         return true;
-    }
+    };
 }

@@ -1,4 +1,3 @@
-
 import { WaterproofSchema } from "../../schema/schema";
 import { Node as ProseNode } from "prosemirror-model";
 
@@ -6,47 +5,47 @@ import { Node as ProseNode } from "prosemirror-model";
 
 /** Construct basic prosemirror text node. */
 export const text = (content: string): ProseNode => {
-    return WaterproofSchema.text(content);
-}
+  return WaterproofSchema.text(content);
+};
 
 /** Construct math display prosemirror node. */
 export const mathDisplay = (content: string): ProseNode => {
-    return WaterproofSchema.nodes.math_display.create({}, text(content));
-}
+  return WaterproofSchema.nodes.math_display.create({}, text(content));
+};
 
 /** Construct markdown prosemirror node. */
 export const markdown = (content: string): ProseNode => {
-    return WaterproofSchema.nodes.markdown.create({}, text(content));
-}
+  return WaterproofSchema.nodes.markdown.create({}, text(content));
+};
 
 /** Construct code prosemirror node. */
 export const code = (content: string): ProseNode => {
-    return WaterproofSchema.nodes.code.create({}, text(content));
-}
+  return WaterproofSchema.nodes.code.create({}, text(content));
+};
 
 // ##### With inner blocks #####
 
 /** Construct input area prosemirror node. */
 export const inputArea = (childNodes: ProseNode[]): ProseNode => {
-    return WaterproofSchema.nodes.input.create({}, childNodes);
-}
+  return WaterproofSchema.nodes.input.create({}, childNodes);
+};
 
 /** Construct hint prosemirror node. */
 export const hint = (title: string, childNodes: ProseNode[]): ProseNode => {
-    return WaterproofSchema.nodes.hint.create({title}, childNodes);
-}
+  return WaterproofSchema.nodes.hint.create({ title }, childNodes);
+};
 
 /** Construct container prosemirror node. */
 export const container = (name: string, childNodes: ProseNode[]): ProseNode => {
-    return WaterproofSchema.nodes.container.create({name}, childNodes);
-}
+  return WaterproofSchema.nodes.container.create({ name }, childNodes);
+};
 
 // ##### Special newline block ######
 export const newline = () => {
-    return WaterproofSchema.nodes.newline.create();
-}
+  return WaterproofSchema.nodes.newline.create();
+};
 
 // ##### Root Node #####
 export const root = (childNodes: ProseNode[]): ProseNode => {
-    return WaterproofSchema.nodes.doc.create({}, childNodes);
-}
+  return WaterproofSchema.nodes.doc.create({}, childNodes);
+};

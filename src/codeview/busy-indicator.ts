@@ -13,7 +13,10 @@ export class BusyIndicatorMarker extends GutterMarker {
    *   This prevents flickering for sentences that finish checking quickly.
    * @param title Tooltip text shown on hover.
    */
-  constructor(private readonly delay: number, private readonly title: string) {
+  constructor(
+    private readonly delay: number,
+    private readonly title: string,
+  ) {
     super();
   }
 

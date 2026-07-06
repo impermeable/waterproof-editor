@@ -8,99 +8,123 @@ import { TextUpdateError, DocChange } from "../api";
 const supportsTextEdits = new Set(["code", "markdown", "math_display"]);
 
 export class TextUpdate {
-    /**
-     * We cache the last node in which a text update happened, as it is likely that the next text update will happen in the same node
-     * Note that this is a *reference* to the node in the tree.
-     */
-    private cachedNode: TreeNode | null = null;
+  /**
+   * We cache the last node in which a text update happened, as it is likely that the next text update will happen in the same node
+   * Note that this is a *reference* to the node in the tree.
+   */
+  private cachedNode: TreeNode | null = null;
 
-    public invalidateCache(): void {
-        this.cachedNode = null;
+  public invalidateCache(): void {
+    this.cachedNode = null;
+  }
+
+  getNodeFromCacheOrSearch(step: ReplaceStep, tree: Tree): TreeNode | null {
+    // These checks should be okay as the tree is updated after every text update,
+    // therefore we can use the cached node bounds to check if the next text update is happening in the same node
+    if (
+      this.cachedNode !== null &&
+      this.cachedNode.prosemirrorStart <= step.from &&
+      step.to <= this.cachedNode.prosemirrorEnd
+    ) {
+      return this.cachedNode;
     }
-
-    getNodeFromCacheOrSearch(step: ReplaceStep, tree: Tree): TreeNode | null {
-        // These checks should be okay as the tree is updated after every text update,
-        // therefore we can use the cached node bounds to check if the next text update is happening in the same node
-        if (this.cachedNode !== null &&
-                this.cachedNode.prosemirrorStart <= step.from &&
-                step.to <= this.cachedNode.prosemirrorEnd) {
-            return this.cachedNode;
-        }
-        const target = tree.findNodeByProsePos(step.from);
-        // If we have to search the tree anyway we take the time to do a sanity check
-        // for the type of node returned here. In this case we only expect a text
-        // editable node to be returned (i.e. code, markdown, or math-display)
-        if (!supportsTextEdits.has(target?.type ?? "")) {
-            throw new TextUpdateError("When attempting to refresh the text update node cache we got a node that does not support text edits");
-        }
-        this.cachedNode = target;
-        return target;
+    const target = tree.findNodeByProsePos(step.from);
+    // If we have to search the tree anyway we take the time to do a sanity check
+    // for the type of node returned here. In this case we only expect a text
+    // editable node to be returned (i.e. code, markdown, or math-display)
+    if (!supportsTextEdits.has(target?.type ?? "")) {
+      throw new TextUpdateError(
+        "When attempting to refresh the text update node cache we got a node that does not support text edits",
+      );
     }
+    this.cachedNode = target;
+    return target;
+  }
 
-    /** This function is responsible for handling updates in prosemirror that happen exclusively as text edits and translating them to vscode text doc */
-    textUpdate(step: ReplaceStep, mapping: Mapping) : ParsedStep {
-        // Determine operation type
-        const type = typeFromStep(step);
-        
-        // If there is more than one node in the fragment of step, throw an error
-        if(step.slice.content.childCount > 1) throw new TextUpdateError(" Text edit contained more text nodes than expected ");
+  /** This function is responsible for handling updates in prosemirror that happen exclusively as text edits and translating them to vscode text doc */
+  textUpdate(step: ReplaceStep, mapping: Mapping): ParsedStep {
+    // Determine operation type
+    const type = typeFromStep(step);
 
-        // Check that the slice conforms to our assumptions
-        if (step.slice.openStart != 0 || step.slice.openEnd != 0) throw new TextUpdateError(" We do not support partial slices for ReplaceSteps");
+    // If there is more than one node in the fragment of step, throw an error
+    if (step.slice.content.childCount > 1)
+      throw new TextUpdateError(
+        " Text edit contained more text nodes than expected ",
+      );
 
-        const tree = mapping.getMapping()
+    // Check that the slice conforms to our assumptions
+    if (step.slice.openStart != 0 || step.slice.openEnd != 0)
+      throw new TextUpdateError(
+        " We do not support partial slices for ReplaceSteps",
+      );
 
-        const targetCell = this.getNodeFromCacheOrSearch(step, tree);
+    const tree = mapping.getMapping();
 
-        if (targetCell === null) throw new TextUpdateError(" Target cell is not in mapping!!! ");
+    const targetCell = this.getNodeFromCacheOrSearch(step, tree);
 
-        if (targetCell === tree.root) throw new TextUpdateError(" Text can not be inserted into the root ");
+    if (targetCell === null)
+      throw new TextUpdateError(" Target cell is not in mapping!!! ");
 
-        /** Check that the change is, indeed, happening within a stringcell */
-        if (targetCell.prosemirrorEnd < step.from) throw new TextUpdateError(" Step does not happen within cell ");
+    if (targetCell === tree.root)
+      throw new TextUpdateError(" Text can not be inserted into the root ");
 
-        /** The offset within the correct stringCell for the step action */ 
-        const offsetBegin = step.from - targetCell.prosemirrorStart;
+    /** Check that the change is, indeed, happening within a stringcell */
+    if (targetCell.prosemirrorEnd < step.from)
+      throw new TextUpdateError(" Step does not happen within cell ");
 
-        /** The offset within the correct stringCell for the step action */ 
-        const offsetEnd = step.to - targetCell.prosemirrorStart;  
+    /** The offset within the correct stringCell for the step action */
+    const offsetBegin = step.from - targetCell.prosemirrorStart;
 
-        const text = step.slice.content.firstChild?.text ?? "";
+    /** The offset within the correct stringCell for the step action */
+    const offsetEnd = step.to - targetCell.prosemirrorStart;
 
-        const offset = getTextOffset(type,step);
+    const text = step.slice.content.firstChild?.text ?? "";
 
-        /** The resulting document change to document model */
-        const result: DocChange = {
-            startInFile: targetCell.contentRange.from + offsetBegin,
-            endInFile: targetCell.contentRange.from + offsetEnd,
-            finalText: text
-        }
+    const offset = getTextOffset(type, step);
 
-        const target = {prosemirrorStart: targetCell.prosemirrorStart, prosemirrorEnd: targetCell.prosemirrorEnd}
-        tree.traverseDepthFirst((node: TreeNode) => {
-            if (node.prosemirrorStart <= target.prosemirrorStart && target.prosemirrorEnd <= node.prosemirrorEnd) {
-                // This node is either the node we are making the text update in or a parent node
-                // We only have to update the closing ranges
-                node.shiftCloseOffsets(offset);
-            } else if (node.prosemirrorStart > target.prosemirrorStart && node.prosemirrorEnd > target.prosemirrorEnd) {
-                // This node is fully after the node in which we made the text update
-                // We update all the ranges
-                node.shiftOffsets(offset);
-            }
-        });
+    /** The resulting document change to document model */
+    const result: DocChange = {
+      startInFile: targetCell.contentRange.from + offsetBegin,
+      endInFile: targetCell.contentRange.from + offsetEnd,
+      finalText: text,
+    };
 
-        return { result, newTree: tree };
-    }
+    const target = {
+      prosemirrorStart: targetCell.prosemirrorStart,
+      prosemirrorEnd: targetCell.prosemirrorEnd,
+    };
+    tree.traverseDepthFirst((node: TreeNode) => {
+      if (
+        node.prosemirrorStart <= target.prosemirrorStart &&
+        target.prosemirrorEnd <= node.prosemirrorEnd
+      ) {
+        // This node is either the node we are making the text update in or a parent node
+        // We only have to update the closing ranges
+        node.shiftCloseOffsets(offset);
+      } else if (
+        node.prosemirrorStart > target.prosemirrorStart &&
+        node.prosemirrorEnd > target.prosemirrorEnd
+      ) {
+        // This node is fully after the node in which we made the text update
+        // We update all the ranges
+        node.shiftOffsets(offset);
+      }
+    });
+
+    return { result, newTree: tree };
+  }
 }
 
 /** This gets the offset in the vscode document that is being added (then >0) or removed (then <0) */
-function getTextOffset(type: OperationType, step: ReplaceStep) : number  {
-    if (type == OperationType.delete) return step.from - step.to;
+function getTextOffset(type: OperationType, step: ReplaceStep): number {
+  if (type == OperationType.delete) return step.from - step.to;
 
-    /** Validate step if not a delete type */
-    if (step.slice.content.firstChild?.text === undefined) throw new TextUpdateError(" Invalid replace step " + step);
+  /** Validate step if not a delete type */
+  if (step.slice.content.firstChild?.text === undefined)
+    throw new TextUpdateError(" Invalid replace step " + step);
 
-    if (type == OperationType.insert) return step.slice.content.firstChild.text?.length;
+  if (type == OperationType.insert)
+    return step.slice.content.firstChild.text?.length;
 
-    return step.slice.content.firstChild.text?.length + step.from - step.to;
+  return step.slice.content.firstChild.text?.length + step.from - step.to;
 }

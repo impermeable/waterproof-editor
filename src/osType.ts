@@ -1,7 +1,7 @@
 export enum OS {
-	Windows,
-	MacOS,
-	Unix,
-	Linux,
-	Unknown
+  Windows,
+  MacOS,
+  Unix,
+  Linux,
+  Unknown,
 }

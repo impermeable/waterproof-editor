@@ -12,11 +12,9 @@ module.exports = {
     "^.*.js$": ["ts-jest", { tsconfig: "tsconfig.test.json" }],
     "^.*.css$": ["ts-jest", { tsconfig: "tsconfig.test.json" }],
   },
-  transformIgnorePatterns: [
-    '/node_modules/(?!(@benrbray|katex)/)'
-  ],
+  transformIgnorePatterns: ["/node_modules/(?!(@benrbray|katex)/)"],
   moduleNameMapper: {
-    '\\.(css|less)$': '<rootDir>/__tests__/styleMock.js'
+    "\\.(css|less)$": "<rootDir>/__tests__/styleMock.js",
   },
-  testMatch: ["**/__tests__/**/?(*.)+(spec|test).?([mc])[jt]s?(x)"]
+  testMatch: ["**/__tests__/**/?(*.)+(spec|test).?([mc])[jt]s?(x)"],
 };
