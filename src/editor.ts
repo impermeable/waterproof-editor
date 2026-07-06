@@ -425,7 +425,51 @@ export class WaterproofEditor implements MessageHandlerEditor {
   }
 
   /**
-   * Returns the text content of specified parts of the document as well as the positions where the text starts.
+   * Returns the text content of (parts of) the document as well as the positions where the text starts and ends.
+   *
+   * Does not use the serializer, but extracts the text content directly from the nodes.
+   * @param include Types of content to include.
+   */
+  public textContent(
+    include: number = 0,
+  ): Array<[string, { start: number; end: number, parent: string }]> {
+    if (!this._view || this._mapping === undefined) return [];
+    const mapping = this._mapping;
+    const contents: Array<[string, { start: number; end: number, parent: string }]> = [];
+
+    const includeMarkdown = include & TextContentOfSpecifier.MARKDOWN;
+    const includeCode = include & TextContentOfSpecifier.CODE;
+    const includeMath = include & TextContentOfSpecifier.MATH_DISPLAY;
+
+    this._view.state.doc.descendants((node, _pos, parent) => {
+      // node type should be in include
+      if (
+        parent !== null &&
+        (include === undefined ||
+          (node.type === WaterproofSchema.nodes.markdown && includeMarkdown) ||
+          (node.type === WaterproofSchema.nodes.code && includeCode) ||
+          (node.type === WaterproofSchema.nodes.math_display && includeMath))
+      ) {
+        // TODO: This is a bit strange since we are converting the positions using the mapping.
+        // Should we *always* do this, even in cases where we are not necessarily dealing with the raw text file?
+
+        // The +1 gives us the prose position inside the text node
+        contents.push([
+          node.textContent,
+          {
+            start: mapping.pmIndexToTextOffset(_pos + 1),
+            end: mapping.pmIndexToTextOffset(_pos + 1 + node.nodeSize),
+            parent: parent.type.name
+          },
+        ]);
+      }
+      return true;
+    });
+    return contents;
+  }
+
+  /**
+   * Returns the text content of the input-areas in the document as well as the positions where the text starts.
    *
    * Does not use the serializer, but extracts the text content directly from the nodes.
    * @param include Types of content to include.
