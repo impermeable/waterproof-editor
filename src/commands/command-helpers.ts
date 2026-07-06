@@ -10,7 +10,7 @@ import {
 } from "prosemirror-state";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { WaterproofSchema } from "../schema";
-import { newline, inputArea, hint , text} from "../document/blocks/schema";
+import { newline, inputArea, hint, text } from "../document/blocks/schema";
 import {
   closingTagStartsWithNewline,
   getParentAndIndex,
@@ -25,119 +25,157 @@ import { TagConfiguration } from "../api";
 /**
  * Helper function for inserting a new node below the currently selected one.
  * @param state The current editor state.
- * @param tr The current transaction for the state of the editor. 
+ * @param tr The current transaction for the state of the editor.
  * @param wrappedNodeType The type of node to insert (one of `WaterproofSchema.nodes`)
  * @param wrapNodeType The type of node that wraps the inserted node (one of `WaterproofSchema.nodes`)
  * @returns An insertion transaction.
  */
-export function insertCompositeNodeBelow(state: EditorState, tr: Transaction, wrappedNodeType: NodeType, wrapNodeType: NodeType | undefined, tagConf : TagConfiguration, hintTitle: string = "💡 Hint", content: string =""): Transaction | undefined {
-    const sel = state.selection;
-    let trans: Transaction = tr;
+export function insertCompositeNodeBelow(
+  state: EditorState,
+  tr: Transaction,
+  wrappedNodeType: NodeType,
+  wrapNodeType: NodeType | undefined,
+  tagConf: TagConfiguration,
+  hintTitle: string = "💡 Hint",
+  content: string = ""
+): Transaction | undefined {
+  const sel = state.selection;
+  let trans: Transaction = tr;
 
-    const outerNodeType = wrapNodeType === undefined ? wrappedNodeType : wrapNodeType;
+  const outerNodeType =
+    wrapNodeType === undefined ? wrappedNodeType : wrapNodeType;
 
-    const insertNewlineBeforeIfNotExists = needsNewlineBefore(outerNodeType, tagConf);
-    const insertNewlineAfterIfNotExists  = needsNewlineAfter(outerNodeType, tagConf);
+  const insertNewlineBeforeIfNotExists = needsNewlineBefore(
+    outerNodeType,
+    tagConf
+  );
+  const insertNewlineAfterIfNotExists = needsNewlineAfter(
+    outerNodeType,
+    tagConf
+  );
 
-    const parentAndIndex = getParentAndIndex(sel);
-    if (parentAndIndex === null) return;
-    const {parent, index} = parentAndIndex;
+  const parentAndIndex = getParentAndIndex(sel);
+  if (parentAndIndex === null) return;
+  const { parent, index } = parentAndIndex;
 
-    const nodeBelowSelection = parent.maybeChild(index + 1);
-    const afterIsNewline = nodeBelowSelection === null ? false : (nodeBelowSelection.type === WaterproofSchema.nodes.newline);
+  const nodeBelowSelection = parent.maybeChild(index + 1);
+  const afterIsNewline =
+    nodeBelowSelection === null
+      ? false
+      : nodeBelowSelection.type === WaterproofSchema.nodes.newline;
 
-    let pos;
+  let pos;
 
-    if (sel instanceof NodeSelection) {
-        // To and from point directly to beginning and end of node.
-        pos = sel.to;
-    } else if (sel instanceof TextSelection) {
-        pos = sel.from + (sel.$from.parent.nodeSize - sel.$from.parentOffset) - 1;
-    } else {
-        return;
-    }
+  if (sel instanceof NodeSelection) {
+    // To and from point directly to beginning and end of node.
+    pos = sel.to;
+  } else if (sel instanceof TextSelection) {
+    pos = sel.from + (sel.$from.parent.nodeSize - sel.$from.parentOffset) - 1;
+  } else {
+    return;
+  }
 
-    if (afterIsNewline) {
-        // Assumption: If a newline appears after a node the current node wants that.
-        pos += 1; // We are going to insert after
-    }
+  if (afterIsNewline) {
+    // Assumption: If a newline appears after a node the current node wants that.
+    pos += 1; // We are going to insert after
+  }
 
-    const afterNewline = parent.maybeChild(index + 2);
-    const hasNewlineAfter = afterNewline === null ? false : afterNewline.type === WaterproofSchema.nodes.newline;
+  const afterNewline = parent.maybeChild(index + 2);
+  const hasNewlineAfter =
+    afterNewline === null
+      ? false
+      : afterNewline.type === WaterproofSchema.nodes.newline;
 
-    
-    const nodeBelowInsertion = afterIsNewline ? afterNewline : nodeBelowSelection;
-    const newlineAlreadyBelow = afterIsNewline ? hasNewlineAfter : false;
-    const belowNeedsNewlineBefore = nodeBelowInsertion !== null && needsNewlineBefore(nodeBelowInsertion.type, tagConf);
-    // A newline is also required before the new node if the current node's close tag requires one.
-    const currentNode = parent.maybeChild(index);
-    const currentNeedsNewlineAfter = tagConf && currentNode ? needsNewlineAfter(currentNode.type, tagConf) : false;
+  const nodeBelowInsertion = afterIsNewline ? afterNewline : nodeBelowSelection;
+  const newlineAlreadyBelow = afterIsNewline ? hasNewlineAfter : false;
+  const belowNeedsNewlineBefore =
+    nodeBelowInsertion !== null &&
+    needsNewlineBefore(nodeBelowInsertion.type, tagConf);
+  // A newline is also required before the new node if the current node's close tag requires one.
+  const currentNode = parent.maybeChild(index);
+  const currentNeedsNewlineAfter =
+    tagConf && currentNode
+      ? needsNewlineAfter(currentNode.type, tagConf)
+      : false;
 
-    const toInsert: PNode[] = [];
-    if ((insertNewlineBeforeIfNotExists || currentNeedsNewlineAfter) && !afterIsNewline) {
-        toInsert.push(newline());
-    }
+  const toInsert: PNode[] = [];
+  if (
+    (insertNewlineBeforeIfNotExists || currentNeedsNewlineAfter) &&
+    !afterIsNewline
+  ) {
+    toInsert.push(newline());
+  }
 
-    let wrappedNode;
-    if (content.length > 0) {
-        wrappedNode = wrappedNodeType.create({}, text(content));
-    } else {
-        wrappedNode = wrappedNodeType.create();
-    }
+  let wrappedNode;
+  if (content.length > 0) {
+    wrappedNode = wrappedNodeType.create({}, text(content));
+  } else {
+    wrappedNode = wrappedNodeType.create();
+  }
 
-    if (wrapNodeType === undefined) {
-        toInsert.push(wrappedNode);
-    }
-    else if (wrapNodeType === WaterproofSchema.nodes.hint) {
-        toInsert.push(hint(hintTitle, [newline(), wrappedNode, newline()]));
-    } else if (wrapNodeType === WaterproofSchema.nodes.input) {
-        toInsert.push(inputArea([newline(), wrappedNode, newline()]));
-    } else {
-        // Unsupported wrapper type for this helper.
-        return;
-    }
-    // A trailing newline is needed when:
-    // 1. The node is inserted after an existing newline and there is no newline further down, OR
-    // 2. The node below the insertion point needs a newline before it, OR
-    // 3. The new node becomes the last child of a non-doc container and requires a newline after
-    //    its closing tag. The newline is only needed when the container's own closing tag does not
-    //    already start with a newline (which would otherwise provide that separator).
-    if ((insertNewlineAfterIfNotExists && !hasNewlineAfter && afterIsNewline) ||
-        (belowNeedsNewlineBefore && !newlineAlreadyBelow) ||
-        (insertNewlineAfterIfNotExists && !afterIsNewline && parent.type !== WaterproofSchema.nodes.doc && !closingTagStartsWithNewline(parent.type, tagConf))) {
-        toInsert.push(newline());
-    }
+  if (wrapNodeType === undefined) {
+    toInsert.push(wrappedNode);
+  } else if (wrapNodeType === WaterproofSchema.nodes.hint) {
+    toInsert.push(hint(hintTitle, [newline(), wrappedNode, newline()]));
+  } else if (wrapNodeType === WaterproofSchema.nodes.input) {
+    toInsert.push(inputArea([newline(), wrappedNode, newline()]));
+  } else {
+    // Unsupported wrapper type for this helper.
+    return;
+  }
+  // A trailing newline is needed when:
+  // 1. The node is inserted after an existing newline and there is no newline further down, OR
+  // 2. The node below the insertion point needs a newline before it, OR
+  // 3. The new node becomes the last child of a non-doc container and requires a newline after
+  //    its closing tag. The newline is only needed when the container's own closing tag does not
+  //    already start with a newline (which would otherwise provide that separator).
+  if (
+    (insertNewlineAfterIfNotExists && !hasNewlineAfter && afterIsNewline) ||
+    (belowNeedsNewlineBefore && !newlineAlreadyBelow) ||
+    (insertNewlineAfterIfNotExists &&
+      !afterIsNewline &&
+      parent.type !== WaterproofSchema.nodes.doc &&
+      !closingTagStartsWithNewline(parent.type, tagConf))
+  ) {
+    toInsert.push(newline());
+  }
 
-    trans = trans.insert(pos, toInsert);
+  trans = trans.insert(pos, toInsert);
 
-    return trans;
+  return trans;
 }
 
 /**
  * Helper function for inserting a new node below the currently selected one.
  * @param state The current editor state.
- * @param tr The current transaction for the state of the editor. 
+ * @param tr The current transaction for the state of the editor.
  * @param wrappedNodeType The type of node to insert (one of `WaterproofSchema.nodes`)
  * @param wrapNodeType The type of node that wraps the inserted node (one of `WaterproofSchema.nodes`)
  * @returns An insertion transaction.
  */
 export function insertCompositeNodeAbove(
-    state: EditorState, 
-    tr: Transaction, 
-    wrappedNodeType: NodeType, 
-    wrapNodeType: NodeType | undefined, 
-    tagConf: TagConfiguration, 
-    hintTitle: string = "💡 Hint", 
-    content: string = ""
+  state: EditorState,
+  tr: Transaction,
+  wrappedNodeType: NodeType,
+  wrapNodeType: NodeType | undefined,
+  tagConf: TagConfiguration,
+  hintTitle: string = "💡 Hint",
+  content: string = ""
 ): Transaction | undefined {
-    const sel = state.selection;
-    let trans: Transaction = tr;
+  const sel = state.selection;
+  let trans: Transaction = tr;
 
-    const outerNodeType = wrapNodeType === undefined ? wrappedNodeType : wrapNodeType;
+  const outerNodeType =
+    wrapNodeType === undefined ? wrappedNodeType : wrapNodeType;
 
-
-    const insertNewlineBeforeIfNotExists = needsNewlineBefore(outerNodeType, tagConf);
-    const insertNewlineAfterIfNotExists  = needsNewlineAfter(outerNodeType, tagConf);
+  const insertNewlineBeforeIfNotExists = needsNewlineBefore(
+    outerNodeType,
+    tagConf
+  );
+  const insertNewlineAfterIfNotExists = needsNewlineAfter(
+    outerNodeType,
+    tagConf
+  );
 
   const parentAndIndex = getParentAndIndex(sel);
   if (parentAndIndex === null) return;
@@ -207,23 +245,22 @@ export function insertCompositeNodeAbove(
     toInsert.push(newline());
   }
   let wrappedNode;
-    if (content.length > 0) {
-        wrappedNode = wrappedNodeType.create({}, text(content));
-    } else {
-        wrappedNode = wrappedNodeType.create();
-    }
+  if (content.length > 0) {
+    wrappedNode = wrappedNodeType.create({}, text(content));
+  } else {
+    wrappedNode = wrappedNodeType.create();
+  }
 
-    if (wrapNodeType === undefined) {
-        toInsert.push(wrappedNode);
-    }
-    else if (wrapNodeType === WaterproofSchema.nodes.hint) {
-        toInsert.push(hint(hintTitle, [newline(), wrappedNode, newline()]));
-    } else if (wrapNodeType === WaterproofSchema.nodes.input) {
-        toInsert.push(inputArea([newline(), wrappedNode, newline()]));
-    } else {
-        // Unsupported wrapper type for this helper.
-        return;
-    }
+  if (wrapNodeType === undefined) {
+    toInsert.push(wrappedNode);
+  } else if (wrapNodeType === WaterproofSchema.nodes.hint) {
+    toInsert.push(hint(hintTitle, [newline(), wrappedNode, newline()]));
+  } else if (wrapNodeType === WaterproofSchema.nodes.input) {
+    toInsert.push(inputArea([newline(), wrappedNode, newline()]));
+  } else {
+    // Unsupported wrapper type for this helper.
+    return;
+  }
   if (
     (insertNewlineAfterIfNotExists || currentNeedsNewlineBefore) &&
     !beforeIsNewline
@@ -235,7 +272,6 @@ export function insertCompositeNodeAbove(
 
   return trans;
 }
-
 
 export function nodeFromSel(sel: Selection): PNode | undefined {
   if (sel instanceof TextSelection) {

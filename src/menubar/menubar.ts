@@ -19,10 +19,10 @@ import { OS } from "../osType";
 import {
   getCmdInsertCode,
   getCmdInsertLatex,
-  getCmdInsertMarkdown, 
-  getCmdInsertTextHint, 
-  getCmdInsertCodeHint, 
-  getCmdInsertExample
+  getCmdInsertMarkdown,
+  getCmdInsertTextHint,
+  getCmdInsertCodeHint,
+  getCmdInsertExample,
 } from "../commands/insert-command";
 import { MenuBarEntry, TagConfiguration } from "../api";
 
@@ -50,7 +50,7 @@ function createMenuItem(
   tooltipText: string,
   cmd: Command,
   buttonSettings?: { teacherModeOnly?: boolean; showByDefault?: boolean },
-  customEntry?: boolean,
+  customEntry?: boolean
 ): MenuEntry {
   // Create the DOM element.
   const menuItem = document.createElement("div");
@@ -198,7 +198,7 @@ function createDefaultMenu(
   outerView: EditorView,
   os: OS,
   tagConf: TagConfiguration,
-  customEntries: Array<MenuBarEntry> | undefined,
+  customEntries: Array<MenuBarEntry> | undefined
 ): MenuView {
   // Platform specific keybinding string:
   const cmdOrCtrl = os == OS.MacOS ? "Cmd" : "Ctrl";
@@ -212,96 +212,96 @@ function createDefaultMenu(
     createMenuItem(
       "Math↓",
       `Insert new verified math block underneath (${keyBinding("q")})`,
-      getCmdInsertCode(InsertionPlace.Below, tagConf),
+      getCmdInsertCode(InsertionPlace.Below, tagConf)
     ),
     createMenuItem(
       "Math↑",
       `Insert new verified math block above (${keyBinding("Q")})`,
-      getCmdInsertCode(InsertionPlace.Above, tagConf),
+      getCmdInsertCode(InsertionPlace.Above, tagConf)
     ),
     // Insert Markdown
     createMenuItem(
       "Text↓",
       `Insert new text block underneath (${keyBinding("m")})`,
-      getCmdInsertMarkdown(InsertionPlace.Below, tagConf),
+      getCmdInsertMarkdown(InsertionPlace.Below, tagConf)
     ),
     createMenuItem(
       "Text↑",
       `Insert new text block above (${keyBinding("M")})`,
-      getCmdInsertMarkdown(InsertionPlace.Above, tagConf),
+      getCmdInsertMarkdown(InsertionPlace.Above, tagConf)
     ),
     // Insert LaTeX
     createMenuItem(
       `${LaTeX_SVG} <div>↓</div>`,
       `Insert new LaTeX block underneath (${keyBinding("l")})`,
-      getCmdInsertLatex(InsertionPlace.Below, tagConf),
+      getCmdInsertLatex(InsertionPlace.Below, tagConf)
     ),
     createMenuItem(
       `${LaTeX_SVG} <div>↑</div>`,
       `Insert new LaTeX block above (${keyBinding("L")})`,
-      getCmdInsertLatex(InsertionPlace.Above, tagConf),
+      getCmdInsertLatex(InsertionPlace.Above, tagConf)
     ),
     // Select the parent node.
     createMenuItem(
       "Parent",
       `Select the parent node (${keyBinding(".")})`,
-      selectParentNode,
+      selectParentNode
     ),
     // in teacher mode, display input area, hint and lift buttons.
     createMenuItem(
       "ⵊ...",
       "Make selection an input area",
       teacherOnlyWrapper(wrapInInput(tagConf)),
-      teacherOnly,
+      teacherOnly
     ),
     createMenuItem(
       "<strong>?</strong>",
       "Make selection a hint element",
       teacherOnlyWrapper(wrapInHint(tagConf)),
-      teacherOnly,
+      teacherOnly
     ),
     createMenuItem(
       "↑",
       "Lift selected node (Reverts the effect of making a 'hint' or 'input area')",
       teacherOnlyWrapper(wpLift(tagConf)),
-      teacherOnly,
+      teacherOnly
     ),
     createMenuItem(
       "🗑️",
       "Delete selection",
       teacherOnlyWrapper(deleteSelection(tagConf)),
-      teacherOnly,
+      teacherOnly
     ),
     createMenuItem(
-        "Text Hint↑", 
-        "Insert new text hint above", 
-        getCmdInsertTextHint(InsertionPlace.Above, tagConf)
+      "Text Hint↑",
+      "Insert new text hint above",
+      getCmdInsertTextHint(InsertionPlace.Above, tagConf)
     ),
     createMenuItem(
-        "Text Hint↓", 
-        "Insert new text hint below", 
-        getCmdInsertTextHint(InsertionPlace.Below, tagConf)
+      "Text Hint↓",
+      "Insert new text hint below",
+      getCmdInsertTextHint(InsertionPlace.Below, tagConf)
     ),
     createMenuItem(
-        "Math Hint↑", 
-        "Insert new math hint above", 
-        getCmdInsertCodeHint(InsertionPlace.Above, tagConf)
+      "Math Hint↑",
+      "Insert new math hint above",
+      getCmdInsertCodeHint(InsertionPlace.Above, tagConf)
     ),
     createMenuItem(
-        "Math Hint↓", 
-        "Insert new math hint below", 
-        getCmdInsertCodeHint(InsertionPlace.Below, tagConf)
+      "Math Hint↓",
+      "Insert new math hint below",
+      getCmdInsertCodeHint(InsertionPlace.Below, tagConf)
     ),
     createMenuItem(
-        "Example↑", 
-        "Insert new example block above", 
-        getCmdInsertExample(InsertionPlace.Above, tagConf)
+      "Example↑",
+      "Insert new example block above",
+      getCmdInsertExample(InsertionPlace.Above, tagConf)
     ),
     createMenuItem(
-        "Example↓", 
-        "Insert new example block below", 
-        getCmdInsertExample(InsertionPlace.Below, tagConf)
-    )
+      "Example↓",
+      "Insert new example block below",
+      getCmdInsertExample(InsertionPlace.Below, tagConf)
+    ),
   ];
 
   const customMenuItems = customEntries?.map((entry) => {
@@ -313,7 +313,7 @@ function createDefaultMenu(
         return true;
       },
       entry.buttonVisibility,
-      true,
+      true
     );
     item.isActive = entry.isActive;
     return item;
@@ -331,11 +331,11 @@ function createDefaultMenu(
           if (dispatch)
             console.log(
               "\x1b[33m[DEBUG]\x1b[0m dumped doc",
-              JSON.stringify(state.doc.toJSON()),
+              JSON.stringify(state.doc.toJSON())
             );
           return true;
         },
-        { showByDefault: true },
+        { showByDefault: true }
       ),
       createMenuItem(
         "DUMP SELECTION",
@@ -345,7 +345,7 @@ function createDefaultMenu(
             console.log("\x1b[33m[DEBUG]\x1b[0m Selection", state.selection);
           return true;
         },
-        { showByDefault: true },
+        { showByDefault: true }
       ),
       createMenuItem(
         "DUMP STATE",
@@ -354,12 +354,12 @@ function createDefaultMenu(
           if (dispatch)
             console.log(
               "\x1b[33m[DEBUG]\x1b[0m Editor State",
-              JSON.stringify(state.toJSON()),
+              JSON.stringify(state.toJSON())
             );
           return true;
         },
-        { showByDefault: true },
-      ),
+        { showByDefault: true }
+      )
     );
   }
 
@@ -378,7 +378,7 @@ interface IMenuPluginState {
  * The menu plugin key.
  */
 export const MENU_PLUGIN_KEY = new PluginKey<IMenuPluginState>(
-  "prosemirror-menubar",
+  "prosemirror-menubar"
 );
 
 /**
@@ -389,7 +389,7 @@ export const MENU_PLUGIN_KEY = new PluginKey<IMenuPluginState>(
 export function menuPlugin(
   os: OS,
   tagConf: TagConfiguration,
-  customEntries: Array<MenuBarEntry> | undefined,
+  customEntries: Array<MenuBarEntry> | undefined
 ) {
   return new Plugin({
     // This plugin has an associated `view`. This allows it to add DOM elements.

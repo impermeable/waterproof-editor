@@ -8,10 +8,10 @@ import { WaterproofSchema } from "../../src/schema";
 import {
   getCmdInsertCode,
   getCmdInsertMarkdown,
-  getCmdInsertLatex, 
-  getCmdInsertCodeHint, 
-  getCmdInsertTextHint, 
-  getCmdInsertExample
+  getCmdInsertLatex,
+  getCmdInsertCodeHint,
+  getCmdInsertTextHint,
+  getCmdInsertExample,
 } from "../../src/commands/insert-command";
 import { InsertionPlace } from "../../src/commands";
 import { configuration } from "../../src/markdown-defaults";
@@ -89,7 +89,7 @@ test("Insert markdown above code cell adds a newline separator", () => {
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateOneCodeForAbove,
+      stateOneCodeForAbove
     ),
   });
 
@@ -196,7 +196,7 @@ test("Insert markdown above math_display when code is before the newline adds ex
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateCodeNewlineMath_mathSelected,
+      stateCodeNewlineMath_mathSelected
     ),
   });
   const cmd = getCmdInsertMarkdown(InsertionPlace.Above, tagConf);
@@ -216,7 +216,7 @@ test("Insert math above math_display when code is before the newline adds extra 
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateCodeNewlineMath_mathSelected,
+      stateCodeNewlineMath_mathSelected
     ),
   });
   const cmd = getCmdInsertLatex(InsertionPlace.Above, tagConf);
@@ -236,7 +236,7 @@ test("Insert markdown below math_display when code is after the newline adds ext
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateMathNewlineCode_mathSelected,
+      stateMathNewlineCode_mathSelected
     ),
   });
   const cmd = getCmdInsertMarkdown(InsertionPlace.Below, tagConf);
@@ -256,7 +256,7 @@ test("Insert math below math_display when code is after the newline adds extra n
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateMathNewlineCode_mathSelected,
+      stateMathNewlineCode_mathSelected
     ),
   });
   const cmd = getCmdInsertLatex(InsertionPlace.Below, tagConf);
@@ -398,7 +398,7 @@ test("Insert code below markdown inside input area adds trailing newline after c
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateInputWithMarkdown,
+      stateInputWithMarkdown
     ),
   });
 
@@ -429,7 +429,7 @@ function putCursorInside(view: EditorView, typeName: string, nth: number) {
   });
   if (target === null) throw new Error(`No ${typeName}[${nth}] found`);
   view.dispatch(
-    view.state.tr.setSelection(TextSelection.create(view.state.doc, target)),
+    view.state.tr.setSelection(TextSelection.create(view.state.doc, target))
   );
 }
 
@@ -464,7 +464,7 @@ test("Insert code between two adjacent cells keeps trailing newline after the co
 
   const insertMarkdownBelow = getCmdInsertMarkdown(
     InsertionPlace.Below,
-    rocqConf,
+    rocqConf
   );
   const insertCodeBelow = getCmdInsertCode(InsertionPlace.Below, rocqConf);
 
@@ -531,7 +531,7 @@ test("Insert code between two adjacent cells keeps leading newline before the co
 
   const insertMarkdownAbove = getCmdInsertMarkdown(
     InsertionPlace.Above,
-    rocqConf,
+    rocqConf
   );
   const insertCodeAbove = getCmdInsertCode(InsertionPlace.Above, rocqConf);
 
@@ -577,7 +577,7 @@ test("Insert code above markdown inside input area adds leading newline before c
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateInputWithMarkdown,
+      stateInputWithMarkdown
     ),
   });
 
@@ -595,75 +595,126 @@ test("Insert code above markdown inside input area adds leading newline before c
 });
 
 test("Insert text hint below code", () => {
-    const view = new EditorView(null, { state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneCode) });
+  const view = new EditorView(null, {
+    state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneCode),
+  });
 
-    const cmd = getCmdInsertTextHint(InsertionPlace.Below, tagConf);
-    const res = cmd(view.state, view.dispatch, view);
+  const cmd = getCmdInsertTextHint(InsertionPlace.Below, tagConf);
+  const res = cmd(view.state, view.dispatch, view);
 
-    // We expect this to be true. Could be false in the case we are not in teacher-mode and hence not allowed to insert or when
-    // something goes wrong with creating the editor.
-    expect(res).toBe(true);
-    const content = view.state.doc.toJSON().content;
-    expect(content[0].type).toBe("code");
-    expect(content[1].type).toBe("newline");
-    expect(content[2].type).toBe("hint");
-    expect(content[2].attrs.title).toBe("💡 Hint");
-    expect(content[2].content).toStrictEqual([
-        { "type": "newline" }, { "type": "markdown" }, { "type": "newline" }
-    ]);
-    expect(content[0].content[0].text).toBe("Goal True.");
+  // We expect this to be true. Could be false in the case we are not in teacher-mode and hence not allowed to insert or when
+  // something goes wrong with creating the editor.
+  expect(res).toBe(true);
+  const content = view.state.doc.toJSON().content;
+  expect(content[0].type).toBe("code");
+  expect(content[1].type).toBe("newline");
+  expect(content[2].type).toBe("hint");
+  expect(content[2].attrs.title).toBe("💡 Hint");
+  expect(content[2].content).toStrictEqual([
+    { type: "newline" },
+    { type: "markdown" },
+    { type: "newline" },
+  ]);
+  expect(content[0].content[0].text).toBe("Goal True.");
 });
 
 const stateOneMarkdown = {
-  "doc": { "type": "doc", "content": [{ "type": "markdown", "content": [{ "type": "text", "text": "Content." }] }] },
-  "selection": { "type": "text", "anchor": 2, "head": 2 }
+  doc: {
+    type: "doc",
+    content: [
+      { type: "markdown", content: [{ type: "text", text: "Content." }] },
+    ],
+  },
+  selection: { type: "text", anchor: 2, head: 2 },
 };
 test("Insert code hint above markdown", () => {
-    const view = new EditorView(null, { state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown) });
+  const view = new EditorView(null, {
+    state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown),
+  });
 
-    const cmd = getCmdInsertCodeHint(InsertionPlace.Above, tagConf);
-    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+  const cmd = getCmdInsertCodeHint(InsertionPlace.Above, tagConf);
+  expect(cmd(view.state, view.dispatch, view)).toBe(true);
 
-    const content = view.state.doc.toJSON().content;
-    expect(content[0].type).toBe("hint");
-    expect(content[0].attrs.title).toBe("🛠️ Technical details");
-    expect(content[0].content).toStrictEqual([
-    { "type": "newline" }, { "type": "code" }, { "type": "newline" }
-    ]);
-    expect(content[1].type).toBe("markdown");
+  const content = view.state.doc.toJSON().content;
+  expect(content[0].type).toBe("hint");
+  expect(content[0].attrs.title).toBe("🛠️ Technical details");
+  expect(content[0].content).toStrictEqual([
+    { type: "newline" },
+    { type: "code" },
+    { type: "newline" },
+  ]);
+  expect(content[1].type).toBe("markdown");
 });
 
 test("Insert rocq example below markdown", () => {
-    const view = new EditorView(null, { state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown) });
-    const rocqConf = configuration("coq");
-    const cmd = getCmdInsertExample(InsertionPlace.Below, rocqConf);
-    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+  const view = new EditorView(null, {
+    state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown),
+  });
+  const rocqConf = configuration("coq");
+  const cmd = getCmdInsertExample(InsertionPlace.Below, rocqConf);
+  expect(cmd(view.state, view.dispatch, view)).toBe(true);
 
-    const content = view.state.doc.toJSON().content;
-    expect(content[0].type).toBe("markdown");
-    expect(content[1].type).toBe("newline");
-    expect(content[2].type).toBe("code");
-    expect(content[2].content[0].text).toBe("Example example: True.\nProof.\n\nQed.");
+  const content = view.state.doc.toJSON().content;
+  expect(content[0].type).toBe("markdown");
+  expect(content[1].type).toBe("newline");
+  expect(content[2].type).toBe("code");
+  expect(content[2].content[0].text).toBe(
+    "Example example: True.\nProof.\n\nQed."
+  );
 });
 
 const leanConfig: TagConfiguration = {
-    code:     { openTag: "```lean\n",                          closeTag: "\n```",  openRequiresNewline: true,  closeRequiresNewline: true  },
-    hint:     { openTag: (t: string) => `:::hint "${t}"\n`,   closeTag: "\n:::",  openRequiresNewline: true,  closeRequiresNewline: true  },
-    input:    { openTag: ":::input\n",                         closeTag: "\n:::",  openRequiresNewline: true,  closeRequiresNewline: true  },
-    markdown: { openTag: "",                                   closeTag: "",       openRequiresNewline: false, closeRequiresNewline: false },
-    math:     { openTag: "$$`",                                closeTag: "`",      openRequiresNewline: false, closeRequiresNewline: false },
-    container:{ openTag: (n: string) => `::::${n}\n`,         closeTag: "\n::::", openRequiresNewline: true, closeRequiresNewline: true },
+  code: {
+    openTag: "```lean\n",
+    closeTag: "\n```",
+    openRequiresNewline: true,
+    closeRequiresNewline: true,
+  },
+  hint: {
+    openTag: (t: string) => `:::hint "${t}"\n`,
+    closeTag: "\n:::",
+    openRequiresNewline: true,
+    closeRequiresNewline: true,
+  },
+  input: {
+    openTag: ":::input\n",
+    closeTag: "\n:::",
+    openRequiresNewline: true,
+    closeRequiresNewline: true,
+  },
+  markdown: {
+    openTag: "",
+    closeTag: "",
+    openRequiresNewline: false,
+    closeRequiresNewline: false,
+  },
+  math: {
+    openTag: "$$`",
+    closeTag: "`",
+    openRequiresNewline: false,
+    closeRequiresNewline: false,
+  },
+  container: {
+    openTag: (n: string) => `::::${n}\n`,
+    closeTag: "\n::::",
+    openRequiresNewline: true,
+    closeRequiresNewline: true,
+  },
 };
 
 test("Insert lean example below markdown", () => {
-    const view = new EditorView(null, { state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown) });
+  const view = new EditorView(null, {
+    state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown),
+  });
 
-    const cmd = getCmdInsertExample(InsertionPlace.Below, leanConfig);
-    expect(cmd(view.state, view.dispatch, view)).toBe(true);
+  const cmd = getCmdInsertExample(InsertionPlace.Below, leanConfig);
+  expect(cmd(view.state, view.dispatch, view)).toBe(true);
 
-    const content = view.state.doc.toJSON().content;
-    expect(content[0].type).toBe("markdown");
-    expect(content[1].type).toBe("newline");
-    expect(content[2].type).toBe("code");
-    expect(content[2].content[0].text).toBe('Example "example"\nGiven:\nAssume:\nConclusion:\nProof:\n\nQED');
+  const content = view.state.doc.toJSON().content;
+  expect(content[0].type).toBe("markdown");
+  expect(content[1].type).toBe("newline");
+  expect(content[2].type).toBe("code");
+  expect(content[2].content[0].text).toBe(
+    'Example "example"\nGiven:\nAssume:\nConclusion:\nProof:\n\nQED'
+  );
 });
