@@ -7,6 +7,8 @@ export enum BLOCK_NAME {
   HINT = "hint",
   MARKDOWN = "markdown",
   CODE = "code",
+  WIDGET = "widget",
+  WRAPPING_WIDGET = "wrapping_widget",
   NEWLINE = "newline",
   CONTAINER = "container",
 }

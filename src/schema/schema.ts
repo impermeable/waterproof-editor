@@ -8,6 +8,8 @@ export const SchemaCell = {
   Code: "code",
   Newline: "newline",
   Container: "container",
+  Widget: "widget",
+  WidgetContent: "widget_content",
 } as const;
 
 export type SchemaKeys = keyof typeof SchemaCell;
@@ -72,6 +74,28 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text">({
       },
       toDOM: () => {
         return ["WaterproofInput", { class: "inputarea" }, 0];
+      },
+    },
+    //#endregion
+
+    ////// Widgets //////
+    //#region widget
+    widget_content: {
+      content: "text*",
+      atom: true,
+      toDOM() {
+        return ["div", {}, 0];
+      },
+    },
+    widget: {
+      content: "containercontent widget_content",
+      group: "cell hintinputcontent containercontent",
+      atom: true,
+      attrs: {
+        type: { default: "" },
+      },
+      toDOM(node) {
+        return ["div", node.attrs, 0];
       },
     },
     //#endregion

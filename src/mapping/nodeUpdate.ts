@@ -36,6 +36,11 @@ export class NodeUpdate {
         return [this.tagConf.markdown.openTag, this.tagConf.markdown.closeTag];
       case "code":
         return [this.tagConf.code.openTag, this.tagConf.code.closeTag];
+      case "widget":
+        return [
+          this.tagConf.widget.openTag(title),
+          this.tagConf.widget.closeTag,
+        ];
       case "hint":
         return [this.tagConf.hint.openTag(title), this.tagConf.hint.closeTag];
       case "input":
@@ -261,11 +266,13 @@ export class NodeUpdate {
       );
     }
 
-    const nodeTitle = node.attrs.title
-      ? node.attrs.title
-      : node.attrs.name
-        ? node.attrs.name
-        : "";
+    const nodeTitle = node.attrs.type
+      ? node.attrs.type
+      : node.attrs.title
+        ? node.attrs.title
+        : node.attrs.name
+          ? node.attrs.name
+          : "";
     const [openTagForNode, closeTagForNode] = this.nodeNameToTagPair(
       node.type.name,
       nodeTitle,

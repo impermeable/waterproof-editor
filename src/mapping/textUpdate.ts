@@ -5,7 +5,7 @@ import { typeFromStep } from "./helper-functions";
 import { ReplaceStep } from "prosemirror-transform";
 import { TextUpdateError, DocChange } from "../api";
 
-const supportsTextEdits = new Set(["code", "markdown", "math_display"]);
+const supportsTextEdits = new Set(["code", "markdown", "math_display", "widget"]);
 
 export class TextUpdate {
   /**

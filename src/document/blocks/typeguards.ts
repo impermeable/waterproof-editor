@@ -6,6 +6,7 @@ import {
   InputAreaBlock,
   MarkdownBlock,
   MathDisplayBlock,
+  WidgetBlock,
   NewlineBlock,
 } from "./blocktypes";
 
@@ -17,6 +18,8 @@ export const isMathDisplayBlock = (block: Block): block is MathDisplayBlock =>
   block.type === BLOCK_NAME.MATH_DISPLAY;
 export const isCodeBlock = (block: Block): block is CodeBlock =>
   block.type === BLOCK_NAME.CODE;
+export const isWidgetBlock = (block: Block): block is WidgetBlock =>
+  block.type === BLOCK_NAME.WIDGET;
 export const isMarkdownBlock = (block: Block): block is MarkdownBlock =>
   block.type === BLOCK_NAME.MARKDOWN;
 export const isNewlineBlock = (block: Block): block is NewlineBlock =>

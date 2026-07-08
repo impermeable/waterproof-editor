@@ -7,6 +7,8 @@ import {
   MarkdownBlock,
   MathDisplayBlock,
   NewlineBlock,
+  WidgetBlock,
+  WrappingWidgetBlock,
 } from "../document";
 
 enum ParserState {
@@ -14,27 +16,34 @@ enum ParserState {
   Markdown,
   /** Parsing the contents of a code block ` ```langid ` to ` ``` ` */
   Code,
-  /** Inside a LaTeX block (i.e. $$ ... $$) */
+  /** Inside a LaTeX block (i.e. $$...$$) */
   LaTeX,
-  /**  Parsing a hint title (i.e. after `<hint title="` until `"`) */
+  /** Parsing a hint title (i.e. after `<hint title="` until `"`) */
   HintTitle,
+  /** Parsing the opening tag attributes of a widget (i.e. after `<widget ` until `>`) */
+  WidgetOpen,
+  /** Parsing the raw text contents of a non-container widget */
+  WidgetRaw,
 }
 
 enum NestedState {
-  /** Not in a hint or an input area */
+  /** Not in a hint, input area, or widget */
   None,
   /** Parsing as part of a hint */
   Hint,
   /** Parsing as part of an input area */
   Input,
+  /** Parsing as part of a container widget */
+  Widget,
 }
 
 /**
  * Parser for markdown documents.
  *
- * Next to the regular markdown and code parts this parser has predefined 'tags' for hints and input areas:
+ * Next to the regular markdown and code parts this parser has predefined 'tags' for hints, input areas, and widgets:
  * * The content between `<hint title="{title}">` and ` </hint>` is turned into a hint cell, `{title}` will turn into the title that is displayed in the editor.
  * * The content between `<input-area>` and `</input-area>` is turned into an input area.
+ * * The content between `<widget data-type="{type}">` and `</widget>` is turned into a widget.
  * @param document The document to convert into a `WaterproofDocument`
  * @param config An object that may contain
  * - `language: string`: The language tag to use for the code cells. That is, the part of the ` ``` ` when opening a code block (` ```python ` for a python
@@ -73,6 +82,8 @@ export function parse(
   let lineStartCounter = 0;
 
   let hintTitle = "";
+  let widgetType = "";
+  let widgetAttributesStr = "";
 
   let i = startParsingFrom;
   let newlineCounter = 0;
@@ -85,6 +96,10 @@ export function parse(
     hintOpenLength = hintOpen.length;
   const hintClose = "</hint>",
     hintCloseLength = hintClose.length;
+  const widgetOpen = "<widget ",
+    widgetOpenLength = widgetOpen.length;
+  const widgetClose = "</widget>",
+    widgetCloseLength = widgetClose.length;
   const inputAreaOpen = "<input-area>",
     inputAreaOpenLength = inputAreaOpen.length;
   const inputAreaClose = "</input-area>",
@@ -160,6 +175,10 @@ export function parse(
     return lookAhead(hintOpen);
   }
 
+  function opensWidgetBlock(): boolean {
+    return lookAhead(widgetOpen);
+  }
+
   function opensInputAreaBlock(): boolean {
     return lookAhead(inputAreaOpen);
   }
@@ -182,6 +201,10 @@ export function parse(
 
   function closesHintBlock(): boolean {
     return lookAhead(hintClose);
+  }
+
+  function closesWidgetBlock(): boolean {
+    return lookAhead(widgetClose);
   }
 
   function closesInputAreaBlock(): boolean {
@@ -249,6 +272,13 @@ export function parse(
       rangeStartNested = i;
       state = ParserState.HintTitle;
       nested = NestedState.Hint;
+    } else if (nested === NestedState.None && opensWidgetBlock()) {
+      closeMarkdown();
+      setRangeStart();
+      setLineStart();
+      i += widgetOpenLength; // Skip the `<widget `
+      widgetAttributesStr = "";
+      state = ParserState.WidgetOpen;
     } else if (nested === NestedState.None && opensInputAreaBlock()) {
       closeMarkdown();
       setRangeStart();
@@ -260,9 +290,11 @@ export function parse(
       nested = NestedState.Input;
     } else if (nested === NestedState.Hint && closesHintBlock()) {
       closeMarkdown();
-      nested = NestedState.None;
+      nested = NestedState.None; // MUST UN-NEST BEFORE EXTRACTING RANGES
+
       const range = { from: getRangeStart(), to: i + hintCloseLength };
       const innerRange = { from: getInnerRangeStart(), to: i };
+
       const hintBlock = new HintBlock(
         document.slice(innerRange.from, innerRange.to),
         hintTitle,
@@ -275,11 +307,32 @@ export function parse(
       i += hintCloseLength; // Skip the </hint>
       backToMarkdown(true);
       hintTitle = "";
+    } else if (nested === NestedState.Widget && closesWidgetBlock()) {
+      closeMarkdown();
+      nested = NestedState.None; // MUST UN-NEST BEFORE EXTRACTING RANGES
+
+      const range = { from: getRangeStart(), to: i + widgetCloseLength };
+      const innerRange = { from: getInnerRangeStart(), to: i };
+
+      const widgetBlock = new WrappingWidgetBlock(
+        document.slice(innerRange.from, innerRange.to),
+        widgetType,
+        range,
+        innerRange,
+        getLineStart(),
+        innerBlocks,
+      );
+      pushBlock(widgetBlock);
+      i += widgetCloseLength; // Skip the </widget>
+      backToMarkdown(true);
+      widgetType = "";
     } else if (nested === NestedState.Input && closesInputAreaBlock()) {
       closeMarkdown();
-      nested = NestedState.None;
+      nested = NestedState.None; // MUST UN-NEST BEFORE EXTRACTING RANGES
+
       const range = { from: getRangeStart(), to: i + inputAreaCloseLength };
       const innerRange = { from: getInnerRangeStart(), to: i };
+
       const inputAreaBlock = new InputAreaBlock(
         document.slice(innerRange.from, innerRange.to),
         range,
@@ -384,6 +437,40 @@ export function parse(
     }
   }
 
+  function handleWidgetOpenCase(): void {
+    while (i < document.length) {
+      const char = document[i];
+      if (char === ">") {
+        // Parse attributes out of the extracted opening tag string
+        const typeMatch = widgetAttributesStr.match(/data-type="([^"]*)"/);
+        widgetType = typeMatch ? typeMatch[1] : "";
+
+        const containerMatch = widgetAttributesStr.match(
+          /data-is-container="([^"]*)"/,
+        );
+        const isContainer = containerMatch
+          ? containerMatch[1] === "true"
+          : false;
+
+        i++; // Skip the '>'
+
+        if (isContainer) {
+          nested = NestedState.Widget;
+          backToMarkdown(); // Initializes the inner block tracking variables
+          innerRangeStart = i; // Records where the widget's content starts for the outer block
+        } else {
+          state = ParserState.WidgetRaw;
+          innerRangeStart = i;
+          setLineStart();
+        }
+        break;
+      } else {
+        widgetAttributesStr += char;
+        checkNewlineAndIncrementI();
+      }
+    }
+  }
+
   while (i < stopParsingAt) {
     switch (state as ParserState) {
       case ParserState.Markdown:
@@ -397,6 +484,30 @@ export function parse(
         break;
       case ParserState.HintTitle:
         handleHintTitleCase();
+        break;
+      case ParserState.WidgetOpen:
+        handleWidgetOpenCase();
+        break;
+      case ParserState.WidgetRaw:
+        if (closesWidgetBlock()) {
+          const range = { from: getRangeStart(), to: i + widgetCloseLength };
+          const innerRange = { from: getInnerRangeStart(), to: i };
+          const content = document.slice(innerRange.from, innerRange.to);
+
+          const widgetBlock = new WidgetBlock(
+            content,
+            widgetType,
+            range,
+            innerRange,
+            getLineStart(),
+          );
+          pushBlock(widgetBlock);
+          i += widgetCloseLength;
+          backToMarkdown();
+          widgetType = "";
+        } else {
+          checkNewlineAndIncrementI();
+        }
         break;
     }
   }

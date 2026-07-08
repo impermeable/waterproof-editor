@@ -40,6 +40,7 @@ function tagConfForNodeType(nodeType: NodeType, tagConf: TagConfiguration) {
   if (nodeType === WaterproofSchema.nodes.input) return tagConf.input;
   if (nodeType === WaterproofSchema.nodes.markdown) return tagConf.markdown;
   if (nodeType === WaterproofSchema.nodes.math_display) return tagConf.math;
+  if (nodeType === WaterproofSchema.nodes.widget) return tagConf.widget;
   if (nodeType === WaterproofSchema.nodes.container) return tagConf.container;
   return null;
 }

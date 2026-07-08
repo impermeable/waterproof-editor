@@ -48,9 +48,8 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
     // Initialize other parameters to default value
     this.updating = false;
   }
-  // Don't know how to initialize this without it being a problem
-  // @ts-expect-error TODO: Figure out how to initialize, or use option.
-  dom: Node;
+  
+  dom!: Node;
   contentDOM?: HTMLElement | null | undefined;
 
   update(

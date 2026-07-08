@@ -110,6 +110,19 @@ export abstract class DocumentSerializer {
   ): string;
 
   /**
+   * Describes how to turn a widget node into a string representation.
+   * The widget type can be retrieved via `widgetNode.attrs.type`.
+   */
+  abstract serializeWidget(
+    widgetNode: Node,
+    parentNode: string | null,
+    neighbors: (skipNewlines: boolean) => {
+      nodeAbove: string | null;
+      nodeBelow: string | null;
+    },
+  ): string;
+
+  /**
    * Describes how to turn a container node into a string representation.
    * This node can have children (including input areas and hints), so you probably want to call `this.serializeNode` on every child node.
    * The container's name can be retrieved via `containerNode.attrs.name`.
@@ -161,6 +174,8 @@ export abstract class DocumentSerializer {
         return this.serializeInput(node, parent, neighbors);
       case WaterproofSchema.nodes.hint:
         return this.serializeHint(node, parent, neighbors);
+      case WaterproofSchema.nodes.widget:
+        return this.serializeWidget(node, parent, neighbors);
       case WaterproofSchema.nodes.container:
         return this.serializeContainer(node, parent, neighbors);
       case WaterproofSchema.nodes.text:
@@ -266,6 +281,15 @@ export class DefaultTagSerializer extends DocumentSerializer {
       this.tagConf.hint.openTag(title) +
       textContent.join("") +
       this.tagConf.hint.closeTag
+    );
+  }
+
+  serializeWidget(node: Node): string {
+    const type = node.attrs.type as string;
+    return (
+      this.tagConf.widget.openTag(type) +
+      node.textContent +
+      this.tagConf.widget.closeTag
     );
   }
 

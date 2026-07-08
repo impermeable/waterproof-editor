@@ -5,6 +5,7 @@ export * from "./document";
 export * from "./api";
 export { defaultToMarkdown } from "./translation";
 export * as "markdown" from "./markdown-defaults";
+export * from "./widgets";
 export {
   DocumentSerializer,
   DefaultTagSerializer,

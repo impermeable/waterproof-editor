@@ -42,6 +42,7 @@ import {
   switchableViewPlugin,
 } from "./markup-views";
 import { menuPlugin } from "./menubar";
+import { widgetPlugin } from "./widgets/persistentwidgetPlugin";
 import { MENU_PLUGIN_KEY } from "./menubar/menubar";
 import { documentProgressDecoratorPlugin } from "./documentProgressDecorator";
 import { createContextMenuHTML } from "./context-menu";
@@ -64,6 +65,11 @@ import { InsertionPlace } from "./commands";
 import { deleteSelection } from "./commands/commands";
 import { Mapping } from "./mapping";
 import { ProgressBar } from "./progressBar";
+import {
+  createEphemeralWidgetPlugin,
+  EphemeralWidgetSpec,
+  setEphemeralWidgets,
+} from "./widgets";
 
 /** Type that contains a diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {
@@ -358,13 +364,19 @@ export class WaterproofEditor implements MessageHandlerEditor {
 
   /** Create the array of plugins used by the prosemirror editor */
   private createPluginsArray(): Plugin[] {
-    return [
+    const widgets = this._editorConfig.widgets;
+    const enableWidgets =
+      widgets !== undefined &&
+      (widgets.simple !== undefined || widgets.container !== undefined);
+
+    const plugins = [
       history(),
       createHintPlugin(),
       inputAreaPlugin,
       updateStatusPlugin(this),
       mathPlugin,
       switchableViewPlugin(this._editorConfig),
+      createEphemeralWidgetPlugin([]),
       codePlugin(
         this._editorConfig.completions,
         this._editorConfig.symbols,
@@ -413,6 +425,18 @@ export class WaterproofEditor implements MessageHandlerEditor {
         "Mod-.": selectParentNode,
       }),
     ];
+
+    if (enableWidgets) {
+      console.log("WIDGETS PLUGIN ENABLED");
+      plugins.push(
+        widgetPlugin({
+          simple: widgets.simple ?? {},
+          container: widgets.container ?? {},
+        }),
+      );
+    }
+
+    return plugins;
   }
 
   /**
@@ -432,10 +456,12 @@ export class WaterproofEditor implements MessageHandlerEditor {
    */
   public textContent(
     include: number = 0,
-  ): Array<[string, { start: number; end: number, parent: string }]> {
+  ): Array<[string, { start: number; end: number; parent: string }]> {
     if (!this._view || this._mapping === undefined) return [];
     const mapping = this._mapping;
-    const contents: Array<[string, { start: number; end: number, parent: string }]> = [];
+    const contents: Array<
+      [string, { start: number; end: number; parent: string }]
+    > = [];
 
     const includeMarkdown = include & TextContentOfSpecifier.MARKDOWN;
     const includeCode = include & TextContentOfSpecifier.CODE;
@@ -459,7 +485,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
           {
             start: mapping.pmIndexToTextOffset(_pos + 1),
             end: mapping.pmIndexToTextOffset(_pos + 1 + node.nodeSize),
-            parent: parent.type.name
+            parent: parent.type.name,
           },
         ]);
       }
@@ -728,6 +754,22 @@ export class WaterproofEditor implements MessageHandlerEditor {
     const to = this._mapping.textOffsetToPmIndex(endOffset);
     const tr = this._view.state.tr.insertText(text, from, to);
     this._view.dispatch(tr);
+    return true;
+  }
+
+  public setDecorationWidgets(widgets: Array<EphemeralWidgetSpec>): boolean {
+    if (!this._view) return false;
+    const tr = this._view.state.tr;
+    const newTr = setEphemeralWidgets(tr, widgets.map(w => {return {...w, pos: this._mapping?.textOffsetToPmIndex(w.pos) ?? w.pos}}));
+    this._view.dispatch(newTr);
+    return true;
+  }
+
+  public clearDecorationWidgets(): boolean {
+    if (!this._view) return false;
+    const tr = this._view.state.tr;
+    const newTr = setEphemeralWidgets(tr, []);
+    this._view.dispatch(newTr);
     return true;
   }
 

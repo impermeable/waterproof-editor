@@ -9,6 +9,8 @@ import {
   markdown,
   mathDisplay,
   newline,
+  widget,
+  widgetContent,
 } from "./schema";
 
 const indentation = (level: number): string => "  ".repeat(level);
@@ -202,6 +204,76 @@ export class CodeBlock implements Block {
     console.log(
       `${indentation(level)}CodeBlock {${debugInfo(this)}}: {${this.stringContent.replaceAll("\n", String.raw`\n`)}}`,
     );
+  }
+}
+
+/**
+ * todo
+ */
+export class WidgetBlock implements Block {
+  public type = BLOCK_NAME.WIDGET;
+
+  constructor(
+    public stringContent: string,
+    public widgetType: string,
+    public range: BlockRange,
+    public innerRange: BlockRange,
+    public lineStart: number,
+  ) {}
+
+  toProseMirror() {
+    // This is a 'normal' widget, so we need to wrap the text in WidgetContent first.
+    const content = widgetContent(this.stringContent);
+    return widget(this.widgetType, content);
+  }
+
+  debugPrint(level: number): void {
+    console.log(
+      `${indentation(level)}WidgetBlock(${this.widgetType}) {${debugInfo(this)}}: {${this.stringContent.replaceAll("\n", "\\n")}}`,
+    );
+  }
+}
+
+/**
+ * todo
+ */
+export class WrappingWidgetBlock implements Block {
+  public type = BLOCK_NAME.WRAPPING_WIDGET;
+  public innerBlocks: Block[];
+
+  constructor(
+    public stringContent: string,
+    public widgetType: string,
+    public range: BlockRange,
+    public innerRange: BlockRange,
+    public lineStart: number,
+    childBlocks:
+      | Block[]
+      | ((
+          innerContent: string,
+          innerRange: BlockRange,
+          lineStartOffset: number,
+        ) => Block[]),
+  ) {
+    if (typeof childBlocks === "function") {
+      this.innerBlocks = childBlocks(stringContent, innerRange, lineStart);
+    } else {
+      this.innerBlocks = childBlocks;
+    }
+  }
+
+  toProseMirror() {
+    const childNodes = this.innerBlocks.map((block) => block.toProseMirror());
+    // Since this is a wrapping widget we place the child nodes into the Widget and are done.
+    return widget(this.widgetType, childNodes);
+  }
+
+  debugPrint(level: number): void {
+    console.log(
+      `${indentation(level)}WrappingWidgetBlock {${debugInfo(this)}} {type="${this.widgetType}"} [`,
+    );
+    this.innerBlocks.forEach((block) => block.debugPrint(level + 1));
+    console.log(`${indentation(level)}]`);
   }
 }
 

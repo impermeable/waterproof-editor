@@ -18,6 +18,12 @@ export function configuration(languageId: string): TagConfiguration {
       // There should be a newline after the closing tag of the code cell.
       closeRequiresNewline: true,
     },
+    widget: {
+      openTag: (type: string) => `<widget data-type="${type}">`,
+      closeTag: "</widget>",
+      openRequiresNewline: false,
+      closeRequiresNewline: false,
+    },
     hint: {
       openTag: (title: string) => `<hint title="${title}">`,
       closeTag: "</hint>",

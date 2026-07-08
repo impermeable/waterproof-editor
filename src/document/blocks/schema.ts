@@ -23,6 +23,19 @@ export const code = (content: string): ProseNode => {
   return WaterproofSchema.nodes.code.create({}, text(content));
 };
 
+// ##### Widgets #####
+
+export const widget = (
+  type: string,
+  childNodes: ProseNode[] | ProseNode,
+): ProseNode => {
+  return WaterproofSchema.nodes.widget.create({ type }, childNodes);
+};
+
+export const widgetContent = (content: string): ProseNode => {
+  return WaterproofSchema.nodes.widget_content.create({}, text(content));
+};
+
 // ##### With inner blocks #####
 
 /** Construct input area prosemirror node. */

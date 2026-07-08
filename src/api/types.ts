@@ -5,6 +5,8 @@ import { DocumentSerializer } from "../serialization/DocumentSerializer";
 import { WaterproofCompletion, WaterproofSymbol } from "./Completions";
 import { DocChange, WrappingDocChange } from "./DocChange";
 import { Severity } from "./Severity";
+import { WrappingWidget, Widget, WidgetInfo } from "../widgets";
+import { Node } from "prosemirror-model";
 
 export type Positioned<A> = {
   obj: A;
@@ -51,11 +53,11 @@ export type OpenCloseTag = {
 };
 
 export const enum TextContentOfSpecifier {
-  CODE = 1,         // = 00001
-  MARKDOWN = 2,     // = 00010
+  CODE = 1, // = 00001
+  MARKDOWN = 2, // = 00010
   MATH_DISPLAY = 4, // = 00100
-  INPUT_AREA = 8,   // = 01000
-  HINT = 16,        // = 10000
+  INPUT_AREA = 8, // = 01000
+  HINT = 16, // = 10000
 }
 
 /**
@@ -87,6 +89,10 @@ export type RequiresNewline = {
 export type TagConfiguration = {
   markdown: OpenCloseTag & RequiresNewline;
   code: OpenCloseTag & RequiresNewline;
+  widget: {
+    openTag: (type: string) => string;
+    closeTag: string;
+  } & RequiresNewline;
   hint: {
     openTag: (title: string) => string;
     closeTag: string;
@@ -141,6 +147,18 @@ export type LanguageConfiguration = {
   highlightDark: HighlightStyle;
 };
 
+export type WidgetConstructor<T extends Widget = Widget> = new (
+  widgetInfo: WidgetInfo,
+  content: string,
+) => T;
+export type ContainerWidgetConstructor<
+  T extends WrappingWidget = WrappingWidget,
+> = new (widgetInfo: WidgetInfo, node: Node) => T;
+export type Widgets = {
+  simple?: Record<string, WidgetConstructor>;
+  container?: Record<string, ContainerWidgetConstructor>;
+};
+
 /**
  * Configuration object for the WaterproofEditor.
  *
@@ -176,6 +194,9 @@ export type WaterproofEditorConfig = {
    * This name will show up in the editor when editing text in 'Markdown' cells.
    */
   markdownName?: string;
+
+  /** Widget type registrations keyed by the widget node's `type` attribute. */
+  widgets?: Widgets;
 
   /**
    * A function that can be used to convert a different markup variant into Markdown.
