@@ -94,7 +94,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
       }
 
       // Matches bullet sequences
-      const bullet = context.matchBefore(/^\s*(?:\*+|\++|-+|·) /);
+      const bullet = context.matchBefore(/^\s*(?:\*+|\++|-+|·|◆) /);
       // Matches a curly brace
       const brace = context.matchBefore(/^\s*{ /);
       // Matches the end of a sentence (assuming no periods in the sentence)
