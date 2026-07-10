@@ -59,9 +59,21 @@
 	  "backgroundColor": "var(--wp-editorInlayHintBackground)"
 	},
 
+	".cm-status-spacer": {
+	  "width": "var(--wp-status-indicator-width)",
+	  "minWidth": "var(--wp-status-indicator-width)"
+	},
+
+	".cm-lineNumbers .cm-gutterElement": {
+	  "textAlign": "left"
+	},
+
 	".cm-gutter-lint": {
-	  "width": "unset",
-	  "minWidth": "0"
+	  "width": "1.2em",
+	  "minWidth": "1.2em",
+	  "& .cm-gutterElement": {
+	    "padding": "0 0.1em"
+	  }
 	},
 
 	".cm-activeLineGutter": {

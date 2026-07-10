@@ -17,7 +17,7 @@ import {
   closeCompletion,
   closeBrackets,
 } from "@codemirror/autocomplete";
-import { Compartment, EditorState, Extension } from "@codemirror/state";
+import { Compartment, EditorState, Extension, Prec } from "@codemirror/state";
 import {
   EditorView as CodeMirror,
   Command,
@@ -37,6 +37,7 @@ import { LanguageConfiguration, ThemeStyle } from "../api";
 import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
 import { CodeBlockBusyIndicator } from "./busy-indicator";
+import { statusIndicatorSpacer } from "./status-gutter";
 
 /**
  * Export CodeBlockView class that implements the custom codeblock nodeview.
@@ -169,9 +170,10 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
       return div;
     };
 
-    // Makes sure that we only enable the linting gutter for codecells inside of input areas.
     const inInputArea = this.partOfInputArea();
-    const optional = inInputArea ? [lintGutter()] : [];
+    const optional = inInputArea
+      ? [Prec.low(lintGutter())]
+      : [Prec.high(statusIndicatorSpacer)];
 
     this._codemirror = new CodeMirror({
       doc: this._node.textContent,
