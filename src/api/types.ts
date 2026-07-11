@@ -202,11 +202,22 @@ export enum HistoryChange {
   Redo,
 }
 
+export interface OffsetEdit {
+  start: number;
+  end: number;
+  newText: string;
+}
+export interface OffsetCodeAction {
+  title: string;
+  edits: OffsetEdit[];
+}
+
 export interface OffsetDiagnostic {
   message: string;
   severity: Severity;
   startOffset: number;
   endOffset: number;
+  codeActions?: OffsetCodeAction[];
 }
 
 export enum ThemeStyle {

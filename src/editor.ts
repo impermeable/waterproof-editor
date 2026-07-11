@@ -32,6 +32,7 @@ import {
   WaterproofEditorConfig,
   TextContentOfSpecifier,
   MessageHandlerEditor,
+  OffsetCodeAction,
 } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
@@ -71,6 +72,7 @@ export type DiagnosticObjectProse = {
   start: number;
   end: number;
   severity: Severity;
+  codeActions?: OffsetCodeAction[];
 };
 
 /**
@@ -807,8 +809,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
       const end = map.textOffsetToPmIndex(d.endOffset);
 
       return {
-        message: d.message,
-        severity: d.severity,
+        ...d,
         start,
         end,
       };
@@ -837,8 +838,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
     const proseDiag: DiagnosticObjectProse = {
       start,
       end,
-      message: toRemove.message,
-      severity: toRemove.severity,
+      ...toRemove,
     };
 
     const oldLength = this.currentProseDiagnostics.length;
@@ -887,10 +887,9 @@ export class WaterproofEditor implements MessageHandlerEditor {
       const end = map.textOffsetToPmIndex(diag.endOffset);
       if (start >= end) continue;
       this.currentProseDiagnostics[i] = {
-        message: diag.message,
+        ...diag,
         start,
         end,
-        severity: diag.severity,
       };
     }
     // diagnostics have changed
@@ -949,10 +948,9 @@ export class WaterproofEditor implements MessageHandlerEditor {
       })
       .map((d) => {
         return {
-          message: d.message,
+          ...d,
           start: Math.max(d.start, low),
           end: Math.min(d.end, high),
-          severity: d.severity,
         };
       });
   }
