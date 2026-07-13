@@ -216,7 +216,7 @@ export function getCmdInsertExample(
         ? insertCompositeNodeAbove
         : insertCompositeNodeBelow;
 
-    let content = templates.example;
+    const content = templates.example;
 
     const trans = f(
       state,
