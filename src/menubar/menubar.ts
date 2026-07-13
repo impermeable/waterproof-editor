@@ -296,12 +296,12 @@ function createDefaultMenu(
     createMenuItem(
       "Example↑",
       "Insert new example block above",
-      getCmdInsertExample(InsertionPlace.Above, tagConf),
+      getCmdInsertExample(InsertionPlace.Above, tagConf, templates),
     ),
     createMenuItem(
       "Example↓",
       "Insert new example block below",
-      getCmdInsertExample(InsertionPlace.Below, tagConf),
+      getCmdInsertExample(InsertionPlace.Below, tagConf, templates),
     ),
   ];
 
