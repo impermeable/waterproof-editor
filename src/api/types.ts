@@ -139,6 +139,11 @@ export type LanguageConfiguration = {
   highlightDark: HighlightStyle;
 };
 
+export type TemplateConfiguration = {
+  example: string;
+  exercise: string;
+};
+
 /**
  * Configuration object for the WaterproofEditor.
  *
@@ -196,7 +201,7 @@ export type WaterproofEditorConfig = {
 
   languageConfig?: LanguageConfiguration;
 
-  exampleTemplate?: string;
+  templates?: TemplateConfiguration;
 };
 
 export enum HistoryChange {
