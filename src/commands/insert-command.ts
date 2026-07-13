@@ -7,7 +7,7 @@ import {
 } from "./command-helpers";
 import { WaterproofSchema } from "../schema";
 import { InsertionPlace } from "./types";
-import { TagConfiguration } from "../api";
+import { TagConfiguration, TemplateConfiguration } from "../api";
 
 export function getCmdInsertMarkdown(
   place: InsertionPlace,
@@ -201,6 +201,7 @@ export function getCmdInsertTextHint(
 export function getCmdInsertExample(
   place: InsertionPlace,
   tagConf: TagConfiguration,
+  templates: TemplateConfiguration,
 ) {
   return (
     state: EditorState,
@@ -214,15 +215,8 @@ export function getCmdInsertExample(
       place === InsertionPlace.Above
         ? insertCompositeNodeAbove
         : insertCompositeNodeBelow;
-    let content =
-    if (tagConf.code.openTag === `\`\`\`coq\n`) {
-      content = "Example example: True.\nProof.\n\nQed.";
-    } else if (tagConf.code.openTag === `\`\`\`lean\n`) {
-      content =
-        'Example "example"\nGiven:\nAssume:\nConclusion:\nProof:\n\nQED';
-    } else {
-      return false; // No other language is currently supported besides rocq and lean.
-    }
+
+    const content = templates.example;
 
     const trans = f(
       state,

@@ -647,12 +647,17 @@ test("Insert code hint above markdown", () => {
   expect(content[1].type).toBe("markdown");
 });
 
+const templateRocq = {
+  example: "Example example: True.\nProof.\n\nQed.",
+  exercise: "",
+};
+
 test("Insert rocq example below markdown", () => {
   const view = new EditorView(null, {
     state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown),
   });
   const rocqConf = configuration("coq");
-  const cmd = getCmdInsertExample(InsertionPlace.Below, rocqConf);
+  const cmd = getCmdInsertExample(InsertionPlace.Below, rocqConf, templateRocq);
   expect(cmd(view.state, view.dispatch, view)).toBe(true);
 
   const content = view.state.doc.toJSON().content;
@@ -703,12 +708,21 @@ const leanConfig: TagConfiguration = {
   },
 };
 
+const templateLean = {
+  example: 'Example "example"\nGiven:\nAssume:\nConclusion:\nProof:\n\nQED',
+  exercise: "",
+};
+
 test("Insert lean example below markdown", () => {
   const view = new EditorView(null, {
     state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown),
   });
 
-  const cmd = getCmdInsertExample(InsertionPlace.Below, leanConfig);
+  const cmd = getCmdInsertExample(
+    InsertionPlace.Below,
+    leanConfig,
+    templateLean,
+  );
   expect(cmd(view.state, view.dispatch, view)).toBe(true);
 
   const content = view.state.doc.toJSON().content;
