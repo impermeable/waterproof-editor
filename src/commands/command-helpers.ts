@@ -98,6 +98,16 @@ export function insertCompositeNodeBelow(
       ? needsNewlineAfter(currentNode.type, tagConf)
       : false;
 
+  // The new node's close tag requires a newline after it (e.g. code's "\n```") and, with no
+  // existing newline reused below, it would glue directly onto whatever follows it: either a
+  // sibling cell, or the closing tag of a non-doc container that does not already start with a newline.
+  const closeTagWouldGlueToFollowing =
+    insertNewlineAfterIfNotExists &&
+    !afterIsNewline &&
+    (nodeBelowInsertion !== null ||
+      (parent.type !== WaterproofSchema.nodes.doc &&
+        !closingTagStartsWithNewline(parent.type, tagConf)));
+
   const toInsert: PNode[] = [];
   if (
     (insertNewlineBeforeIfNotExists || currentNeedsNewlineAfter) &&
@@ -126,16 +136,11 @@ export function insertCompositeNodeBelow(
   // A trailing newline is needed when:
   // 1. The node is inserted after an existing newline and there is no newline further down, OR
   // 2. The node below the insertion point needs a newline before it, OR
-  // 3. The new node becomes the last child of a non-doc container and requires a newline after
-  //    its closing tag. The newline is only needed when the container's own closing tag does not
-  //    already start with a newline (which would otherwise provide that separator).
+  // 3. The new node's own close tag would otherwise glue onto what follows it.
   if (
     (insertNewlineAfterIfNotExists && !hasNewlineAfter && afterIsNewline) ||
     (belowNeedsNewlineBefore && !newlineAlreadyBelow) ||
-    (insertNewlineAfterIfNotExists &&
-      !afterIsNewline &&
-      parent.type !== WaterproofSchema.nodes.doc &&
-      !closingTagStartsWithNewline(parent.type, tagConf))
+    closeTagWouldGlueToFollowing
   ) {
     toInsert.push(newline());
   }
