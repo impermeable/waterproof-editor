@@ -195,6 +195,8 @@ export type WaterproofEditorConfig = {
   menubarEntries?: Array<MenuBarEntry>;
 
   languageConfig?: LanguageConfiguration;
+
+  exampleTemplate?: string;
 };
 
 export enum HistoryChange {

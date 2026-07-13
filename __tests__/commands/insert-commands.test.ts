@@ -89,7 +89,7 @@ test("Insert markdown above code cell adds a newline separator", () => {
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateOneCodeForAbove
+      stateOneCodeForAbove,
     ),
   });
 
@@ -196,7 +196,7 @@ test("Insert markdown above math_display when code is before the newline adds ex
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateCodeNewlineMath_mathSelected
+      stateCodeNewlineMath_mathSelected,
     ),
   });
   const cmd = getCmdInsertMarkdown(InsertionPlace.Above, tagConf);
@@ -216,7 +216,7 @@ test("Insert math above math_display when code is before the newline adds extra 
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateCodeNewlineMath_mathSelected
+      stateCodeNewlineMath_mathSelected,
     ),
   });
   const cmd = getCmdInsertLatex(InsertionPlace.Above, tagConf);
@@ -236,7 +236,7 @@ test("Insert markdown below math_display when code is after the newline adds ext
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateMathNewlineCode_mathSelected
+      stateMathNewlineCode_mathSelected,
     ),
   });
   const cmd = getCmdInsertMarkdown(InsertionPlace.Below, tagConf);
@@ -256,7 +256,7 @@ test("Insert math below math_display when code is after the newline adds extra n
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateMathNewlineCode_mathSelected
+      stateMathNewlineCode_mathSelected,
     ),
   });
   const cmd = getCmdInsertLatex(InsertionPlace.Below, tagConf);
@@ -398,7 +398,7 @@ test("Insert code below markdown inside input area adds trailing newline after c
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateInputWithMarkdown
+      stateInputWithMarkdown,
     ),
   });
 
@@ -429,7 +429,7 @@ function putCursorInside(view: EditorView, typeName: string, nth: number) {
   });
   if (target === null) throw new Error(`No ${typeName}[${nth}] found`);
   view.dispatch(
-    view.state.tr.setSelection(TextSelection.create(view.state.doc, target))
+    view.state.tr.setSelection(TextSelection.create(view.state.doc, target)),
   );
 }
 
@@ -464,7 +464,7 @@ test("Insert code between two adjacent cells keeps trailing newline after the co
 
   const insertMarkdownBelow = getCmdInsertMarkdown(
     InsertionPlace.Below,
-    rocqConf
+    rocqConf,
   );
   const insertCodeBelow = getCmdInsertCode(InsertionPlace.Below, rocqConf);
 
@@ -488,6 +488,7 @@ test("Insert code between two adjacent cells keeps trailing newline after the co
 
   // The inserted code cell MUST be followed by a newline node so its closing fence
   // does not glue to the trailing markdown cell.
+  console.log(view.state.toJSON().doc.content);
   expect(view.state.toJSON().doc.content).toStrictEqual([
     { type: "code", content: [{ type: "text", text: "Goal True." }] },
     { type: "newline" },
@@ -531,7 +532,7 @@ test("Insert code between two adjacent cells keeps leading newline before the co
 
   const insertMarkdownAbove = getCmdInsertMarkdown(
     InsertionPlace.Above,
-    rocqConf
+    rocqConf,
   );
   const insertCodeAbove = getCmdInsertCode(InsertionPlace.Above, rocqConf);
 
@@ -577,7 +578,7 @@ test("Insert code above markdown inside input area adds leading newline before c
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
       { schema: WaterproofSchema },
-      stateInputWithMarkdown
+      stateInputWithMarkdown,
     ),
   });
 
@@ -659,7 +660,7 @@ test("Insert rocq example below markdown", () => {
   expect(content[1].type).toBe("newline");
   expect(content[2].type).toBe("code");
   expect(content[2].content[0].text).toBe(
-    "Example example: True.\nProof.\n\nQed."
+    "Example example: True.\nProof.\n\nQed.",
   );
 });
 
@@ -715,6 +716,6 @@ test("Insert lean example below markdown", () => {
   expect(content[1].type).toBe("newline");
   expect(content[2].type).toBe("code");
   expect(content[2].content[0].text).toBe(
-    'Example "example"\nGiven:\nAssume:\nConclusion:\nProof:\n\nQED'
+    'Example "example"\nGiven:\nAssume:\nConclusion:\nProof:\n\nQED',
   );
 });
