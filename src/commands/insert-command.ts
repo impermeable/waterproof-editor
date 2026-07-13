@@ -214,7 +214,7 @@ export function getCmdInsertExample(
       place === InsertionPlace.Above
         ? insertCompositeNodeAbove
         : insertCompositeNodeBelow;
-    let content: string;
+    let content =
     if (tagConf.code.openTag === `\`\`\`coq\n`) {
       content = "Example example: True.\nProof.\n\nQed.";
     } else if (tagConf.code.openTag === `\`\`\`lean\n`) {
