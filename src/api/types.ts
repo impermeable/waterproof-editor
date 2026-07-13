@@ -201,7 +201,7 @@ export type WaterproofEditorConfig = {
 
   languageConfig?: LanguageConfiguration;
 
-  templates?: TemplateConfiguration;
+  templates: TemplateConfiguration;
 };
 
 export enum HistoryChange {

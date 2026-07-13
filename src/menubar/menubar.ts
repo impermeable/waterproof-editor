@@ -24,7 +24,7 @@ import {
   getCmdInsertCodeHint,
   getCmdInsertExample,
 } from "../commands/insert-command";
-import { MenuBarEntry, TagConfiguration } from "../api";
+import { MenuBarEntry, TagConfiguration, TemplateConfiguration } from "../api";
 
 /** MenuEntry type contains the DOM, whether to only show it in teacher mode and the command to execute on click */
 type MenuEntry = {
@@ -199,6 +199,7 @@ function createDefaultMenu(
   os: OS,
   tagConf: TagConfiguration,
   customEntries: Array<MenuBarEntry> | undefined,
+  templates: TemplateConfiguration,
 ): MenuView {
   // Platform specific keybinding string:
   const cmdOrCtrl = os == OS.MacOS ? "Cmd" : "Ctrl";
@@ -390,12 +391,19 @@ export function menuPlugin(
   os: OS,
   tagConf: TagConfiguration,
   customEntries: Array<MenuBarEntry> | undefined,
+  templates: TemplateConfiguration,
 ) {
   return new Plugin({
     // This plugin has an associated `view`. This allows it to add DOM elements.
     view(outerView: EditorView) {
       // Create the default menu.
-      const menuView = createDefaultMenu(outerView, os, tagConf, customEntries);
+      const menuView = createDefaultMenu(
+        outerView,
+        os,
+        tagConf,
+        customEntries,
+        templates,
+      );
       // Get the parent node (the parent node of the outer prosemirror dom)
       const parentNode = outerView.dom.parentNode;
       if (parentNode == null) {
