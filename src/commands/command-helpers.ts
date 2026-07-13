@@ -23,6 +23,34 @@ import { TagConfiguration } from "../api";
 /////// Helper functions /////////
 
 /**
+ * Builds the node (optionally wrapped in a hint or input area) to insert, shared
+ * by {@link insertCompositeNodeAbove} and {@link insertCompositeNodeBelow}.
+ * @returns The nodes to insert, or `undefined` for an unsupported wrapper type.
+ */
+function buildCompositeNodes(
+  wrappedNodeType: NodeType,
+  wrapNodeType: NodeType | undefined,
+  hintTitle: string,
+  content: string,
+): PNode[] | undefined {
+  const wrappedNode =
+    content.length > 0
+      ? wrappedNodeType.create({}, text(content))
+      : wrappedNodeType.create();
+
+  if (wrapNodeType === undefined) {
+    return [wrappedNode];
+  } else if (wrapNodeType === WaterproofSchema.nodes.hint) {
+    return [hint(hintTitle, [newline(), wrappedNode, newline()])];
+  } else if (wrapNodeType === WaterproofSchema.nodes.input) {
+    return [inputArea([newline(), wrappedNode, newline()])];
+  } else {
+    // Unsupported wrapper type for this helper.
+    return;
+  }
+}
+
+/**
  * Helper function for inserting a new node below the currently selected one.
  * @param state The current editor state.
  * @param tr The current transaction for the state of the editor.
@@ -121,23 +149,16 @@ export function insertCompositeNodeAbove(
   ) {
     toInsert.push(newline());
   }
-  let wrappedNode;
-  if (content.length > 0) {
-    wrappedNode = wrappedNodeType.create({}, text(content));
-  } else {
-    wrappedNode = wrappedNodeType.create();
-  }
 
-  if (wrapNodeType === undefined) {
-    toInsert.push(wrappedNode);
-  } else if (wrapNodeType === WaterproofSchema.nodes.hint) {
-    toInsert.push(hint(hintTitle, [newline(), wrappedNode, newline()]));
-  } else if (wrapNodeType === WaterproofSchema.nodes.input) {
-    toInsert.push(inputArea([newline(), wrappedNode, newline()]));
-  } else {
-    // Unsupported wrapper type for this helper.
-    return;
-  }
+  const nodes = buildCompositeNodes(
+    wrappedNodeType,
+    wrapNodeType,
+    hintTitle,
+    content,
+  );
+  if (nodes === undefined) return;
+  toInsert.push(...nodes);
+
   if (
     (insertNewlineAfterIfNotExists || currentNeedsNewlineBefore) &&
     !beforeIsNewline
@@ -244,23 +265,15 @@ export function insertCompositeNodeBelow(
     toInsert.push(newline());
   }
 
-  let wrappedNode;
-  if (content.length > 0) {
-    wrappedNode = wrappedNodeType.create({}, text(content));
-  } else {
-    wrappedNode = wrappedNodeType.create();
-  }
+  const nodes = buildCompositeNodes(
+    wrappedNodeType,
+    wrapNodeType,
+    hintTitle,
+    content,
+  );
+  if (nodes === undefined) return;
+  toInsert.push(...nodes);
 
-  if (wrapNodeType === undefined) {
-    toInsert.push(wrappedNode);
-  } else if (wrapNodeType === WaterproofSchema.nodes.hint) {
-    toInsert.push(hint(hintTitle, [newline(), wrappedNode, newline()]));
-  } else if (wrapNodeType === WaterproofSchema.nodes.input) {
-    toInsert.push(inputArea([newline(), wrappedNode, newline()]));
-  } else {
-    // Unsupported wrapper type for this helper.
-    return;
-  }
   // A trailing newline is needed when:
   // 1. The node is inserted after an existing newline and there is no newline further down, OR
   // 2. The node below the insertion point needs a newline before it, OR
