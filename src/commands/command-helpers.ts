@@ -30,134 +30,6 @@ import { TagConfiguration } from "../api";
  * @param wrapNodeType The type of node that wraps the inserted node (one of `WaterproofSchema.nodes`)
  * @returns An insertion transaction.
  */
-export function insertCompositeNodeBelow(
-  state: EditorState,
-  tr: Transaction,
-  wrappedNodeType: NodeType,
-  wrapNodeType: NodeType | undefined,
-  tagConf: TagConfiguration,
-  hintTitle: string = "💡 Hint",
-  content: string = "",
-): Transaction | undefined {
-  const sel = state.selection;
-  let trans: Transaction = tr;
-
-  const outerNodeType =
-    wrapNodeType === undefined ? wrappedNodeType : wrapNodeType;
-
-  const insertNewlineBeforeIfNotExists = needsNewlineBefore(
-    outerNodeType,
-    tagConf,
-  );
-  const insertNewlineAfterIfNotExists = needsNewlineAfter(
-    outerNodeType,
-    tagConf,
-  );
-
-  const parentAndIndex = getParentAndIndex(sel);
-  if (parentAndIndex === null) return;
-  const { parent, index } = parentAndIndex;
-
-  const nodeBelowSelection = parent.maybeChild(index + 1);
-  const afterIsNewline =
-    nodeBelowSelection === null
-      ? false
-      : nodeBelowSelection.type === WaterproofSchema.nodes.newline;
-
-  let pos;
-
-  if (sel instanceof NodeSelection) {
-    // To and from point directly to beginning and end of node.
-    pos = sel.to;
-  } else if (sel instanceof TextSelection) {
-    pos = sel.from + (sel.$from.parent.nodeSize - sel.$from.parentOffset) - 1;
-  } else {
-    return;
-  }
-
-  if (afterIsNewline) {
-    // Assumption: If a newline appears after a node the current node wants that.
-    pos += 1; // We are going to insert after
-  }
-
-  const afterNewline = parent.maybeChild(index + 2);
-  const hasNewlineAfter =
-    afterNewline === null
-      ? false
-      : afterNewline.type === WaterproofSchema.nodes.newline;
-
-  const nodeBelowInsertion = afterIsNewline ? afterNewline : nodeBelowSelection;
-  const newlineAlreadyBelow = afterIsNewline ? hasNewlineAfter : false;
-  const belowNeedsNewlineBefore =
-    nodeBelowInsertion !== null &&
-    needsNewlineBefore(nodeBelowInsertion.type, tagConf);
-  // A newline is also required before the new node if the current node's close tag requires one.
-  const currentNode = parent.maybeChild(index);
-  const currentNeedsNewlineAfter =
-    tagConf && currentNode
-      ? needsNewlineAfter(currentNode.type, tagConf)
-      : false;
-
-  // The new node's close tag requires a newline after it (e.g. code's "\n```") and, with no
-  // existing newline reused below, it would glue directly onto whatever follows it: either a
-  // sibling cell, or the closing tag of a non-doc container that does not already start with a newline.
-  const closeTagWouldGlueToFollowing =
-    insertNewlineAfterIfNotExists &&
-    !afterIsNewline &&
-    (nodeBelowInsertion !== null ||
-      (parent.type !== WaterproofSchema.nodes.doc &&
-        !closingTagStartsWithNewline(parent.type, tagConf)));
-
-  const toInsert: PNode[] = [];
-  if (
-    (insertNewlineBeforeIfNotExists || currentNeedsNewlineAfter) &&
-    !afterIsNewline
-  ) {
-    toInsert.push(newline());
-  }
-
-  let wrappedNode;
-  if (content.length > 0) {
-    wrappedNode = wrappedNodeType.create({}, text(content));
-  } else {
-    wrappedNode = wrappedNodeType.create();
-  }
-
-  if (wrapNodeType === undefined) {
-    toInsert.push(wrappedNode);
-  } else if (wrapNodeType === WaterproofSchema.nodes.hint) {
-    toInsert.push(hint(hintTitle, [newline(), wrappedNode, newline()]));
-  } else if (wrapNodeType === WaterproofSchema.nodes.input) {
-    toInsert.push(inputArea([newline(), wrappedNode, newline()]));
-  } else {
-    // Unsupported wrapper type for this helper.
-    return;
-  }
-  // A trailing newline is needed when:
-  // 1. The node is inserted after an existing newline and there is no newline further down, OR
-  // 2. The node below the insertion point needs a newline before it, OR
-  // 3. The new node's own close tag would otherwise glue onto what follows it.
-  if (
-    (insertNewlineAfterIfNotExists && !hasNewlineAfter && afterIsNewline) ||
-    (belowNeedsNewlineBefore && !newlineAlreadyBelow) ||
-    closeTagWouldGlueToFollowing
-  ) {
-    toInsert.push(newline());
-  }
-
-  trans = trans.insert(pos, toInsert);
-
-  return trans;
-}
-
-/**
- * Helper function for inserting a new node below the currently selected one.
- * @param state The current editor state.
- * @param tr The current transaction for the state of the editor.
- * @param wrappedNodeType The type of node to insert (one of `WaterproofSchema.nodes`)
- * @param wrapNodeType The type of node that wraps the inserted node (one of `WaterproofSchema.nodes`)
- * @returns An insertion transaction.
- */
 export function insertCompositeNodeAbove(
   state: EditorState,
   tr: Transaction,
@@ -269,6 +141,134 @@ export function insertCompositeNodeAbove(
   if (
     (insertNewlineAfterIfNotExists || currentNeedsNewlineBefore) &&
     !beforeIsNewline
+  ) {
+    toInsert.push(newline());
+  }
+
+  trans = trans.insert(pos, toInsert);
+
+  return trans;
+}
+
+/**
+ * Helper function for inserting a new node below the currently selected one.
+ * @param state The current editor state.
+ * @param tr The current transaction for the state of the editor.
+ * @param wrappedNodeType The type of node to insert (one of `WaterproofSchema.nodes`)
+ * @param wrapNodeType The type of node that wraps the inserted node (one of `WaterproofSchema.nodes`)
+ * @returns An insertion transaction.
+ */
+export function insertCompositeNodeBelow(
+  state: EditorState,
+  tr: Transaction,
+  wrappedNodeType: NodeType,
+  wrapNodeType: NodeType | undefined,
+  tagConf: TagConfiguration,
+  hintTitle: string = "💡 Hint",
+  content: string = "",
+): Transaction | undefined {
+  const sel = state.selection;
+  let trans: Transaction = tr;
+
+  const outerNodeType =
+    wrapNodeType === undefined ? wrappedNodeType : wrapNodeType;
+
+  const insertNewlineBeforeIfNotExists = needsNewlineBefore(
+    outerNodeType,
+    tagConf,
+  );
+  const insertNewlineAfterIfNotExists = needsNewlineAfter(
+    outerNodeType,
+    tagConf,
+  );
+
+  const parentAndIndex = getParentAndIndex(sel);
+  if (parentAndIndex === null) return;
+  const { parent, index } = parentAndIndex;
+
+  const nodeBelowSelection = parent.maybeChild(index + 1);
+  const afterIsNewline =
+    nodeBelowSelection === null
+      ? false
+      : nodeBelowSelection.type === WaterproofSchema.nodes.newline;
+
+  let pos;
+
+  if (sel instanceof NodeSelection) {
+    // To and from point directly to beginning and end of node.
+    pos = sel.to;
+  } else if (sel instanceof TextSelection) {
+    pos = sel.from + (sel.$from.parent.nodeSize - sel.$from.parentOffset) - 1;
+  } else {
+    return;
+  }
+
+  if (afterIsNewline) {
+    // Assumption: If a newline appears after a node the current node wants that.
+    pos += 1; // We are going to insert after
+  }
+
+  const afterNewline = parent.maybeChild(index + 2);
+  const hasNewlineAfter =
+    afterNewline === null
+      ? false
+      : afterNewline.type === WaterproofSchema.nodes.newline;
+
+  const nodeBelowInsertion = afterIsNewline ? afterNewline : nodeBelowSelection;
+  const newlineAlreadyBelow = afterIsNewline ? hasNewlineAfter : false;
+  const belowNeedsNewlineBefore =
+    nodeBelowInsertion !== null &&
+    needsNewlineBefore(nodeBelowInsertion.type, tagConf);
+  // A newline is also required before the new node if the current node's close tag requires one.
+  const currentNode = parent.maybeChild(index);
+  const currentNeedsNewlineAfter =
+    tagConf && currentNode
+      ? needsNewlineAfter(currentNode.type, tagConf)
+      : false;
+
+  // The new node's close tag requires a newline after it (e.g. code's "\n```") and, with no
+  // existing newline reused below, it would glue directly onto whatever follows it: either a
+  // sibling cell, or the closing tag of a non-doc container that does not already start with a newline.
+  const closeTagWouldGlueToFollowing =
+    insertNewlineAfterIfNotExists &&
+    !afterIsNewline &&
+    (nodeBelowInsertion !== null ||
+      (parent.type !== WaterproofSchema.nodes.doc &&
+        !closingTagStartsWithNewline(parent.type, tagConf)));
+
+  const toInsert: PNode[] = [];
+  if (
+    (insertNewlineBeforeIfNotExists || currentNeedsNewlineAfter) &&
+    !afterIsNewline
+  ) {
+    toInsert.push(newline());
+  }
+
+  let wrappedNode;
+  if (content.length > 0) {
+    wrappedNode = wrappedNodeType.create({}, text(content));
+  } else {
+    wrappedNode = wrappedNodeType.create();
+  }
+
+  if (wrapNodeType === undefined) {
+    toInsert.push(wrappedNode);
+  } else if (wrapNodeType === WaterproofSchema.nodes.hint) {
+    toInsert.push(hint(hintTitle, [newline(), wrappedNode, newline()]));
+  } else if (wrapNodeType === WaterproofSchema.nodes.input) {
+    toInsert.push(inputArea([newline(), wrappedNode, newline()]));
+  } else {
+    // Unsupported wrapper type for this helper.
+    return;
+  }
+  // A trailing newline is needed when:
+  // 1. The node is inserted after an existing newline and there is no newline further down, OR
+  // 2. The node below the insertion point needs a newline before it, OR
+  // 3. The new node's own close tag would otherwise glue onto what follows it.
+  if (
+    (insertNewlineAfterIfNotExists && !hasNewlineAfter && afterIsNewline) ||
+    (belowNeedsNewlineBefore && !newlineAlreadyBelow) ||
+    closeTagWouldGlueToFollowing
   ) {
     toInsert.push(newline());
   }
