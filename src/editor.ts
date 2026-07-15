@@ -64,6 +64,7 @@ import { InsertionPlace } from "./commands";
 import { deleteSelection } from "./commands/commands";
 import { Mapping } from "./mapping";
 import { ProgressBar } from "./progressBar";
+import { studentHiddenPlugin } from "./student-hidden";
 
 /** Type that contains a diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {
@@ -365,6 +366,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
       updateStatusPlugin(this),
       mathPlugin,
       switchableViewPlugin(this._editorConfig),
+      studentHiddenPlugin,
       codePlugin(
         this._editorConfig.completions,
         this._editorConfig.symbols,

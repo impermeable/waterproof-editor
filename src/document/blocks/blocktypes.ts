@@ -9,6 +9,7 @@ import {
   markdown,
   mathDisplay,
   newline,
+  studentHidden,
 } from "./schema";
 
 const indentation = (level: number): string => "  ".repeat(level);
@@ -269,6 +270,51 @@ export class ContainerBlock implements Block {
   debugPrint(level: number): void {
     console.log(
       `${indentation(level)}ContainerBlock(${this.name}) {${debugInfo(this)}} [`,
+    );
+    this.innerBlocks.forEach((block) => block.debugPrint(level + 1));
+    console.log(`${indentation(level)}]`);
+  }
+}
+
+/**
+ * The `StudentHintBlock` acts similar to the {@linkcode ContainerBlock} in the
+ * sense that it groups child blocks together.
+ *
+ * The child blocks are only shown when in teacher mode and hence never visible
+ * to students.
+ */
+export class StudentHiddenBlock implements Block {
+  public type = BLOCK_NAME.STUDENT_HIDDEN;
+  public innerBlocks: Block[];
+
+  constructor(
+    public stringContent: string,
+    public range: BlockRange,
+    public innerRange: BlockRange,
+    public lineStart: number,
+    childBlocks:
+      | Block[]
+      | ((
+          innerContent: string,
+          innerRange: BlockRange,
+          lineStartOffset: number,
+        ) => Block[]),
+  ) {
+    if (typeof childBlocks === "function") {
+      this.innerBlocks = childBlocks(stringContent, innerRange, lineStart);
+    } else {
+      this.innerBlocks = childBlocks;
+    }
+  }
+
+  toProseMirror() {
+    const childNodes = this.innerBlocks.map((block) => block.toProseMirror());
+    return studentHidden(childNodes);
+  }
+
+  debugPrint(level: number): void {
+    console.log(
+      `${indentation(level)}StudentHiddenBlock {${debugInfo(this)}} [`,
     );
     this.innerBlocks.forEach((block) => block.debugPrint(level + 1));
     console.log(`${indentation(level)}]`);

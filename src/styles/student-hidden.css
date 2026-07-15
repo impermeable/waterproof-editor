@@ -1,0 +1,15 @@
+/* Class that is added to the student-hidden node when in student mode */
+.student-hidden-student {
+  display: none !important;
+}
+
+/* Class that is added to the student-hidden node when in teacher mode */
+.student-hidden-teacher {
+  border-right: 3px dashed var(--wp-buttonForeground);
+}
+.student-hidden-teacher::after {
+  content: "\1f441\fe0f";
+  position: absolute;
+  top: 0;
+  right: 0.5rem;
+}

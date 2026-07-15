@@ -9,6 +9,7 @@ export enum BLOCK_NAME {
   CODE = "code",
   NEWLINE = "newline",
   CONTAINER = "container",
+  STUDENT_HIDDEN = "student_hidden",
 }
 
 export interface BlockRange {
