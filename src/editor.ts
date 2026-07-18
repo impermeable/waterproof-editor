@@ -44,7 +44,6 @@ import {
 import { menuPlugin } from "./menubar";
 import { MENU_PLUGIN_KEY } from "./menubar/menubar";
 import { documentProgressDecoratorPlugin } from "./documentProgressDecorator";
-import { createContextMenuHTML } from "./context-menu";
 import { DefaultTagSerializer } from "./serialization/DocumentSerializer";
 
 // CSS imports
@@ -130,31 +129,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
     if (userAgent.includes("X11")) this._userOS = OS.Unix;
     if (userAgent.includes("Linux")) this._userOS = OS.Linux;
 
-    const theContextMenu = createContextMenuHTML(this);
-
     this._progressBar = new ProgressBar(editorElement);
-
-    document.body.appendChild(theContextMenu);
-
-    // Setup the custom context menu
-    document.addEventListener("click", (_ev) => {
-      // Handle a 'left mouse click'
-      // console.log("LMB");
-      theContextMenu.style.display = "none";
-    });
-
-    document.addEventListener("contextmenu", (ev) => {
-      // Handle a 'right mouse click'
-      // We call preventDefault to prevent the default context menu from showing
-      ev.preventDefault();
-      // After this we display our own context menu
-      const x: string = `${ev.pageX}px`;
-      const y: string = `${ev.pageY}px`;
-      theContextMenu.style.position = "absolute";
-      theContextMenu.style.left = x;
-      theContextMenu.style.top = y;
-      theContextMenu.style.display = "block";
-    });
   }
 
   init(content: string, version: number = 1) {

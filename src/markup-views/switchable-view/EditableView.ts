@@ -73,8 +73,17 @@ export class EditableView extends EmbeddedCodeMirrorEditor {
     const pos = this._getPos();
     // If there is no position we are done.
     if (pos === undefined) return;
-    // If we are updating or we don't have focus then we should return early.
-    if (this._parent.updating || !this.view.hasFocus) return;
+    // If we determine this update should **not** be
+    // forwarded we are done.
+    if (
+      !this.shouldForwardUpdate(
+        update,
+        this.view.hasFocus,
+        this._parent.updating,
+      )
+    ) {
+      return;
+    }
 
     // TODO: Comments
     let offset = pos + 1;
@@ -95,8 +104,9 @@ export class EditableView extends EmbeddedCodeMirrorEditor {
           );
         } else {
           tr.delete(offset + fromA, offset + toA);
-          offset += toB - fromB - (toA - fromA);
         }
+
+        offset += toB - fromB - (toA - fromA);
       });
       if (lineDelta !== 0) tr.setMeta("lineDelta", lineDelta);
       tr.setMeta(this._pluginKey, TextSelection.create(tr.doc, selFrom, selTo));

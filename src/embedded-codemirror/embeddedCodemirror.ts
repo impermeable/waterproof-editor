@@ -142,13 +142,42 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
   ignoreMutation?: ((mutation: MutationRecord) => boolean) | undefined;
   destroy?(): void;
 
+  /**
+   * Decide whether an inner CodeMirror update should be forwarded into the outer
+   * ProseMirror view.
+   */
+  protected shouldForwardUpdate(
+    update: ViewUpdate,
+    hasFocus: boolean,
+    isUpdating: boolean,
+  ): boolean {
+    // We always suppress updates created while we are programmatically syncing the
+    // inner editor from ProseMirror (ie. when `isUpdating` is true).
+    if (isUpdating) return false;
+    // Focus alone is not enough: browser actions such as rmb -> cut
+    // change the inner document after the editor has lost focus... :)
+    // In these cases the update **must** be forward to prevent a desync between CM and
+    // the outer editor.
+    if (!hasFocus && !update.docChanged) return false;
+    return true;
+  }
+
   forwardUpdate(update: ViewUpdate): void {
     // Get the current cursor position.
     const pos = this._getPos();
     // If there is no position we are done.
     if (pos === undefined) return;
-    // If we are updating or we don't have focus then we should return early.
-    if (this.updating || !this._codemirror?.hasFocus) return;
+    // If we determine this update should **not** be
+    // forwarded we are done.
+    if (
+      !this.shouldForwardUpdate(
+        update,
+        this._codemirror?.hasFocus ?? false,
+        this.updating,
+      )
+    ) {
+      return;
+    }
 
     // Figure out offset position from selection.
     let offset = pos + 1;
