@@ -1,37 +1,42 @@
+:root {
+  /* Width reserved to the left of every codeblock for the proof-status indicator bar. */
+  --wp-status-indicator-width: 8px;
+}
+
 .inputarea {
   display: block;
   position: relative;
-  padding-left: 8px;
+  padding-left: var(--wp-status-indicator-width);
 }
-  
+
 .inputarea::before {
   content: "";
   position: absolute;
   top: 0;
   left: 0px;
   height: 100%;
-  width: 8px; 
+  width: var(--wp-status-indicator-width);
   background-color: var(--wp-buttonBackground);
   /* we add a border for some high contrast themes */
-  outline: 1px solid var(--wp-buttonBorder); 
+  outline: 1px solid var(--wp-buttonBorder);
 }
 
 .inputarea.correct::before {
-  width: 8px;
+  width: var(--wp-status-indicator-width);
   background-color: var(--wp-terminalAnsiGreen);
 }
 
 .inputarea.invalid::before,
 .inputarea.correct.contains-warning::before {
-  width: 8px;
+  width: var(--wp-status-indicator-width);
   background-color: var(--wp-terminalAnsiYellow);
 }
 
 .inputarea.incorrect::before,
 .inputarea.incorrect.contains-error::before,
-.inputarea.incorrect.contains-warning::before, 
+.inputarea.incorrect.contains-warning::before,
 .inputarea.correct-contains-error::before {
-  width: 8px;
+  width: var(--wp-status-indicator-width);
   background-color: var(--wp-terminalAnsiRed);
 }
 
