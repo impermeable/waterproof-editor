@@ -644,40 +644,9 @@ export class WaterproofEditor implements MessageHandlerEditor {
     state = this._view.state;
     const trans = state.tr;
 
-    /* TODO: The check that makes sure we are allowed to insert is pretty much the
-			same as in `inputArea.ts` and could maybe be improved. */
-
-    const inputAreaPluginState = INPUT_AREA_PLUGIN_KEY.getState(state);
-
-    // Early return if the plugin state is undefined.
-    if (inputAreaPluginState === undefined) return false;
-    const { teacher } = inputAreaPluginState;
-
-    // If we are in teacher mode (ie. not locked) than
-    // 	 we are always able to insert.
-    if (teacher) {
-      this.createAndDispatchInsertionTransaction(
-        trans,
-        symbolUnicode,
-        from,
-        to,
-      );
-      return true;
-    }
-
-    const { $from } = state.selection;
-
-    let isEditable = false;
-    state.doc.nodesBetween($from.pos, $from.pos, (node) => {
-      if (node.type === WaterproofSchema.nodes.input) {
-        isEditable = true;
-      }
-    });
-
-    if (!isEditable) return false;
+    if (!isPositionEditable(state, state.selection.$from.pos)) return false;
 
     this.createAndDispatchInsertionTransaction(trans, symbolUnicode, from, to);
-
     return true;
   }
 
