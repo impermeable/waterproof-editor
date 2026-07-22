@@ -4,7 +4,7 @@
 
 // AI-generated tests
 
-import { EditorState, TextSelection } from "prosemirror-state";
+import { EditorState, Plugin, TextSelection } from "prosemirror-state";
 import { Node as PNode } from "prosemirror-model";
 import {
   INPUT_AREA_PLUGIN_KEY,
@@ -47,11 +47,11 @@ function textPos(doc: PNode, text: string): number {
   return found;
 }
 
-function makeState(teacher: boolean, plugins: unknown[] = [inputAreaPlugin]) {
+function makeState(teacher: boolean, plugins: Plugin[] = [inputAreaPlugin]) {
   let state = EditorState.create({
     doc: buildDoc(),
     schema: WaterproofSchema,
-    plugins: plugins as never,
+    plugins,
   });
   state = state.apply(state.tr.setMeta(INPUT_AREA_PLUGIN_KEY, { teacher }));
   return state;

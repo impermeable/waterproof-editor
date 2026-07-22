@@ -321,23 +321,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
         drop: (view, event) => {
           event.preventDefault();
         },
-        mousedown: (view, event) => {
-          const domTarget = event.target as Node | null;
-          if (domTarget === null) {
-            event.preventDefault();
-            return;
-          }
-
-          const posAtDomTarget = view.posAtDOM(domTarget, 0);
-          const nodeAtDomTarget = view.state.doc.resolve(posAtDomTarget).node();
-          if (nodeAtDomTarget.type === WaterproofSchema.nodes.math_display) {
-            // If the node is not editable, we tell ProseMirror that we have handled the event,
-            // this makes it so that single clicking does not select the whole math node.
-            return !isPositionEditable(view.state, posAtDomTarget);
-          }
-
-          event.preventDefault();
-        },
+        mousedown: this.handleMouseDown,
       },
     });
     this._view = view;
@@ -353,6 +337,25 @@ export class WaterproofEditor implements MessageHandlerEditor {
       devTools.applyDevTools(view);
     }
   }
+
+  private handleMouseDown = (
+    view: EditorView,
+    event: MouseEvent,
+  ): boolean | void => {
+    const domTarget = event.target as Node | null;
+    if (domTarget === null) {
+      event.preventDefault();
+      return;
+    }
+
+    const posAtDomTarget = view.posAtDOM(domTarget, 0);
+    const nodeAtDomTarget = view.state.doc.resolve(posAtDomTarget).node();
+    if (nodeAtDomTarget.type === WaterproofSchema.nodes.math_display) {
+      return !isPositionEditable(view.state, posAtDomTarget);
+    }
+
+    event.preventDefault();
+  };
 
   /** Create initial prosemirror state */
   private createState(proseDoc: ProseNode): EditorState {

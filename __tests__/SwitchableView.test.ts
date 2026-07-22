@@ -4,13 +4,13 @@
 
 // AI-generated tests
 
-import { EditorState } from "prosemirror-state";
 import { Node as PNode } from "prosemirror-model";
 import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "../src/inputArea";
 import { WaterproofSchema } from "../src/schema";
 import { SWITCHABLE_VIEW_PLUGIN_KEY } from "../src/markup-views";
 import { SwitchableView } from "../src/markup-views/switchable-view";
 import { EditorView } from "prosemirror-view";
+import { EditorState, Plugin } from "prosemirror-state";
 
 /**
  * doc
@@ -31,11 +31,11 @@ function buildDoc(): PNode {
   return WaterproofSchema.nodes.doc.create(null, [outsideMarkdown, inputNode]);
 }
 
-function makeState(teacher: boolean, plugins: unknown[] = [inputAreaPlugin]) {
+function makeState(teacher: boolean, plugins: Plugin[] = [inputAreaPlugin]) {
   let state = EditorState.create({
     doc: buildDoc(),
     schema: WaterproofSchema,
-    plugins: plugins as never,
+    plugins,
   });
   state = state.apply(state.tr.setMeta(INPUT_AREA_PLUGIN_KEY, { teacher }));
   return state;
