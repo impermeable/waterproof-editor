@@ -22,7 +22,7 @@ export class SwitchableView implements NodeView {
   /** The outer prosemirror editor */
   private readonly _outerView: EditorView;
   /** The node that is passed when constructing the NodeView */
-  private readonly _node: PNode;
+  private _node: PNode;
 
   /** Represents whether the view is currently updating */
   private _updating: boolean;
