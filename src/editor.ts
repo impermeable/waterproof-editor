@@ -339,7 +339,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
     }
   }
 
-  private handleMouseDown = (
+  private readonly handleMouseDown = (
     view: EditorView,
     event: MouseEvent,
   ): boolean | void => {
