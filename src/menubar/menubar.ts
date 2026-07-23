@@ -12,6 +12,7 @@ import {
   InsertionPlace,
   wrapInHint,
   wrapInInput,
+  wrapInStudentHidden,
   deleteSelection,
   wpLift,
 } from "../commands";
@@ -258,8 +259,14 @@ function createDefaultMenu(
       teacherOnly,
     ),
     createMenuItem(
+      "👁️",
+      "Make selection a student-hidden block (only visible in teacher mode)",
+      teacherOnlyWrapper(wrapInStudentHidden(tagConf)),
+      teacherOnly,
+    ),
+    createMenuItem(
       "↑",
-      "Lift selected node (Reverts the effect of making a 'hint' or 'input area')",
+      "Lift selected node (Reverts the effect of making a 'hint', 'input area', or 'student-hidden' block)",
       teacherOnlyWrapper(wpLift(tagConf)),
       teacherOnly,
     ),

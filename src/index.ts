@@ -11,4 +11,4 @@ export {
 } from "./serialization/DocumentSerializer";
 export { Node } from "prosemirror-model";
 export * from "./edit-utils";
-export { wrapInContainer } from "./commands";
+export { wrapInContainer, wrapInStudentHidden } from "./commands";
