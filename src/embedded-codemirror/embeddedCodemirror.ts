@@ -88,14 +88,14 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
       // All matching characters can be safely ignored.
       while (
         start < curEnd &&
-        curText.charCodeAt(start) == newText.charCodeAt(start)
+        curText.codePointAt(start) == newText.codePointAt(start)
       ) {
         ++start;
       }
       while (
         curEnd > start &&
         newEnd > start &&
-        curText.charCodeAt(curEnd - 1) == newText.charCodeAt(newEnd - 1)
+        curText.codePointAt(curEnd - 1) == newText.codePointAt(newEnd - 1)
       ) {
         curEnd--;
         newEnd--;
