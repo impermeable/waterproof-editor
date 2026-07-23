@@ -5,7 +5,8 @@
 
 /* Class that is added to the student-hidden node when in teacher mode */
 .student-hidden-teacher {
-  border-right: 3px dashed var(--wp-buttonForeground);
+  border-right: 3px dashed var(--wp-buttonBackground);
+  position: relative;
 }
 .student-hidden-teacher::after {
   content: "\1f441\fe0f";
