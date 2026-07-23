@@ -345,7 +345,7 @@ describe("student_hidden mapping", () => {
       );
       const tree = createTestMapping([block], config, serializer);
 
-      expect(tree.root.children.length).toBe(1);
+      expect(tree.root.children).toHaveLength(1);
       const shNode = tree.root.children[0];
       expect(shNode.type).toBe("student_hidden");
       expect(shNode.children.map((c) => c.type)).toEqual(
