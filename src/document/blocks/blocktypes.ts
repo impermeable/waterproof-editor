@@ -277,7 +277,7 @@ export class ContainerBlock implements Block {
 }
 
 /**
- * The `StudentHintBlock` acts similar to the {@linkcode ContainerBlock} in the
+ * The `StudentHiddenBlock` acts similar to the {@linkcode ContainerBlock} in the
  * sense that it groups child blocks together.
  *
  * The child blocks are only shown when in teacher mode and hence never visible

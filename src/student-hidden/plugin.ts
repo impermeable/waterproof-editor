@@ -14,7 +14,7 @@ export const studentHiddenPlugin = new Plugin({
     decorations(state: EditorState) {
       const teacher = INPUT_AREA_PLUGIN_KEY.getState(state)?.teacher ?? false;
 
-      // We are in student mode, prepare decorations.
+      // Decorate every student_hidden node with a class based on the current mode.
       const decos: Array<Decoration> = [];
 
       state.doc.descendants((node, pos) => {
