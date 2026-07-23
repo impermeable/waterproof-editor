@@ -45,20 +45,65 @@ const config = configuration("lean4");
 const serializer = new DefaultTagSerializer(config);
 
 // ============================================================
-// Parsing tests — like container, the .mv parser (statemachine.ts)
-// does not produce student_hidden blocks; parsing is handled in
-// waterproof-vscode.
+// Parsing tests — the .mv parser (statemachine.ts) recognizes
+// <student-hidden> ... </student-hidden> tags.
 // ============================================================
 
-describe("student_hidden parsing (not supported by .mv parser)", () => {
-  test("parser never produces student_hidden blocks", () => {
-    const doc = `<student-hidden>
-Some markdown content
-</student-hidden>`;
+describe("student_hidden parsing (.mv)", () => {
+  test("parses <student-hidden> into a StudentHiddenBlock", () => {
+    const doc = "<student-hidden>Some text</student-hidden>";
     const blocks = parse(doc, { language: "lean4" });
-    expect(blocks.every((b) => b.type !== BLOCK_NAME.STUDENT_HIDDEN)).toBe(
-      true,
-    );
+
+    expect(blocks).toHaveLength(1);
+    const block = blocks[0];
+    expect(isStudentHiddenBlock(block)).toBe(true);
+    expect(block.stringContent).toBe("Some text");
+    expect(block.range).toEqual({ from: 0, to: doc.length });
+    expect(block.innerRange).toEqual({ from: 16, to: 25 });
+    expect(block.innerBlocks).toHaveLength(1);
+    expect(isMarkdownBlock(block.innerBlocks![0])).toBe(true);
+    expect(block.innerBlocks![0].stringContent).toBe("Some text");
+  });
+
+  test("parses code inside a student-hidden block", () => {
+    const doc =
+      "<student-hidden>\n```lean4\nsecret code\n```\n</student-hidden>";
+    const blocks = parse(doc, { language: "lean4" });
+
+    expect(blocks).toHaveLength(1);
+    const block = blocks[0];
+    expect(isStudentHiddenBlock(block)).toBe(true);
+    const inner = block.innerBlocks!;
+    expect(inner.map((b) => b.type)).toEqual([
+      BLOCK_NAME.NEWLINE,
+      BLOCK_NAME.CODE,
+      BLOCK_NAME.NEWLINE,
+    ]);
+    expect(inner[1].stringContent).toBe("secret code");
+  });
+
+  test("round-trip: parse then serialize is the identity", () => {
+    const doc =
+      "Intro\n<student-hidden>\n```lean4\nsecret code\n```\n</student-hidden>\nAfter";
+    const blocks = parse(doc, { language: "lean4" });
+    expect(blocks.some((b) => isStudentHiddenBlock(b))).toBe(true);
+    expect(serializeBlocks(blocks, serializer)).toBe(doc);
+  });
+
+  test("nested tags inside student-hidden are not recognized (flat nesting)", () => {
+    // The .mv state machine only supports one level of nesting, so an input
+    // area inside a student-hidden block stays plain markdown. Round-tripping
+    // still preserves the document.
+    const doc = "<student-hidden><input-area>x</input-area></student-hidden>";
+    const blocks = parse(doc, { language: "lean4" });
+
+    expect(blocks).toHaveLength(1);
+    const block = blocks[0];
+    expect(isStudentHiddenBlock(block)).toBe(true);
+    expect(block.innerBlocks!.map((b) => b.type)).toEqual([
+      BLOCK_NAME.MARKDOWN,
+    ]);
+    expect(serializeBlocks(blocks, serializer)).toBe(doc);
   });
 });
 
