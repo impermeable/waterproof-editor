@@ -51,6 +51,12 @@ const tagConf: TagConfiguration = {
     openRequiresNewline: false,
     closeRequiresNewline: false,
   },
+  studentHidden: {
+    openTag: "<student-hidden>",
+    closeTag: "</student-hidden>",
+    openRequiresNewline: false,
+    closeRequiresNewline: false,
+  },
 };
 
 const initialStateCode = {

@@ -9,10 +9,12 @@ import {
   isMathDisplayBlock,
   isNewlineBlock,
   isContainerBlock,
+  isStudentHiddenBlock,
 } from "../src/document/blocks";
 import {
   Block,
   BlockRange,
+  CodeBlock,
   ContainerBlock,
   MarkdownBlock,
   StudentHiddenBlock,
@@ -20,15 +22,16 @@ import {
 } from "../src/document";
 import { BLOCK_NAME } from "../src/document/blocks/block";
 import { configuration } from "../src/markdown-defaults";
-import {
-  DefaultTagSerializer,
-  SerializationError,
-} from "../src/serialization/DocumentSerializer";
+import { TagConfiguration } from "../src/api";
+import { DefaultTagSerializer } from "../src/serialization/DocumentSerializer";
 import { sanityCheckTree } from "./mapping/util";
+import { wpLift, wrapInStudentHidden } from "../src/commands";
 import {
+  applyCommand,
   createTestMapping,
   groupingChildCases,
   serializeBlocks,
+  stateWithNodeSelAt,
 } from "./helpers";
 
 import { EditorState, Plugin } from "prosemirror-state";
@@ -166,7 +169,7 @@ describe.each(groupingBlockClasses)(
 // ============================================================
 
 describe("student_hidden typeguards", () => {
-  test("existing typeguards do not match a StudentHiddenBlock", () => {
+  test("isStudentHiddenBlock identifies correctly", () => {
     const block = new StudentHiddenBlock(
       "",
       { from: 0, to: 0 },
@@ -175,6 +178,7 @@ describe("student_hidden typeguards", () => {
       [],
     );
     expect(block.type).toBe(BLOCK_NAME.STUDENT_HIDDEN);
+    expect(isStudentHiddenBlock(block)).toBe(true);
     expect(isContainerBlock(block)).toBe(false);
     expect(isInputAreaBlock(block)).toBe(false);
     expect(isHintBlock(block)).toBe(false);
@@ -182,6 +186,11 @@ describe("student_hidden typeguards", () => {
     expect(isMarkdownBlock(block)).toBe(false);
     expect(isMathDisplayBlock(block)).toBe(false);
     expect(isNewlineBlock(block)).toBe(false);
+  });
+
+  test("isStudentHiddenBlock rejects other block types", () => {
+    const md = new MarkdownBlock("", { from: 0, to: 0 }, { from: 0, to: 0 }, 0);
+    expect(isStudentHiddenBlock(md)).toBe(false);
   });
 });
 
@@ -315,27 +324,53 @@ describe("student_hidden mapping", () => {
 // ============================================================
 
 describe("student_hidden serialization", () => {
-  // KNOWN GAP: the serializer has no case for student_hidden nodes yet, so
-  // serializing a document that contains one throws. This will be fixed
-  // separately — when student_hidden serialization is implemented, replace
-  // this test with one asserting the proper round-trip output.
-  test("serializing a student_hidden node currently throws SerializationError", () => {
+  // The default configuration uses <student-hidden> tags, so the expected
+  // output is the string content wrapped in those tags.
+  test.each(groupingChildCases())(
+    "serialize student_hidden with $child",
+    ({ stringContent, range, innerRange, innerBlocks }) => {
+      const block = new StudentHiddenBlock(
+        stringContent,
+        range,
+        innerRange,
+        0,
+        innerBlocks,
+      );
+      expect(serializeBlocks([block], serializer)).toBe(
+        `<student-hidden>${stringContent}</student-hidden>`,
+      );
+    },
+  );
+
+  test("serialize student_hidden with Lean-style tags", () => {
+    // Mirrors the tag configuration used for Lean in waterproof-vscode.
+    const leanStyleConfig: TagConfiguration = {
+      ...config,
+      studentHidden: {
+        openTag: ":::studentHidden\n",
+        closeTag: "\n:::",
+        openRequiresNewline: true,
+        closeRequiresNewline: true,
+      },
+    };
+    const leanStyleSerializer = new DefaultTagSerializer(leanStyleConfig);
+
     const block = new StudentHiddenBlock(
-      "Some text",
-      { from: 0, to: 28 },
-      { from: 14, to: 23 },
+      "```lean4\ndef x := 1\n```",
+      { from: 0, to: 44 },
+      { from: 17, to: 40 },
       0,
       [
-        new MarkdownBlock(
-          "Some text",
-          { from: 14, to: 23 },
-          { from: 14, to: 23 },
+        new CodeBlock(
+          "def x := 1",
+          { from: 17, to: 40 },
+          { from: 26, to: 36 },
           0,
         ),
       ],
     );
-    expect(() => serializeBlocks([block], serializer)).toThrow(
-      SerializationError,
+    expect(serializeBlocks([block], leanStyleSerializer)).toBe(
+      ":::studentHidden\n```lean4\ndef x := 1\n```\n:::",
     );
   });
 });
@@ -459,5 +494,93 @@ describe("student_hidden plugin decorations", () => {
     // sh2 starts after sh1 and the newline (nodeSize 1).
     expect(decos[1].from).toBe(sh1.nodeSize + 1);
     expect(decos[1].to).toBe(sh1.nodeSize + 1 + sh2.nodeSize);
+  });
+});
+
+// ============================================================
+// Command tests
+// ============================================================
+
+describe("wrapInStudentHidden command", () => {
+  function makeStateWithMarkdown(): EditorState {
+    const mdNode = WaterproofSchema.nodes.markdown.create(
+      {},
+      WaterproofSchema.text("hello"),
+    );
+    const doc = WaterproofSchema.nodes.doc.create({}, mdNode);
+    return stateWithNodeSelAt(doc, 0);
+  }
+
+  test("wraps selected node in a student_hidden node", () => {
+    const state = makeStateWithMarkdown();
+    const newState = applyCommand(state, wrapInStudentHidden(config));
+
+    expect(newState).not.toBeNull();
+    const doc = newState!.doc;
+    expect(doc.firstChild!.type.name).toBe("student_hidden");
+    expect(doc.firstChild!.firstChild!.type.name).toBe("markdown");
+  });
+
+  test("dry-run (no dispatch) returns true when node is selected", () => {
+    const state = makeStateWithMarkdown();
+    expect(wrapInStudentHidden(config)(state, undefined)).toBe(true);
+  });
+
+  test("returns false when selected node is a container", () => {
+    const mdNode = WaterproofSchema.nodes.markdown.create(
+      {},
+      WaterproofSchema.text("hello"),
+    );
+    const cgNode = WaterproofSchema.nodes.container.create(
+      { name: "test" },
+      mdNode,
+    );
+    const doc = WaterproofSchema.nodes.doc.create({}, cgNode);
+    const state = stateWithNodeSelAt(doc, 0);
+    expect(wrapInStudentHidden(config)(state, undefined)).toBe(false);
+  });
+
+  test("returns false when selected node is already student_hidden", () => {
+    const mdNode = WaterproofSchema.nodes.markdown.create(
+      {},
+      WaterproofSchema.text("hello"),
+    );
+    const shNode = WaterproofSchema.nodes.student_hidden.create({}, mdNode);
+    const doc = WaterproofSchema.nodes.doc.create({}, shNode);
+    const state = stateWithNodeSelAt(doc, 0);
+    expect(wrapInStudentHidden(config)(state, undefined)).toBe(false);
+  });
+
+  test("returns false for a node inside a container (student_hidden is doc-level only)", () => {
+    const mdNode = WaterproofSchema.nodes.markdown.create(
+      {},
+      WaterproofSchema.text("hello"),
+    );
+    const cgNode = WaterproofSchema.nodes.container.create(
+      { name: "test" },
+      mdNode,
+    );
+    const doc = WaterproofSchema.nodes.doc.create({}, cgNode);
+    // Select the markdown node inside the container (pos 1).
+    const state = stateWithNodeSelAt(doc, 1);
+    expect(wrapInStudentHidden(config)(state, undefined)).toBe(false);
+  });
+});
+
+describe("wpLift from student_hidden", () => {
+  test("lifts child out of student_hidden", () => {
+    const mdNode = WaterproofSchema.nodes.markdown.create(
+      {},
+      WaterproofSchema.text("hello"),
+    );
+    const shNode = WaterproofSchema.nodes.student_hidden.create({}, mdNode);
+    const doc = WaterproofSchema.nodes.doc.create({}, shNode);
+    const state = stateWithNodeSelAt(doc, 0);
+
+    const newState = applyCommand(state, wpLift(config));
+
+    expect(newState).not.toBeNull();
+    // After lifting, the markdown should be at doc level (no wrapper left)
+    expect(newState!.doc.firstChild!.type.name).toBe("markdown");
   });
 });

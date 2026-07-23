@@ -7,6 +7,7 @@ import {
   MarkdownBlock,
   MathDisplayBlock,
   NewlineBlock,
+  StudentHiddenBlock,
 } from "./blocktypes";
 
 export const isInputAreaBlock = (block: Block): block is InputAreaBlock =>
@@ -23,3 +24,6 @@ export const isNewlineBlock = (block: Block): block is NewlineBlock =>
   block.type === BLOCK_NAME.NEWLINE;
 export const isContainerBlock = (block: Block): block is ContainerBlock =>
   block.type === BLOCK_NAME.CONTAINER;
+export const isStudentHiddenBlock = (
+  block: Block,
+): block is StudentHiddenBlock => block.type === BLOCK_NAME.STUDENT_HIDDEN;
