@@ -5,7 +5,7 @@ import {
   ViewUpdate,
 } from "@codemirror/view";
 import { Node as PNode, Schema } from "prosemirror-model";
-import { TextSelection } from "prosemirror-state";
+import { TextSelection, Transaction } from "prosemirror-state";
 import {
   Decoration,
   DecorationSource,
@@ -56,7 +56,7 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
   update(
     node: PNode,
     _decorations: readonly Decoration[],
-    _innerDecorations: DecorationSource,
+    _innerDecorations?: DecorationSource,
   ) {
     // Ignore the update if the type of `node` is not the same as the internal node type.
     if (node.type != this._node.type) return false;
@@ -65,11 +65,14 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
     this._node = node;
 
     // If is updating return early
-    if (this.updating) return true;
+    if (this.isSyncing) return true;
+
+    const codemirror = this.innerEditor;
+    if (!codemirror) return true;
 
     // Extract node text (the edit) and document (current) text.
     const newText = node.textContent;
-    const curText = this._codemirror?.state.doc.toString();
+    const curText = codemirror.state.doc.toString();
 
     // Check whether they are the same.
     // We don't need to update if they are.
@@ -77,31 +80,31 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
       // Set start.
       let start = 0;
       // The current length of the document.
-      let curEnd = curText?.length;
+      let curEnd = curText.length;
       // The new length of the document.
       let newEnd = newText.length;
 
       // Figure out what range of characters needs to be replaced.
       // All matching characters can be safely ignored.
       while (
-        start < curEnd! &&
-        curText?.charCodeAt(start) == newText.charCodeAt(start)
+        start < curEnd &&
+        curText.charCodeAt(start) == newText.charCodeAt(start)
       ) {
         ++start;
       }
       while (
-        curEnd! > start &&
+        curEnd > start &&
         newEnd > start &&
-        curText?.charCodeAt(curEnd! - 1) == newText.charCodeAt(newEnd - 1)
+        curText.charCodeAt(curEnd - 1) == newText.charCodeAt(newEnd - 1)
       ) {
-        curEnd!--;
+        curEnd--;
         newEnd--;
       }
 
       // Set updating to true before dispatching transaction.
-      this.updating = true;
+      this.isSyncing = true;
       // Update the codemirror instance from 'start' to 'curEnd' with the corresponding slice of the newText.
-      this._codemirror?.dispatch({
+      codemirror.dispatch({
         changes: {
           from: start,
           to: curEnd,
@@ -109,7 +112,7 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
         },
       });
       // Set updating to false again.
-      this.updating = false;
+      this.isSyncing = false;
     }
     return true;
   }
@@ -143,6 +146,35 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
   destroy?(): void;
 
   /**
+   * The inner CodeMirror view that the shared update logic operates on.
+   * Subclasses that store their CodeMirror instance elsewhere can override this.
+   */
+  protected get innerEditor(): CodeMirror | undefined {
+    return this._codemirror;
+  }
+
+  /**
+   * Whether we are programmatically syncing the inner editor from ProseMirror.
+   * Subclasses that track this state elsewhere can override this pair.
+   */
+  protected get isSyncing(): boolean {
+    return this.updating;
+  }
+
+  protected set isSyncing(value: boolean) {
+    this.updating = value;
+  }
+
+  /**
+   * Record the selection resulting from a forwarded update on the outgoing
+   * transaction. Subclasses can override this to e.g. store the selection as
+   * plugin metadata instead of setting it directly.
+   */
+  protected applySelection(tr: Transaction, selection: TextSelection): void {
+    tr.setSelection(selection);
+  }
+
+  /**
    * Decide whether an inner CodeMirror update should be forwarded into the outer
    * ProseMirror view.
    */
@@ -172,8 +204,8 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
     if (
       !this.shouldForwardUpdate(
         update,
-        this._codemirror?.hasFocus ?? false,
-        this.updating,
+        this.innerEditor?.hasFocus ?? false,
+        this.isSyncing,
       )
     ) {
       return;
@@ -210,7 +242,7 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
         offset += toB - fromB - (toA - fromA);
       });
       if (lineDelta !== 0) tr.setMeta("lineDelta", lineDelta);
-      tr.setSelection(TextSelection.create(tr.doc, selFrom, selTo));
+      this.applySelection(tr, TextSelection.create(tr.doc, selFrom, selTo));
       this._outerView.dispatch(tr);
     }
   }
