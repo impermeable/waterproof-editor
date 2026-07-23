@@ -14,6 +14,7 @@ import {
 import {
   Block,
   BlockRange,
+  ChildBlocks,
   CodeBlock,
   ContainerBlock,
   MarkdownBlock,
@@ -113,14 +114,6 @@ describe("student_hidden parsing (.mv)", () => {
 // they share the same constructor contract.
 // ============================================================
 
-type ChildBlocksArg =
-  | Block[]
-  | ((
-      innerContent: string,
-      innerRange: BlockRange,
-      lineStartOffset: number,
-    ) => Block[]);
-
 const groupingBlockClasses = [
   {
     blockClass: "ContainerBlock",
@@ -130,7 +123,7 @@ const groupingBlockClasses = [
       range: BlockRange,
       innerRange: BlockRange,
       lineStart: number,
-      childBlocks: ChildBlocksArg,
+      childBlocks: ChildBlocks,
     ): Block =>
       new ContainerBlock(
         stringContent,
@@ -149,7 +142,7 @@ const groupingBlockClasses = [
       range: BlockRange,
       innerRange: BlockRange,
       lineStart: number,
-      childBlocks: ChildBlocksArg,
+      childBlocks: ChildBlocks,
     ): Block =>
       new StudentHiddenBlock(
         stringContent,
