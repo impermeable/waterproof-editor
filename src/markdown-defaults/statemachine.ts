@@ -7,6 +7,7 @@ import {
   MarkdownBlock,
   MathDisplayBlock,
   NewlineBlock,
+  StudentHiddenBlock,
 } from "../document";
 
 enum ParserState {
@@ -21,20 +22,23 @@ enum ParserState {
 }
 
 enum NestedState {
-  /** Not in a hint or an input area */
+  /** Not in a hint, input area, or student-hidden block */
   None,
   /** Parsing as part of a hint */
   Hint,
   /** Parsing as part of an input area */
   Input,
+  /** Parsing as part of a student-hidden block */
+  StudentHidden,
 }
 
 /**
  * Parser for markdown documents.
  *
- * Next to the regular markdown and code parts this parser has predefined 'tags' for hints and input areas:
+ * Next to the regular markdown and code parts this parser has predefined 'tags' for hints, input areas, and student-hidden blocks:
  * * The content between `<hint title="{title}">` and ` </hint>` is turned into a hint cell, `{title}` will turn into the title that is displayed in the editor.
  * * The content between `<input-area>` and `</input-area>` is turned into an input area.
+ * * The content between `<student-hidden>` and `</student-hidden>` is turned into a student-hidden block (only visible in teacher mode).
  * @param document The document to convert into a `WaterproofDocument`
  * @param config An object that may contain
  * - `language: string`: The language tag to use for the code cells. That is, the part of the ` ``` ` when opening a code block (` ```python ` for a python
@@ -89,6 +93,10 @@ export function parse(
     inputAreaOpenLength = inputAreaOpen.length;
   const inputAreaClose = "</input-area>",
     inputAreaCloseLength = inputAreaClose.length;
+  const studentHiddenOpen = "<student-hidden>",
+    studentHiddenOpenLength = studentHiddenOpen.length;
+  const studentHiddenClose = "</student-hidden>",
+    studentHiddenCloseLength = studentHiddenClose.length;
   const codeBlockOpen = "```" + language + "\n",
     codeBlockOpenLength = codeBlockOpen.length;
   const codeBlockClose = "\n```",
@@ -164,6 +172,10 @@ export function parse(
     return lookAhead(inputAreaOpen);
   }
 
+  function opensStudentHiddenBlock(): boolean {
+    return lookAhead(studentHiddenOpen);
+  }
+
   function opensLaTeXBlock(): boolean {
     return lookAhead(latexBlockOpenClose);
   }
@@ -186,6 +198,10 @@ export function parse(
 
   function closesInputAreaBlock(): boolean {
     return lookAhead(inputAreaClose);
+  }
+
+  function closesStudentHiddenBlock(): boolean {
+    return lookAhead(studentHiddenClose);
   }
 
   function closesLaTeXBlock(): boolean {
@@ -258,6 +274,15 @@ export function parse(
       innerRangeStartNested = i;
       rangeStartNested = i;
       nested = NestedState.Input;
+    } else if (nested === NestedState.None && opensStudentHiddenBlock()) {
+      closeMarkdown();
+      setRangeStart();
+      i += studentHiddenOpenLength;
+      setInnerRangeStart();
+      setLineStart();
+      innerRangeStartNested = i;
+      rangeStartNested = i;
+      nested = NestedState.StudentHidden;
     } else if (nested === NestedState.Hint && closesHintBlock()) {
       closeMarkdown();
       nested = NestedState.None;
@@ -289,6 +314,24 @@ export function parse(
       );
       pushBlock(inputAreaBlock);
       i += inputAreaCloseLength; // Skip the </input-area>
+      backToMarkdown(true);
+    } else if (
+      nested === NestedState.StudentHidden &&
+      closesStudentHiddenBlock()
+    ) {
+      closeMarkdown();
+      nested = NestedState.None;
+      const range = { from: getRangeStart(), to: i + studentHiddenCloseLength };
+      const innerRange = { from: getInnerRangeStart(), to: i };
+      const studentHiddenBlock = new StudentHiddenBlock(
+        document.slice(innerRange.from, innerRange.to),
+        range,
+        innerRange,
+        0,
+        innerBlocks,
+      );
+      pushBlock(studentHiddenBlock);
+      i += studentHiddenCloseLength; // Skip the </student-hidden>
       backToMarkdown(true);
     } else {
       checkNewlineAndIncrementI();

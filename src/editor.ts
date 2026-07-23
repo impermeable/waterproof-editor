@@ -35,7 +35,11 @@ import {
 } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
-import { INPUT_AREA_PLUGIN_KEY, inputAreaPlugin } from "./inputArea";
+import {
+  INPUT_AREA_PLUGIN_KEY,
+  inputAreaPlugin,
+  isPositionEditable,
+} from "./inputArea";
 import { WaterproofSchema } from "./schema";
 import {
   SWITCHABLE_VIEW_PLUGIN_KEY,
@@ -63,6 +67,7 @@ import { InsertionPlace } from "./commands";
 import { deleteSelection } from "./commands/commands";
 import { Mapping } from "./mapping";
 import { ProgressBar } from "./progressBar";
+import { studentHiddenPlugin } from "./student-hidden";
 
 /** Type that contains a diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {
@@ -292,20 +297,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
         drop: (view, event) => {
           event.preventDefault();
         },
-        mousedown: (view, event) => {
-          const domTarget = event.target as Node | null;
-          if (domTarget === null) {
-            event.preventDefault();
-            return;
-          }
-
-          const posAtDomTarget = view.posAtDOM(domTarget, 0);
-          const nodeAtDomTarget = view.state.doc.resolve(posAtDomTarget).node();
-          if (nodeAtDomTarget.type === WaterproofSchema.nodes.math_display)
-            return;
-
-          event.preventDefault();
-        },
+        mousedown: this.handleMouseDown,
       },
     });
     this._view = view;
@@ -321,6 +313,25 @@ export class WaterproofEditor implements MessageHandlerEditor {
       devTools.applyDevTools(view);
     }
   }
+
+  private readonly handleMouseDown = (
+    view: EditorView,
+    event: MouseEvent,
+  ): boolean | void => {
+    const domTarget = event.target as Node | null;
+    if (domTarget === null) {
+      event.preventDefault();
+      return;
+    }
+
+    const posAtDomTarget = view.posAtDOM(domTarget, 0);
+    const nodeAtDomTarget = view.state.doc.resolve(posAtDomTarget).node();
+    if (nodeAtDomTarget.type === WaterproofSchema.nodes.math_display) {
+      return !isPositionEditable(view.state, posAtDomTarget);
+    }
+
+    event.preventDefault();
+  };
 
   /** Create initial prosemirror state */
   private createState(proseDoc: ProseNode): EditorState {
@@ -340,6 +351,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
       updateStatusPlugin(this),
       mathPlugin,
       switchableViewPlugin(this._editorConfig),
+      studentHiddenPlugin,
       codePlugin(
         this._editorConfig.completions,
         this._editorConfig.symbols,
@@ -612,40 +624,9 @@ export class WaterproofEditor implements MessageHandlerEditor {
     state = this._view.state;
     const trans = state.tr;
 
-    /* TODO: The check that makes sure we are allowed to insert is pretty much the
-			same as in `inputArea.ts` and could maybe be improved. */
-
-    const inputAreaPluginState = INPUT_AREA_PLUGIN_KEY.getState(state);
-
-    // Early return if the plugin state is undefined.
-    if (inputAreaPluginState === undefined) return false;
-    const { teacher } = inputAreaPluginState;
-
-    // If we are in teacher mode (ie. not locked) than
-    // 	 we are always able to insert.
-    if (teacher) {
-      this.createAndDispatchInsertionTransaction(
-        trans,
-        symbolUnicode,
-        from,
-        to,
-      );
-      return true;
-    }
-
-    const { $from } = state.selection;
-
-    let isEditable = false;
-    state.doc.nodesBetween($from.pos, $from.pos, (node) => {
-      if (node.type === WaterproofSchema.nodes.input) {
-        isEditable = true;
-      }
-    });
-
-    if (!isEditable) return false;
+    if (!isPositionEditable(state, state.selection.$from.pos)) return false;
 
     this.createAndDispatchInsertionTransaction(trans, symbolUnicode, from, to);
-
     return true;
   }
 
