@@ -12,17 +12,24 @@ import { SwitchableView } from "../src/markup-views/switchable-view";
 import { EditableView } from "../src/markup-views/switchable-view/EditableView";
 import { applyingOuterView } from "./helpers";
 
+/** A doc containing a single markdown node with `text`. */
+function markdownDoc(text: string): PNode {
+  return WaterproofSchema.nodes.doc.create(
+    null,
+    WaterproofSchema.nodes.markdown.create(null, WaterproofSchema.text(text)),
+  );
+}
+
 /**
  * Creates an EditableView (through SwitchableView.selectNode, as in production)
  * for a document containing a single markdown node with `text`. The outer view
  * applies dispatched transactions, so tests can observe the outer document.
  */
 function makeEditableView(text: string) {
-  const doc = WaterproofSchema.nodes.doc.create(
-    null,
-    WaterproofSchema.nodes.markdown.create(null, WaterproofSchema.text(text)),
-  );
-  const state = EditorState.create({ doc, schema: WaterproofSchema });
+  const state = EditorState.create({
+    doc: markdownDoc(text),
+    schema: WaterproofSchema,
+  });
   const outerView = applyingOuterView(state);
   const node = state.doc.nodeAt(0) as PNode;
   const sv = new SwitchableView(
@@ -40,7 +47,7 @@ function makeEditableView(text: string) {
   //@ts-expect-error private property
   const editable = sv.view as EditableView;
   expect(editable).toBeInstanceOf(EditableView);
-  return { editable, outerView };
+  return { sv, editable, outerView };
 }
 
 describe("EditableView forwardUpdate", () => {
@@ -89,6 +96,35 @@ describe("EditableView forwardUpdate", () => {
 
     expect(editable.view.state.doc.toString()).toBe("Zcdf");
     expect(outerView.state.doc.textContent).toBe("Zcdf");
+  });
+
+  // AI-generated regression test: SwitchableView used to name its getter
+  // `isUpdating` and its setter `updating`, so EditableView's reads of
+  // `_parent.updating` were always undefined and the suppression guard in
+  // forwardUpdate never fired. An outer-document change (e.g. undo) hitting an
+  // open editable cell was then echoed back at stale coordinates, corrupting
+  // the document ("abcdef" became "abdef").
+  test("does not echo a programmatic sync from the outer editor back into it", () => {
+    const { sv, editable, outerView } = makeEditableView("abcdef");
+
+    // The user types "X" at offset 2; this is forwarded to the outer doc.
+    editable.view.dispatch({ changes: { from: 2, insert: "X" } });
+    expect(outerView.state.doc.textContent).toBe("abXcdef");
+    expect(outerView.dispatch).toHaveBeenCalledTimes(1);
+
+    // The outer document reverts to "abcdef" (as undo would), after which
+    // ProseMirror calls the nodeview's update() to sync the inner CodeMirror.
+    outerView.state = EditorState.create({
+      doc: markdownDoc("abcdef"),
+      schema: WaterproofSchema,
+    });
+    sv.update(outerView.state.doc.nodeAt(0) as PNode, []);
+
+    // The inner editor is synced, and the sync is NOT forwarded back:
+    // it originated from the outer editor, which is already up to date.
+    expect(editable.view.state.doc.toString()).toBe("abcdef");
+    expect(outerView.dispatch).toHaveBeenCalledTimes(1);
+    expect(outerView.state.doc.textContent).toBe("abcdef");
   });
 
   test("keeps later changes aligned after an earlier deletion", () => {

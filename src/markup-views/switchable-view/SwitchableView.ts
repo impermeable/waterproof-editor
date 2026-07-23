@@ -110,7 +110,7 @@ export class SwitchableView implements NodeView {
   /**
    * Returns whether this view is currently in the updating state.
    */
-  public get isUpdating() {
+  public get updating() {
     return this._updating;
   }
 
