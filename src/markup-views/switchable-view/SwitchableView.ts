@@ -110,7 +110,7 @@ export class SwitchableView implements NodeView {
   /**
    * Returns whether this view is currently in the updating state.
    */
-  public get isUpdating() {
+  public get updating() {
     return this._updating;
   }
 
@@ -170,8 +170,18 @@ export class SwitchableView implements NodeView {
 
   update(node: PNode, decorations: readonly Decoration[]) {
     if (!node.sameMarkup(this._node)) return false;
+
+    const previousTextContent = this._node.textContent;
     this._node = node;
-    if (this.view instanceof RenderedView) this.makeEditableView();
+
+    if (this.view instanceof RenderedView) {
+      // If the content has changed we need to remake the view.
+      if (previousTextContent !== node.textContent) {
+        this.makeRenderedView();
+      }
+      return this.view.update();
+    }
+
     return this.view.update(node, decorations);
   }
 

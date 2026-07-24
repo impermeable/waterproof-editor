@@ -274,3 +274,22 @@ describe("handleMouseDown", () => {
     expect(isEditableSpy).not.toHaveBeenCalled();
   });
 });
+
+// ── context menu removal ──────────────────────────────────────────────────────
+
+describe("context menu removal", () => {
+  test("constructing the editor does not install a custom context menu", () => {
+    makeEditor();
+
+    // No context menu element is added to the document...
+    expect(document.querySelector(".context-menu")).toBeNull();
+
+    // ...and the browser's native context menu is not suppressed.
+    const event = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+    });
+    document.body.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+  });
+});

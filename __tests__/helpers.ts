@@ -1,5 +1,6 @@
 import { EditorState, NodeSelection, Transaction } from "prosemirror-state";
 import { Node as PNode } from "prosemirror-model";
+import { EditorView } from "prosemirror-view";
 import {
   DocumentSerializer,
   Mapping,
@@ -57,6 +58,51 @@ export function applyCommand(
     newState = state.apply(tr);
   });
   return newState;
+}
+
+/** Position immediately before the first node matching `predicate` (the NodeView getPos contract). */
+export function findNodePos(
+  doc: PNode,
+  predicate: (n: PNode) => boolean,
+): number {
+  let result = -1;
+  doc.descendants((node, pos) => {
+    if (result !== -1) return false;
+    if (predicate(node)) {
+      result = pos;
+      return false;
+    }
+    return true;
+  });
+  if (result === -1) throw new Error("node not found");
+  return result;
+}
+
+/** Minimal fake outer view for NodeView tests: only `.state`, `.dispatch` and `.editable` are read. */
+export function fakeOuterView(state: EditorState) {
+  return {
+    state,
+    dispatch: jest.fn(),
+    editable: true,
+  } as unknown as EditorView;
+}
+
+/**
+ * Fake outer view whose `dispatch` applies the transaction to its state, so
+ * tests can observe the resulting document. `dispatch` is a jest mock.
+ */
+export function applyingOuterView(initial: EditorState) {
+  const holder = {
+    state: initial,
+    editable: true,
+    dispatch: jest.fn((tr: Transaction) => {
+      holder.state = holder.state.apply(tr);
+    }),
+  };
+  return holder as unknown as EditorView & {
+    state: EditorState;
+    dispatch: jest.Mock;
+  };
 }
 
 /** Returns the type names of all direct children of a doc node. */
