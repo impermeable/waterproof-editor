@@ -1,6 +1,6 @@
 {
   "name": "@impermeable/waterproof-editor",
-  "version": "0.15.1",
+  "version": "0.16.0",
   "description": "Waterproof Editor ",
   "homepage": "https://github.com/impermeable/waterproof-editor#readme",
   "bugs": {
@@ -84,10 +84,7 @@
       "serialize-javascript": "7.0.5",
       "diff": "8.0.3"
     },
-    "eslint": {
-      "brace-expansion": "2.1.0"
-    },
-    "js-yaml": "4.2.0"
+    "js-yaml": "5.2.1"
   },
   "peerDependencies": {
     "@codemirror/autocomplete": "6.18.1",

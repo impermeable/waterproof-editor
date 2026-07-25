@@ -47,6 +47,11 @@ export class NodeUpdate {
           this.tagConf.container.openTag(title),
           this.tagConf.container.closeTag,
         ];
+      case "student_hidden":
+        return [
+          this.tagConf.studentHidden.openTag,
+          this.tagConf.studentHidden.closeTag,
+        ];
       default:
         throw new NodeUpdateError(`Unsupported node type: ${nodeName}`);
     }
@@ -531,15 +536,16 @@ export class NodeUpdate {
       );
     }
 
-    // Check that the wrapping node is of a supported type (hint, input, or container)
+    // Check that the wrapping node is of a supported type (hint, input, container, or student_hidden)
     const insertedNodeType = wrappingNode.type.name;
     if (
       insertedNodeType !== "hint" &&
       insertedNodeType !== "input" &&
-      insertedNodeType !== "container"
+      insertedNodeType !== "container" &&
+      insertedNodeType !== "student_hidden"
     ) {
       throw new NodeUpdateError(
-        " We only support wrapping in hints, inputs, or containers ",
+        " We only support wrapping in hints, inputs, containers, or student-hidden nodes ",
       );
     }
 

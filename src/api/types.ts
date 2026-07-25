@@ -95,6 +95,7 @@ export type TagConfiguration = {
     openTag: (name: string) => string;
     closeTag: string;
   } & RequiresNewline;
+  studentHidden: OpenCloseTag & RequiresNewline;
 };
 
 export class NodeUpdateError extends Error {
