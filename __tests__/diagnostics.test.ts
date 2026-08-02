@@ -70,9 +70,9 @@ type outType = Array<DiagnosticObjectProse>;
         severity: 1,
       },
     ];
+    //prettier-ignore
     //@ts-expect-error This method is private so no typing info available
-    const mockDiagsChanged = jest
-      .spyOn(WaterproofEditor.prototype, "informCodemirrorViews")
+    const mockDiagsChanged = jest.spyOn(WaterproofEditor.prototype, "informCodemirrorViews")
       .mockImplementation();
 
     const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
@@ -94,6 +94,42 @@ type outType = Array<DiagnosticObjectProse>;
     ];
 
     expect(editor.getDiagnosticsInRange(0, 11)).toStrictEqual(expected);
+  });
+
+  test("preserves code actions without leaking transport offsets", () => {
+    const codeActions = [
+      {
+        title: "Try this",
+        edits: [{ start: 2, end: 8, newText: "replacement" }],
+      },
+    ];
+    const diags: inType = [
+      {
+        startOffset: 2,
+        endOffset: 8,
+        message: "Help",
+        severity: Severity.Information,
+        codeActions,
+      },
+    ];
+    // prettier-ignore
+    //@ts-expect-error This method is private so no typing info available
+    jest.spyOn(WaterproofEditor.prototype, "informCodemirrorViews")
+      .mockImplementation();
+
+    const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+    editor.init("");
+    editor.setActiveDiagnostics(diags);
+
+    expect(editor.getDiagnosticsInRange(0, 11)).toStrictEqual([
+      {
+        start: 2,
+        end: 8,
+        message: "Help",
+        severity: Severity.Information,
+        codeActions,
+      },
+    ]);
   });
 
   test("Fit to size", () => {

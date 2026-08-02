@@ -24,9 +24,9 @@ const node: Node = WaterproofSchema.nodes["code"].create(
 );
 
 test("Basic diagnostic", () => {
-  //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
   const nodeview = new CodeBlockView(
     node,
+    //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
     { editable: true },
     null,
     () => undefined,
@@ -61,6 +61,49 @@ test("Basic diagnostic", () => {
   expect(result.actions?.at(0)?.name).toBe("📋");
 });
 
+test("LSP code actions are exposed and apply all edits as one batch", () => {
+  const replaceRanges = jest.fn();
+  const nodeview = new CodeBlockView(
+    node,
+    //@ts-expect-error For test setup supply only the minimal needed editor API
+    { editable: true },
+    { replaceRanges },
+    () => undefined,
+    null,
+    [],
+    [],
+    ThemeStyle.Light,
+  );
+  const edits = [
+    { start: 0, end: 1, newText: "Finished" },
+    { start: 3, end: 4, newText: "!" },
+  ];
+  const alternativeEdits = [{ start: 0, end: 4, newText: "Done." }];
+
+  const result = nodeview.preprocessDiagnostic(
+    docStart,
+    docEnd,
+    "Help",
+    Severity.Information,
+    [
+      { title: "Apply suggestion", edits },
+      { title: "Apply alternative", edits: alternativeEdits },
+    ],
+  );
+
+  expect(result.actions?.map((action) => action.name)).toStrictEqual([
+    "📋",
+    "Apply suggestion ↩️",
+    "Apply alternative ↩️",
+  ]);
+
+  //@ts-expect-error private
+  result.actions?.at(1)?.apply(nodeview._codemirror, result.from, result.to);
+
+  expect(replaceRanges).toHaveBeenCalledTimes(1);
+  expect(replaceRanges).toHaveBeenCalledWith(edits);
+});
+
 test("Severity to string", () => {
   expect(severityToString(Severity.Error)).toStrictEqual("error");
   expect(severityToString(Severity.Information)).toStrictEqual("info");
@@ -69,9 +112,9 @@ test("Severity to string", () => {
 });
 
 test("Hint Replace", () => {
-  //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
   const nodeview = new CodeBlockView(
     node,
+    //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
     { editable: true },
     null,
     () => undefined,
@@ -116,9 +159,9 @@ test("Hint Replace", () => {
 });
 
 test("Hint Insert", () => {
-  //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
   const nodeview = new CodeBlockView(
     node,
+    //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
     { editable: true },
     null,
     () => undefined,
@@ -165,9 +208,9 @@ test("Hint Insert", () => {
 });
 
 test("Hint Delete", () => {
-  //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
   const nodeview = new CodeBlockView(
     node,
+    //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
     { editable: true },
     null,
     () => undefined,
@@ -212,9 +255,9 @@ test("Hint Delete", () => {
 
 /** Construct a minimal CodeBlockView for testing. */
 function makeView() {
-  //@ts-expect-error supply only the minimal needed to get a working CodeBlockView
   return new CodeBlockView(
     node,
+    //@ts-expect-error supply only the minimal needed to get a working CodeBlockView
     { editable: true },
     null,
     () => undefined,

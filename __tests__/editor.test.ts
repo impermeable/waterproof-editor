@@ -166,6 +166,38 @@ describe("getPartialDiagnosticsInRange", () => {
   });
 });
 
+describe("replaceRanges", () => {
+  test("applies snapshot offsets from right to left in one transaction", () => {
+    const editor = new WaterproofEditor(
+      document.createElement("div"),
+      cfg,
+      ThemeStyle.Light,
+    );
+    const transaction = {
+      insertText: jest.fn().mockReturnThis(),
+    };
+    const dispatch = jest.fn();
+    // @ts-expect-error inject a minimal view for this focused transaction test
+    editor._view = { state: { tr: transaction }, dispatch };
+    // @ts-expect-error inject an identity mapping for this focused test
+    editor._mapping = { textOffsetToPmIndex: (offset: number) => offset };
+
+    expect(
+      editor.replaceRanges([
+        { start: 1, end: 3, newText: "first" },
+        { start: 8, end: 9, newText: "last" },
+      ]),
+    ).toBe(true);
+
+    expect(transaction.insertText.mock.calls).toStrictEqual([
+      ["last", 8, 9],
+      ["first", 1, 3],
+    ]);
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenCalledWith(transaction);
+  });
+});
+
 // ── early returns without an initialized view ─────────────────────────────────
 
 describe("methods with no view initialised", () => {

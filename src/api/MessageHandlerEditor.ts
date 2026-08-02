@@ -1,5 +1,5 @@
 import type { Completion } from "@codemirror/autocomplete";
-import type { HistoryChange, OffsetDiagnostic, ThemeStyle } from "./types";
+import type { HistoryChange, OffsetCodeAction, OffsetDiagnostic, ThemeStyle } from "./types";
 import type { InputAreaStatus } from "./InputAreaStatus";
 
 /**
@@ -23,8 +23,9 @@ export interface MessageHandlerEditor {
   removeBusyIndicators: () => void;
   reportProgress: (at: number, numberOfLines: number, label: string) => void;
   setBusyIndicator: (from: number) => void;
-  setActiveDiagnostics: (diagnostics: Array<OffsetDiagnostic>) => void;
+  setActiveDiagnostics: (diagnostics: Array<OffsetDiagnostic>, version?: number) => void;
   startSpinner: () => void;
   stopSpinner: () => void;
   updateNodeViewThemes: (theme: ThemeStyle) => void;
+  patchDiagnosticCodeActions(version: number, index: number, codeActions: OffsetCodeAction[]): void;
 }

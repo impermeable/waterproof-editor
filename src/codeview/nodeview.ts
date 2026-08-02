@@ -539,13 +539,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
           name: `${action.title} ↩️`,
           apply: (_view: CodeMirror, _from: number, _to: number) => {
             this._codemirror?.focus();
-            for (const edit of action.edits) {
-              this.editorInstance.replaceRange(
-                edit.start,
-                edit.end,
-                edit.newText,
-              );
-            }
+            this.editorInstance.replaceRanges(action.edits);
           },
         });
       }
