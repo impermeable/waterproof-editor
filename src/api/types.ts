@@ -141,7 +141,8 @@ export type LanguageConfiguration = {
 
 export type TemplateConfiguration = {
   example: string;
-  exercise: string;
+  exercise: { statement: string; proof: string };
+  containerOpenTag: string;
 };
 
 /**

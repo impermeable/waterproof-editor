@@ -4,6 +4,7 @@ import {
   allowedToInsert,
   insertCompositeNodeBelow,
   insertCompositeNodeAbove,
+  isInsideHintOrInput,
 } from "./command-helpers";
 import { WaterproofSchema } from "../schema";
 import { InsertionPlace } from "./types";
@@ -131,7 +132,8 @@ export function getCmdInsertCodeHint(
     _view?: EditorView,
   ): boolean => {
     // Early return when inserting is not allowed.
-    if (!allowedToInsert(state)) return false;
+    if (!allowedToInsert(state) || isInsideHintOrInput(state.selection))
+      return false;
 
     const f =
       place === InsertionPlace.Above
@@ -170,8 +172,8 @@ export function getCmdInsertTextHint(
     _view?: EditorView,
   ): boolean => {
     // Early return when inserting is not allowed.
-    if (!allowedToInsert(state)) return false;
-
+    if (!allowedToInsert(state) || isInsideHintOrInput(state.selection))
+      return false;
     const f =
       place === InsertionPlace.Above
         ? insertCompositeNodeAbove
@@ -227,6 +229,37 @@ export function getCmdInsertExample(
       undefined,
       content,
     );
+
+    if (trans === undefined) {
+      return false;
+    }
+
+    // If dispatch is given and transaction is set, dispatch the transaction.
+    if (dispatch && trans) dispatch(trans);
+
+    // Indicate that this command was successful.
+    return true;
+  };
+}
+
+export function getCmdInsertExercise(
+  place: InsertionPlace,
+  tagConf: TagConfiguration,
+) {
+  return (
+    state: EditorState,
+    dispatch?: (tr: Transaction) => void,
+    _view?: EditorView,
+  ): boolean => {
+    // Early return when inserting is not allowed.
+    if (!allowedToInsert(state) || isInsideHintOrInput(state.selection))
+      return false;
+    const f =
+      place === InsertionPlace.Above
+        ? insertCompositeNodeAbove
+        : insertCompositeNodeBelow;
+
+    //TODO
 
     if (trans === undefined) {
       return false;

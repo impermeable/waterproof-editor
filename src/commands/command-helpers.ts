@@ -70,8 +70,7 @@ export function insertCompositeNodeAbove(
   const sel = state.selection;
   let trans: Transaction = tr;
 
-  const outerNodeType =
-    wrapNodeType === undefined ? wrappedNodeType : wrapNodeType;
+  const outerNodeType = wrapNodeType ?? wrappedNodeType;
 
   const insertNewlineBeforeIfNotExists = needsNewlineBefore(
     outerNodeType,
@@ -191,8 +190,7 @@ export function insertCompositeNodeBelow(
   const sel = state.selection;
   let trans: Transaction = tr;
 
-  const outerNodeType =
-    wrapNodeType === undefined ? wrappedNodeType : wrapNodeType;
+  const outerNodeType = wrapNodeType ?? wrappedNodeType;
 
   const insertNewlineBeforeIfNotExists = needsNewlineBefore(
     outerNodeType,
@@ -323,6 +321,17 @@ export function allowedToInsert(state: EditorState): boolean {
   // If the user is in teacher mode always return `true`, if not
   // we check wether they are in a input area.
   return isTeacher ? true : checkInputArea(state.selection);
+}
+
+/**
+ * Checks whether the selection sits directly inside a hint or input area.
+ */
+export function isInsideHintOrInput(sel: Selection): boolean {
+  const parentType = getParentAndIndex(sel)?.parent.type;
+  return (
+    parentType === WaterproofSchema.nodes.hint ||
+    parentType === WaterproofSchema.nodes.input
+  );
 }
 
 /**
