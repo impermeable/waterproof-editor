@@ -21,6 +21,8 @@ jest.spyOn(global.console, "log").mockImplementation();
 
 import { WaterproofEditor } from "../src/editor";
 import {
+  HistoryChange,
+  OffsetCodeAction,
   OffsetDiagnostic,
   Severity,
   ThemeStyle,
@@ -166,35 +168,128 @@ describe("getPartialDiagnosticsInRange", () => {
   });
 });
 
-describe("replaceRanges", () => {
-  test("applies snapshot offsets from right to left in one transaction", () => {
-    const editor = new WaterproofEditor(
-      document.createElement("div"),
-      cfg,
-      ThemeStyle.Light,
+// ── patchDiagnosticCodeActions ────────────────────────────────────────────────
+
+describe("patchDiagnosticCodeActions", () => {
+  const actions: OffsetCodeAction[] = [
+    { title: "Fix", edits: [{ start: 0, end: 1, newText: "x" }] },
+  ];
+
+  test("merges code actions into the diagnostic at the given index when the version matches", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([diag(0, 5)], 3);
+    expect(editor.diagnosticsVersion).toBe(1);
+
+    editor.patchDiagnosticCodeActions(3, 0, actions);
+
+    expect(editor.diagnosticsVersion).toBe(2);
+    expect(editor.getDiagnosticsInRange(0, 5)[0].codeActions).toStrictEqual(
+      actions,
     );
-    const transaction = {
-      insertText: jest.fn().mockReturnThis(),
-    };
-    const dispatch = jest.fn();
-    // @ts-expect-error inject a minimal view for this focused transaction test
-    editor._view = { state: { tr: transaction }, dispatch };
-    // @ts-expect-error inject an identity mapping for this focused test
-    editor._mapping = { textOffsetToPmIndex: (offset: number) => offset };
+  });
 
-    expect(
-      editor.replaceRanges([
-        { start: 1, end: 3, newText: "first" },
-        { start: 8, end: 9, newText: "last" },
-      ]),
-    ).toBe(true);
+  test("is a no-op when index is out of bounds", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([diag(0, 5)], 3);
 
-    expect(transaction.insertText.mock.calls).toStrictEqual([
-      ["last", 8, 9],
-      ["first", 1, 3],
+    // index 5 is out of bounds for a single diagnostic
+    editor.patchDiagnosticCodeActions(3, 5, actions);
+
+    expect(editor.diagnosticsVersion).toBe(1);
+    expect(editor.getDiagnosticsInRange(0, 5)[0].codeActions).toBeUndefined();
+  });
+});
+
+// ── setActiveDiagnostics: carrying forward code actions across passes ─────────
+
+describe("setActiveDiagnostics code action carry-forward", () => {
+  const actions: OffsetCodeAction[] = [
+    { title: "Fix", edits: [{ start: 0, end: 1, newText: "x" }] },
+  ];
+
+  test("carries forward code actions for a diagnostic that persists unchanged across passes", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([diag(0, 5, "same")], 1);
+    editor.patchDiagnosticCodeActions(1, 0, actions);
+
+    // A later LSP pass re-sends the identical diagnostic before its own
+    // code actions have resolved.
+    editor.setActiveDiagnostics([diag(0, 5, "same")], 2);
+
+    expect(editor.getDiagnosticsInRange(0, 5)[0].codeActions).toStrictEqual(
+      actions,
+    );
+  });
+
+  test("does not carry forward code actions when the message differs", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([diag(0, 5, "same")], 1);
+    editor.patchDiagnosticCodeActions(1, 0, actions);
+
+    editor.setActiveDiagnostics([diag(0, 5, "different")], 2);
+
+    expect(editor.getDiagnosticsInRange(0, 5)[0].codeActions).toBeUndefined();
+  });
+
+  test("does not carry forward code actions when the offsets differ", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([diag(0, 5, "same")], 1);
+    editor.patchDiagnosticCodeActions(1, 0, actions);
+
+    editor.setActiveDiagnostics([diag(0, 6, "same")], 2);
+
+    expect(editor.getDiagnosticsInRange(0, 6)[0].codeActions).toBeUndefined();
+  });
+
+  test("drops a patch computed against a version that has since been superseded", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([diag(0, 5, "same")], 1);
+
+    // A new pass starts before the patch for version 1 arrives.
+    editor.setActiveDiagnostics([diag(0, 5, "same")], 2);
+
+    // The late patch, computed against version 1, must be dropped.
+    editor.patchDiagnosticCodeActions(1, 0, actions);
+
+    expect(editor.getDiagnosticsInRange(0, 5)[0].codeActions).toBeUndefined();
+  });
+});
+
+describe("replaceRanges", () => {
+  test("edits computed against one snapshot land correctly regardless of edits array order", () => {
+    const editor = makeEditor();
+    expect(editor.serializeDocument()).toContain("Hello world.");
+
+    // "Hello" -> pm 1..6, "world" -> pm 7..12 (pm pos 0 is before the code
+    // node opens, pos 1 is the first character, given the identity mapping).
+    const ok = editor.replaceRanges([
+      { start: 1, end: 6, newText: "Hi" },
+      { start: 7, end: 12, newText: "WORLD" },
     ]);
-    expect(dispatch).toHaveBeenCalledTimes(1);
-    expect(dispatch).toHaveBeenCalledWith(transaction);
+
+    expect(ok).toBe(true);
+    expect(editor.serializeDocument()).toContain("Hi WORLD.");
+  });
+
+  test("multiple edits from replaceRanges undo as a single step", () => {
+    const editor = makeEditor();
+    editor.replaceRanges([
+      { start: 7, end: 12, newText: "WORLD" },
+      { start: 1, end: 6, newText: "Hi" },
+    ]);
+    expect(editor.serializeDocument()).toContain("Hi WORLD.");
+
+    editor.handleHistoryChange(HistoryChange.Undo);
+
+    expect(editor.serializeDocument()).toContain("Hello world.");
+  });
+
+  test("returns false and does not dispatch when given an empty edits array", () => {
+    const editor = makeEditor();
+    // @ts-expect-error private field, used only to spy on the real view's dispatch
+    const dispatchSpy = jest.spyOn(editor._view, "dispatch");
+    expect(editor.replaceRanges([])).toBe(false);
+    expect(dispatchSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -218,6 +313,14 @@ describe("methods with no view initialised", () => {
 
   test("replaceRange returns false", () => {
     expect(makeUninitializedEditor().replaceRange(0, 5, "x")).toBe(false);
+  });
+
+  test("replaceRanges returns false", () => {
+    expect(
+      makeUninitializedEditor().replaceRanges([
+        { start: 0, end: 5, newText: "x" },
+      ]),
+    ).toBe(false);
   });
 
   test("insertSymbol returns false", () => {

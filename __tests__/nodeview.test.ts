@@ -104,6 +104,66 @@ test("LSP code actions are exposed and apply all edits as one batch", () => {
   expect(replaceRanges).toHaveBeenCalledWith(edits);
 });
 
+test("an empty codeActions array falls back to the default diagnostic handling", () => {
+  const replaceRanges = jest.fn();
+  const nodeview = new CodeBlockView(
+    node,
+    //@ts-expect-error For test setup supply only the minimal needed editor API
+    { editable: true },
+    { replaceRanges },
+    () => undefined,
+    null,
+    [],
+    [],
+    ThemeStyle.Light,
+  );
+
+  const result = nodeview.preprocessDiagnostic(
+    docStart,
+    docEnd,
+    "Just a plain diagnostic",
+    Severity.Error,
+    [],
+  );
+
+  expect(result.actions?.map((action) => action.name)).toStrictEqual(["📋"]);
+  expect(replaceRanges).not.toHaveBeenCalled();
+});
+
+test("each code action applies only its own edits", () => {
+  const replaceRanges = jest.fn();
+  const nodeview = new CodeBlockView(
+    node,
+    //@ts-expect-error For test setup supply only the minimal needed editor API
+    { editable: true },
+    { replaceRanges },
+    () => undefined,
+    null,
+    [],
+    [],
+    ThemeStyle.Light,
+  );
+  const edits = [{ start: 0, end: 1, newText: "Finished" }];
+  const alternativeEdits = [{ start: 0, end: 4, newText: "Done." }];
+
+  const result = nodeview.preprocessDiagnostic(
+    docStart,
+    docEnd,
+    "Help",
+    Severity.Information,
+    [
+      { title: "Apply suggestion", edits },
+      { title: "Apply alternative", edits: alternativeEdits },
+    ],
+  );
+
+  //@ts-expect-error private
+  result.actions?.at(2)?.apply(nodeview._codemirror, result.from, result.to);
+
+  expect(replaceRanges).toHaveBeenCalledTimes(1);
+  expect(replaceRanges).toHaveBeenCalledWith(alternativeEdits);
+});
+
 test("Severity to string", () => {
   expect(severityToString(Severity.Error)).toStrictEqual("error");
   expect(severityToString(Severity.Information)).toStrictEqual("info");

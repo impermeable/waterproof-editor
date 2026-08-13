@@ -119,6 +119,13 @@ export class WaterproofEditor implements MessageHandlerEditor {
   public get diagnosticsVersion() {
     return this.diagnosticsUpdateCounter;
   }
+
+  /**
+   * The document version that was current the last time `setActiveDiagnostics` ran.
+   * Used by `patchDiagnosticCodeActions` to discard patches computed against a
+   * now-stale diagnostics snapshot.
+   */
+  private activeDiagnosticsDocVersion: number | undefined;
   private diagnosticsUpdateCounter = 0;
 
   private _lineNumbersShown: boolean = false;
@@ -668,21 +675,27 @@ export class WaterproofEditor implements MessageHandlerEditor {
     if (!this._view || !this._mapping) return false;
     if (edits.length === 0) return false;
 
-    const positionedEdits = edits
-      .map((edit, index) => ({
-        from: this._mapping!.textOffsetToPmIndex(edit.start),
-        to: this._mapping!.textOffsetToPmIndex(edit.end),
-        text: edit.newText,
-        index,
-      }))
-      .sort((a, b) => b.from - a.from || b.to - a.to || b.index - a.index);
+    // textOffsetToPmIndex can throw
+    try {
+      const positionedEdits = edits
+        .map((edit, index) => ({
+          from: this._mapping!.textOffsetToPmIndex(edit.start),
+          to: this._mapping!.textOffsetToPmIndex(edit.end),
+          text: edit.newText,
+          index,
+        }))
+        .sort((a, b) => b.from - a.from || b.to - a.to || b.index - a.index);
 
-    const tr = this._view.state.tr;
-    for (const edit of positionedEdits) {
-      tr.insertText(edit.text, edit.from, edit.to);
+      const tr = this._view.state.tr;
+      for (const edit of positionedEdits) {
+        tr.insertText(edit.text, edit.from, edit.to);
+      }
+      this._view.dispatch(tr);
+      return true;
+    } catch (error) {
+      console.error("Error occurred while replacing ranges:", error);
+      return false;
     }
-    this._view.dispatch(tr);
-    return true;
   }
 
   /**
@@ -850,8 +863,6 @@ export class WaterproofEditor implements MessageHandlerEditor {
     this.informCodemirrorViews();
   }
 
-  private lastDiagnosticsDocVersion: number | undefined;
-
   /**
    * Sets the current set of diagnostics in the document.
    * This function takes the set of all diagnostics in the current document,
@@ -866,11 +877,20 @@ export class WaterproofEditor implements MessageHandlerEditor {
     diagnostics: Array<OffsetDiagnostic>,
     version?: number,
   ) {
+    // The diagnostics are positioned in offset based positions.
+    // We map the positions through the mapping to get prosemirror positions.
     const map = this._mapping;
     if (map === undefined) return;
 
     const previous = this.currentProseDiagnostics;
-    this.lastDiagnosticsDocVersion = version;
+    this.activeDiagnosticsDocVersion = version;
+
+    const previousByKey = new Map<string, DiagnosticObjectProse>();
+    for (const p of previous) {
+      if (p?.codeActions) {
+        previousByKey.set(`${p.start}:${p.end}:${p.message}`, p);
+      }
+    }
 
     const next = new Array<DiagnosticObjectProse>(diagnostics.length);
     for (let i = 0; i < diagnostics.length; i++) {
@@ -885,21 +905,13 @@ export class WaterproofEditor implements MessageHandlerEditor {
       // pass, so a diagnostic that persists across progressive LSP passes
       // doesn't lose its already-resolved actions while waiting for this
       // pass's own patch to arrive.
-      const carried = previous.find(
-        (p) =>
-          p &&
-          p.start === start &&
-          p.end === end &&
-          p.message === base.message &&
-          p.codeActions,
-      );
+      const carried = previousByKey.get(`${start}:${end}:${base.message}`);
 
-      next[i] = carried?.codeActions
-        ? { ...base, codeActions: carried.codeActions }
-        : base;
+      next[i] = carried ? { ...base, codeActions: carried.codeActions } : base;
     }
 
     this.currentProseDiagnostics = next;
+    // diagnostics have changed
     this.diagnosticsUpdateCounter++;
     this.informCodemirrorViews();
   }
@@ -915,13 +927,11 @@ export class WaterproofEditor implements MessageHandlerEditor {
     index: number,
     codeActions: OffsetCodeAction[],
   ) {
-    if (version !== this.lastDiagnosticsDocVersion) {
+    if (version !== this.activeDiagnosticsDocVersion) {
       return;
     }
     const target = this.currentProseDiagnostics[index];
-    if (!target) {
-      return;
-    }
+
     if (!target) return;
 
     this.currentProseDiagnostics[index] = { ...target, codeActions };

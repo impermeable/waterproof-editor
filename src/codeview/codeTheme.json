@@ -4,19 +4,43 @@
 	  "backgroundColor": "var(--wp-listFilterWidgetBackground)"
 	},
 
-	".cm-diagnosticButton": {
-        "order": 1
+    ".cm-diagnostic": {
+      "display": "grid",
+      "gridTemplateColumns": "max-content 1fr",
+      "gridTemplateRows": "1fr repeat(20, max-content) 1fr",
+      "columnGap": "8px",
+      "padding": "4px 0"
+    },
+
+    ".cm-diagnostic::before": {
+      "content": "\"\"",
+      "gridColumn": "1",
+      "gridRow": "1"
+    },
+
+    ".cm-diagnostic::after": {
+      "content": "\"\"",
+      "gridColumn": "1",
+      "gridRow": "-1"
     },
 
     ".cm-diagnosticText": {
-        "order": 2,
-        "marginLeft": "8px"
+      "gridColumn": "2",
+      "gridRow": "1 / -1",
+      "minWidth": "150px",
+      "maxHeight": "12em",
+      "overflowY": "auto",
+      "paddingRight": "4px"
     },
 
-    ".cm-diagnostic": {
-        "display": "inline-flex", 
-        "alignItems": "center",
-        "flexFlow": "row"
+    ".cm-diagnosticAction": {
+      "gridColumn": "1",
+      "alignSelf": "center",
+      "marginBottom": "4px"
+    },
+
+    ".cm-diagnosticAction:last-of-type": {
+      "marginBottom": "0"
     },
 
 	".cm-content": {
