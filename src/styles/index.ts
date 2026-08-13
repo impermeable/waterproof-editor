@@ -41,3 +41,5 @@ import "./magic.css";
 
 // For the busy indicator in the gutter:
 import "./busy-indicator.css";
+
+import "./student-hidden.css";

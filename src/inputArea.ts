@@ -50,32 +50,35 @@ const InputAreaPluginSpec: PluginSpec<IInputAreaPluginState> = {
     },
   },
   props: {
-    editable: (state) => {
-      // Get locked and globalLock states from the plugin.
-      const teacher = INPUT_AREA_PLUGIN_KEY.getState(state)?.teacher ?? false;
-
-      // In teacher mode, everything is editable by default.
-      if (teacher) return true;
-
-      // Get the from selection component.
-      const { $from } = state.selection;
-
-      // Assume non-editable.
-      let isEditable = false;
-
-      // Check if the current selection is inside an input area.
-      state.doc.nodesBetween($from.pos, $from.pos, (node) => {
-        if (node.type === WaterproofSchema.nodes.input) {
-          // If so, this cell is editable.
-          isEditable = true;
-        }
-      });
-
-      // Return editable state.
-      return isEditable;
-    },
+    editable: (state) => isPositionEditable(state, state.selection.$from.pos),
   },
 };
+
+/**
+ * Determine whether the given position in the document is currently editable.
+ * In teacher mode everything is editable; in student mode only positions
+ * inside an `input` node are editable.
+ */
+export function isPositionEditable(state: EditorState, pos: number): boolean {
+  const teacher = INPUT_AREA_PLUGIN_KEY.getState(state)?.teacher ?? false;
+
+  // In teacher mode, everything is editable by default.
+  if (teacher) return true;
+
+  // Assume non-editable.
+  let isEditable = false;
+
+  // Check if the current selection is inside an input area.
+  state.doc.nodesBetween(pos, pos, (node) => {
+    if (node.type === WaterproofSchema.nodes.input) {
+      // If so, this cell is editable.
+      isEditable = true;
+    }
+  });
+
+  // Return editable state.
+  return isEditable;
+}
 
 // Export the input area plugin for use in the editor.
 export const inputAreaPlugin = new Plugin(InputAreaPluginSpec);

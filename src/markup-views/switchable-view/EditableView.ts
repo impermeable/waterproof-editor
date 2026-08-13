@@ -1,13 +1,12 @@
 import {
   EditorView as CodeMirror,
-  ViewUpdate,
   keymap as cmKeymap,
   placeholder,
 } from "@codemirror/view";
 
 import { Node, Schema } from "prosemirror-model";
-import { PluginKey, TextSelection } from "prosemirror-state";
-import { Decoration, EditorView } from "prosemirror-view";
+import { PluginKey, TextSelection, Transaction } from "prosemirror-state";
+import { EditorView } from "prosemirror-view";
 import { SwitchableView } from "./SwitchableView";
 import { editorTheme } from "./EditorTheme";
 import { renderIcon } from "../../autocomplete";
@@ -67,92 +66,23 @@ export class EditableView extends EmbeddedCodeMirrorEditor {
     this.view.destroy();
   }
 
-  // Overwrites the base method in EmbeddedCodeMirrorEditor.
-  forwardUpdate(update: ViewUpdate): void {
-    // Get the current cursor position.
-    const pos = this._getPos();
-    // If there is no position we are done.
-    if (pos === undefined) return;
-    // If we are updating or we don't have focus then we should return early.
-    if (this._parent.updating || !this.view.hasFocus) return;
-
-    // TODO: Comments
-    let offset = pos + 1;
-    const { main } = update.state.selection;
-    const selFrom = offset + main.from,
-      selTo = offset + main.to;
-    const pmSel = this._outerView.state.selection;
-    if (update.docChanged || pmSel.from != selFrom || pmSel.to != selTo) {
-      const tr = this._outerView.state.tr;
-
-      const lineDelta = update.state.doc.lines - update.startState.doc.lines;
-      update.changes.iterChanges((fromA, toA, fromB, toB, text) => {
-        if (text.length) {
-          tr.replaceWith(
-            offset + fromA,
-            offset + toA,
-            this._schema.text(text.toString()),
-          );
-        } else {
-          tr.delete(offset + fromA, offset + toA);
-          offset += toB - fromB - (toA - fromA);
-        }
-      });
-      if (lineDelta !== 0) tr.setMeta("lineDelta", lineDelta);
-      tr.setMeta(this._pluginKey, TextSelection.create(tr.doc, selFrom, selTo));
-      this._outerView.dispatch(tr);
-    }
+  // The shared EmbeddedCodeMirrorEditor logic operates on `this.view`...
+  protected get innerEditor(): CodeMirror {
+    return this.view;
   }
 
-  // Overwrites the base method in EmbeddedCodeMirrorEditor.
-  update(node: Node, _decorations: readonly Decoration[]) {
-    // If is updating return early
-    if (this._parent.updating) return true;
+  // ...tracks the syncing state on the parent SwitchableView...
+  protected get isSyncing(): boolean {
+    return this._parent.updating;
+  }
 
-    // Extract node text (the edit) and document (current) text.
-    const newText = node.textContent;
-    const curText = this.view.state.doc.toString();
+  protected set isSyncing(value: boolean) {
+    this._parent.updating = value;
+  }
 
-    // Check whether they are the same.
-    // We don't need to update if they are.
-    if (newText != curText) {
-      // Set start.
-      let start = 0;
-      // The current length of the document.
-      let curEnd = curText.length;
-      // The new length of the document.
-      let newEnd = newText.length;
-
-      // Figure out what range of characters needs to be replaced.
-      // All matching characters can be safely ignored.
-      while (
-        start < curEnd &&
-        curText.charCodeAt(start) == newText.charCodeAt(start)
-      ) {
-        ++start;
-      }
-      while (
-        curEnd > start &&
-        newEnd > start &&
-        curText.charCodeAt(curEnd - 1) == newText.charCodeAt(newEnd - 1)
-      ) {
-        curEnd--;
-        newEnd--;
-      }
-
-      // Set updating to true before dispatching transaction.
-      this._parent.updating = true;
-      // Update the codemirror instance from 'start' to 'curEnd' with the corresponding slice of the newText.
-      this.view.dispatch({
-        changes: {
-          from: start,
-          to: curEnd,
-          insert: newText.slice(start, newEnd),
-        },
-      });
-      // Set updating to false again.
-      this._parent.updating = false;
-    }
-    return true;
+  // ...and records the resulting selection as plugin metadata instead of
+  // setting it on the transaction directly.
+  protected applySelection(tr: Transaction, selection: TextSelection): void {
+    tr.setMeta(this._pluginKey, selection);
   }
 }
