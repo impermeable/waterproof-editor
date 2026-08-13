@@ -83,8 +83,7 @@
     "mocha": {
       "serialize-javascript": "7.0.5",
       "diff": "8.0.3"
-    },
-    "js-yaml": "5.2.1"
+    }
   },
   "peerDependencies": {
     "@codemirror/autocomplete": "6.18.1",
