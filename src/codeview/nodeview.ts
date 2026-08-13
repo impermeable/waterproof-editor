@@ -508,6 +508,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
    * @param to The to postion of the error (should be larger than `from`).
    * @param message The message attached to this error.
    * @param severity The severity attached to this error.
+   * @param codeActions The code actions attached to this error.
    */
   public preprocessDiagnostic(
     from: number,
