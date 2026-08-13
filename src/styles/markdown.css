@@ -22,41 +22,20 @@
   padding: 0.2em;
 }
 
-/*
- * Code-snippet colors, mirroring codemirror-lang-verbose's `tags.code` highlight color.
- */
+/* Code-snippet color mirrors codemirror-lang-verbose's `tags.code`. */
 :root {
   --wp-codeSnippetForeground: #3badf5;
-  --wp-codeSnippetBackground: var(--wp-textCodeBlockBackground);
 }
 
 .vscode-light {
   --wp-codeSnippetForeground: #1c7fc4;
-  --wp-codeSnippetBackground: #e9e9ee;
 }
 
-/* Inline code snippets, styled as a "chip" */
 .markdown-view code {
   font-family: var(--wp-editorFontFamily);
   color: var(--wp-codeSnippetForeground);
-  background-color: var(--wp-codeSnippetBackground);
-  border: 1px solid var(--wp-textSeparatorForeground);
-  border-radius: 4px;
-  padding: 0.1em 0.35em;
-}
-
-/* Fenced code blocks: chip on the block, reset the inner <code> */
-.markdown-view pre {
-  background-color: var(--wp-codeSnippetBackground);
-  border: 1px solid var(--wp-textSeparatorForeground);
-  border-radius: 4px;
-  padding: 0.5em 0.75em;
-  overflow-x: auto;
-}
-
-.markdown-view pre code {
+  /* Override the border style. */
   background: none;
   border: none;
-  border-radius: 0;
   padding: 0;
 }
