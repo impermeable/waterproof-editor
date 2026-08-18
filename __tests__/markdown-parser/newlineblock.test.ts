@@ -8,7 +8,7 @@ const topLevelBlocksMV = (input: string) => {
 test("NewlineBlock 1", () => {
   const input = "\n```coq\nCompute 1 + 1.\n```";
   const blocks = topLevelBlocksMV(input);
-  expect(blocks.length).toBe(2);
+  expect(blocks).toHaveLength(2);
   const [b1, b2] = blocks;
   expect(typeguards.isNewlineBlock(b1)).toBe(true);
   expect(b1.stringContent).toBe("");
@@ -21,7 +21,7 @@ test("NewlineBlock 1", () => {
 test("NewlineBlock 2", () => {
   const input = "```coq\nCompute 1 + 1.\n```\n";
   const blocks = topLevelBlocksMV(input);
-  expect(blocks.length).toBe(2);
+  expect(blocks).toHaveLength(2);
   const [b1, b2] = blocks;
   expect(typeguards.isCodeBlock(b1)).toBe(true);
   expect(b1.stringContent).toBe("Compute 1 + 1.");
@@ -42,7 +42,7 @@ test("NewlineBlock 2", () => {
 test("NewlineBlock 3", () => {
   const input = "\n```coq\nCompute 1 + 1.\n```\n";
   const blocks = topLevelBlocksMV(input);
-  expect(blocks.length).toBe(3);
+  expect(blocks).toHaveLength(3);
   const [b1, b2, b3] = blocks;
   expect(typeguards.isNewlineBlock(b1)).toBe(true);
   expect(b1.stringContent).toBe("");

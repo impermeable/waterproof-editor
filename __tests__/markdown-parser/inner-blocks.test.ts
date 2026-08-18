@@ -8,7 +8,7 @@ test("Verify newlines before and after code are translated into newline nodes", 
   const document = "\n```coq\nLemma test\n```\n";
   const blocks = parse(document);
 
-  expect(blocks.length).toBe(3);
+  expect(blocks).toHaveLength(3);
   const [nl, b, nl2] = blocks;
   expect(typeguards.isNewlineBlock(nl)).toBe(true);
   expect(typeguards.isCodeBlock(b)).toBe(true);
@@ -24,7 +24,7 @@ t
 </input-area>Afteeer hint`;
   const blocks = parse(doc);
 
-  expect(blocks.length).toBe(2);
+  expect(blocks).toHaveLength(2);
   const [b1, b2] = blocks;
   expect(typeguards.isInputAreaBlock(b1)).toBe(true);
   expect(b1.stringContent).toBe("\nt\n");
@@ -34,7 +34,8 @@ t
   expect(b1.innerRange.from).toBe(12);
   expect(b1.innerRange.to).toBe(15);
 
-  expect(b1.innerBlocks?.length).toBe(1);
+  expect(b1.innerBlocks).toBeDefined();
+  expect(b1.innerBlocks).toHaveLength(1);
   const [inner] = b1.innerBlocks!;
   expect(typeguards.isMarkdownBlock(inner)).toBe(true);
   expect(inner.stringContent).toBe("\nt\n");

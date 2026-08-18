@@ -54,7 +54,7 @@ A list:
 // FIXME: Add checks for prewhite and postwhite here.
 test("Parse top level blocks (MV)", () => {
   const blocks = parse(inputDocumentMV);
-  expect(blocks.length).toBe(10);
+  expect(blocks).toHaveLength(10);
 
   expect(typeguards.isMarkdownBlock(blocks[0])).toBe(true);
   expect(blocks[0].stringContent).toBe("# Example document\n");
@@ -97,7 +97,7 @@ test("Markdown and Code", () => {
 Compute 3 + 3.
 \`\`\``;
   const blocks = parse(input);
-  expect(blocks.length).toBe(3);
+  expect(blocks).toHaveLength(3);
 
   const [md, nl, code] = blocks;
 
@@ -128,7 +128,7 @@ Proof. auto. Qed.
 \`\`\`
 </input-area>`;
   const blocks = parse(input);
-  expect(blocks.length).toBe(1);
+  expect(blocks).toHaveLength(1);
   const [ia] = blocks;
 
   expect(typeguards.isInputAreaBlock(ia)).toBe(true);
@@ -141,7 +141,7 @@ Proof. auto. Qed.
     to: input.length - "</input-area>".length,
   });
   expect(ia.innerBlocks).toBeDefined();
-  expect(ia.innerBlocks?.length).toBe(4);
+  expect(ia.innerBlocks).toHaveLength(4);
 
   const [math, nl, code, nl2] = ia.innerBlocks!;
   expect(typeguards.isMathDisplayBlock(math)).toBe(true);
@@ -199,7 +199,7 @@ Goal True.
 </input-area>`;
   const blocks = parse(input);
 
-  expect(blocks.length).toBe(2);
+  expect(blocks).toHaveLength(2);
   const [md, ia] = blocks;
 
   expect(typeguards.isMarkdownBlock(md)).toBe(true);
@@ -217,6 +217,5 @@ Goal True.
     to: input.length - "</input-area>".length,
   });
   expect(ia.innerBlocks).toBeDefined();
-
-  expect(ia.innerBlocks?.length).toBe(5);
+  expect(ia.innerBlocks).toHaveLength(5);
 });
