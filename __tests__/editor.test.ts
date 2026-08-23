@@ -32,7 +32,6 @@ import { CodeBlock } from "../src/document";
 import { configuration } from "../src/markdown-defaults";
 import { WaterproofSchema } from "../src";
 
-import { EditorView } from "prosemirror-view";
 import * as inputAreaModule from "../src/inputArea";
 import { NodeType } from "prosemirror-model";
 
@@ -258,38 +257,49 @@ describe("setActiveDiagnostics code action carry-forward", () => {
 describe("replaceRanges", () => {
   test("edits computed against one snapshot land correctly regardless of edits array order", () => {
     const editor = makeEditor();
-    expect(editor.serializeDocument()).toContain("Hello world.");
+    const before = editor.serializeDocument();
+    expect(before).toContain("Hello world.");
+
 
     // "Hello" -> pm 1..6, "world" -> pm 7..12 (pm pos 0 is before the code
     // node opens, pos 1 is the first character, given the identity mapping).
     const ok = editor.replaceRanges([
       { start: 1, end: 6, newText: "Hi" },
-      { start: 7, end: 12, newText: "WORLD" },
+      { start: 7, end: 12, newText: "WATERPROOF" },
     ]);
 
     expect(ok).toBe(true);
-    expect(editor.serializeDocument()).toContain("Hi WORLD.");
+    expect(editor.serializeDocument()).toBe(
+      before!.replace("Hello world.", "Hi WATERPROOF."),
+    );
   });
 
   test("multiple edits from replaceRanges undo as a single step", () => {
     const editor = makeEditor();
+    const before = editor.serializeDocument();
+
     editor.replaceRanges([
-      { start: 7, end: 12, newText: "WORLD" },
+      { start: 7, end: 12, newText: "WATERPROOF" },
       { start: 1, end: 6, newText: "Hi" },
     ]);
-    expect(editor.serializeDocument()).toContain("Hi WORLD.");
+    expect(editor.serializeDocument()).toBe(
+      before!.replace("Hello world.", "Hi WATERPROOF."),
+    );
 
     editor.handleHistoryChange(HistoryChange.Undo);
 
-    expect(editor.serializeDocument()).toContain("Hello world.");
+    expect(editor.serializeDocument()).toBe(before);
   });
 
   test("returns false and does not dispatch when given an empty edits array", () => {
     const editor = makeEditor();
+    const before = editor.serializeDocument();
     // @ts-expect-error private field, used only to spy on the real view's dispatch
     const dispatchSpy = jest.spyOn(editor._view, "dispatch");
     expect(editor.replaceRanges([])).toBe(false);
     expect(dispatchSpy).not.toHaveBeenCalled();
+
+    expect(editor.serializeDocument()).toBe(before);
   });
 });
 

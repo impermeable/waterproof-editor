@@ -204,6 +204,7 @@ export enum HistoryChange {
 }
 
 export interface OffsetEdit {
+  // Offsets relative to the on-disk text document.
   start: number;
   end: number;
   newText: string;
@@ -216,6 +217,7 @@ export interface OffsetCodeAction {
 export interface OffsetDiagnostic {
   message: string;
   severity: Severity;
+  // Offsets relative to the on-disk text document.
   startOffset: number;
   endOffset: number;
   codeActions?: OffsetCodeAction[];

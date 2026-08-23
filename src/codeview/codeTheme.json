@@ -6,7 +6,7 @@
 
     ".cm-diagnostic": {
       "display": "grid",
-      "gridTemplateColumns": "max-content 1fr",
+      "gridTemplateColumns": "fit-content(220px) 1fr",
       "gridTemplateRows": "1fr repeat(20, max-content) 1fr",
       "columnGap": "8px",
       "padding": "4px 0"
@@ -35,7 +35,6 @@
 
     ".cm-diagnosticAction": {
       "gridColumn": "1",
-      "alignSelf": "center",
       "marginBottom": "4px"
     },
 
