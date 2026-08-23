@@ -738,11 +738,14 @@ export class WaterproofEditor implements MessageHandlerEditor {
   }
 
   /**
-   * Called whenever a message describing the configuration of user is sent
+   * Updates the teacher mode.
+   *
+   * When in teacher mode, content outside of input areas becomes editable and other
+   * teacher only functionalities are enabled.
    *
    * @param isTeacher Whether teacher mode is enabled
    */
-  public updateLockingState(isTeacher: boolean): void {
+  public setTeacherMode(isTeacher: boolean): void {
     if (!this._view) return;
     const state = this._view.state;
     const trans = state.tr;

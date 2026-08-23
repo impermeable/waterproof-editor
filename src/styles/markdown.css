@@ -1,28 +1,41 @@
 .markdown-view-empty:before {
-    display: inline;
-    color: var(--wp-errorForeground);
-    content: "...";
+  display: inline;
+  color: var(--wp-errorForeground);
+  content: "...";
 }
 
 .markdown-view-empty > div {
-    display: none;
+  display: none;
 }
 
 .markdown-view-editor::before {
-    --border-color: var(--wp-inputBorder);
-    border-right: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-    color: var(--wp-inputForeground);
-    background-color: var(--wp-inputBackground);
-    font-family: var(--wp-fontFamily);
-    font-size: var(--wp-fontSize);
-    font-weight: var(--wp-fontWeight);
-    border-radius: 0px 0px 5px 0px;
-    content: attr(markup-name);
-    padding: 0.2em;
+  --border-color: var(--wp-inputBorder);
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--wp-inputForeground);
+  background-color: var(--wp-inputBackground);
+  font-family: var(--wp-fontFamily);
+  font-size: var(--wp-fontSize);
+  font-weight: var(--wp-fontWeight);
+  border-radius: 0px 0px 5px 0px;
+  content: attr(markup-name);
+  padding: 0.2em;
 }
 
-/* Styles the inline code parts of the markdown cells */
-code {
-    font-family: var(--wp-editorFontFamily);
+/* Code-snippet color mirrors codemirror-lang-verbose's `tags.code`. */
+:root {
+  --wp-codeSnippetForeground: #3badf5;
+}
+
+.vscode-light {
+  --wp-codeSnippetForeground: #1c7fc4;
+}
+
+.markdown-view code {
+  font-family: var(--wp-editorFontFamily);
+  color: var(--wp-codeSnippetForeground);
+  /* Override the border style. */
+  background: none;
+  border: none;
+  padding: 0;
 }
