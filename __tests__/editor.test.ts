@@ -260,7 +260,6 @@ describe("replaceRanges", () => {
     const before = editor.serializeDocument();
     expect(before).toContain("Hello world.");
 
-
     // "Hello" -> pm 1..6, "world" -> pm 7..12 (pm pos 0 is before the code
     // node opens, pos 1 is the first character, given the identity mapping).
     const ok = editor.replaceRanges([
