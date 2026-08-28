@@ -140,6 +140,12 @@ export type LanguageConfiguration = {
   highlightDark: HighlightStyle;
 };
 
+export type TemplateConfiguration = {
+  example: string;
+  exercise: { statement: string; proof: string };
+  containerOpenTag: string;
+};
+
 /**
  * Configuration object for the WaterproofEditor.
  *
@@ -196,6 +202,8 @@ export type WaterproofEditorConfig = {
   menubarEntries?: Array<MenuBarEntry>;
 
   languageConfig?: LanguageConfiguration;
+
+  templates: TemplateConfiguration;
 };
 
 export enum HistoryChange {

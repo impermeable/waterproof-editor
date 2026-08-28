@@ -1,9 +1,14 @@
 import { EditorState, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
-import { allowedToInsert, insertAbove, insertBelow } from "./command-helpers";
+import {
+  allowedToInsert,
+  insertCompositeNodeBelow,
+  insertCompositeNodeAbove,
+  isInsideHintOrInput,
+} from "./command-helpers";
 import { WaterproofSchema } from "../schema";
 import { InsertionPlace } from "./types";
-import { TagConfiguration } from "../api";
+import { TagConfiguration, TemplateConfiguration } from "../api";
 
 export function getCmdInsertMarkdown(
   place: InsertionPlace,
@@ -16,14 +21,22 @@ export function getCmdInsertMarkdown(
   ): boolean => {
     // Early return when inserting is not allowed
     if (!allowedToInsert(state)) return false;
-
     // TODO: Can there be cases where this doesn't work?
     // Can we attempt this command in a case where our state and selection is such that
     // we can't actually add the node there?
 
-    const f = place === InsertionPlace.Above ? insertAbove : insertBelow;
+    const f =
+      place === InsertionPlace.Above
+        ? insertCompositeNodeAbove
+        : insertCompositeNodeBelow;
 
-    const trans = f(state, state.tr, WaterproofSchema.nodes.markdown, tagConf);
+    const trans = f(
+      state,
+      state.tr,
+      WaterproofSchema.nodes.markdown,
+      undefined,
+      tagConf,
+    );
 
     if (trans === undefined) {
       return false;
@@ -49,11 +62,15 @@ export function getCmdInsertLatex(
     // Early return when inserting is not allowed.
     if (!allowedToInsert(state)) return false;
 
-    const f = place === InsertionPlace.Above ? insertAbove : insertBelow;
+    const f =
+      place === InsertionPlace.Above
+        ? insertCompositeNodeAbove
+        : insertCompositeNodeBelow;
     const trans = f(
       state,
       state.tr,
       WaterproofSchema.nodes.math_display,
+      undefined,
       tagConf,
     );
 
@@ -81,8 +98,168 @@ export function getCmdInsertCode(
     // Again, early return when inserting is not allowed.
     if (!allowedToInsert(state)) return false;
 
-    const f = place === InsertionPlace.Above ? insertAbove : insertBelow;
-    const trans = f(state, state.tr, WaterproofSchema.nodes.code, tagConf);
+    const f =
+      place === InsertionPlace.Above
+        ? insertCompositeNodeAbove
+        : insertCompositeNodeBelow;
+    const trans = f(
+      state,
+      state.tr,
+      WaterproofSchema.nodes.code,
+      undefined,
+      tagConf,
+    );
+
+    if (trans === undefined) {
+      return false;
+    }
+
+    // If dispatch is given and transaction is set, dispatch the transaction.
+    if (dispatch && trans) dispatch(trans);
+
+    // Indicate that this command was successful.
+    return true;
+  };
+}
+
+export function getCmdInsertCodeHint(
+  place: InsertionPlace,
+  tagConf: TagConfiguration,
+) {
+  return (
+    state: EditorState,
+    dispatch?: (tr: Transaction) => void,
+    _view?: EditorView,
+  ): boolean => {
+    // Early return when inserting is not allowed.
+    if (!allowedToInsert(state) || isInsideHintOrInput(state.selection))
+      return false;
+
+    const f =
+      place === InsertionPlace.Above
+        ? insertCompositeNodeAbove
+        : insertCompositeNodeBelow;
+
+    const wrapper = WaterproofSchema.nodes.hint;
+    const trans = f(
+      state,
+      state.tr,
+      WaterproofSchema.nodes.code,
+      wrapper,
+      tagConf,
+      "🛠️ Technical details",
+    );
+
+    if (trans === undefined) {
+      return false;
+    }
+
+    // If dispatch is given and transaction is set, dispatch the transaction.
+    if (dispatch && trans) dispatch(trans);
+
+    // Indicate that this command was successful.
+    return true;
+  };
+}
+
+export function getCmdInsertTextHint(
+  place: InsertionPlace,
+  tagConf: TagConfiguration,
+) {
+  return (
+    state: EditorState,
+    dispatch?: (tr: Transaction) => void,
+    _view?: EditorView,
+  ): boolean => {
+    // Early return when inserting is not allowed.
+    if (!allowedToInsert(state) || isInsideHintOrInput(state.selection))
+      return false;
+    const f =
+      place === InsertionPlace.Above
+        ? insertCompositeNodeAbove
+        : insertCompositeNodeBelow;
+
+    const wrapper = WaterproofSchema.nodes.hint;
+    const trans = f(
+      state,
+      state.tr,
+      WaterproofSchema.nodes.markdown,
+      wrapper,
+      tagConf,
+    );
+
+    if (trans === undefined) {
+      return false;
+    }
+
+    // If dispatch is given and transaction is set, dispatch the transaction.
+    if (dispatch && trans) dispatch(trans);
+
+    // Indicate that this command was successful.
+    return true;
+  };
+}
+
+export function getCmdInsertExample(
+  place: InsertionPlace,
+  tagConf: TagConfiguration,
+  templates: TemplateConfiguration,
+) {
+  return (
+    state: EditorState,
+    dispatch?: (tr: Transaction) => void,
+    _view?: EditorView,
+  ): boolean => {
+    // Again, early return when inserting is not allowed.
+    if (!allowedToInsert(state)) return false;
+
+    const f =
+      place === InsertionPlace.Above
+        ? insertCompositeNodeAbove
+        : insertCompositeNodeBelow;
+
+    const content = templates.example;
+
+    const trans = f(
+      state,
+      state.tr,
+      WaterproofSchema.nodes.code,
+      undefined,
+      tagConf,
+      undefined,
+      content,
+    );
+
+    if (trans === undefined) {
+      return false;
+    }
+
+    // If dispatch is given and transaction is set, dispatch the transaction.
+    if (dispatch && trans) dispatch(trans);
+
+    // Indicate that this command was successful.
+    return true;
+  };
+}
+
+export function getCmdInsertExercise(
+  place: InsertionPlace,
+  tagConf: TagConfiguration,
+) {
+  return (
+    state: EditorState,
+    dispatch?: (tr: Transaction) => void,
+    _view?: EditorView,
+  ): boolean => {
+    // Early return when inserting is not allowed.
+    if (!allowedToInsert(state) || isInsideHintOrInput(state.selection))
+      return false;
+    const f =
+      place === InsertionPlace.Above
+        ? insertCompositeNodeAbove
+        : insertCompositeNodeBelow;
+
+    //TODO
 
     if (trans === undefined) {
       return false;

@@ -10,7 +10,7 @@ import {
 } from "prosemirror-state";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { WaterproofSchema } from "../schema";
-import { newline } from "../document/blocks/schema";
+import { newline, inputArea, hint, text } from "../document/blocks/schema";
 import {
   closingTagStartsWithNewline,
   getParentAndIndex,
@@ -23,23 +23,63 @@ import { TagConfiguration } from "../api";
 /////// Helper functions /////////
 
 /**
- * Helper function for inserting a new node above the currently selected one.
+ * Builds the node (optionally wrapped in a hint or input area) to insert, shared
+ * by {@link insertCompositeNodeAbove} and {@link insertCompositeNodeBelow}.
+ * @returns The nodes to insert, or `undefined` for an unsupported wrapper type.
+ */
+function buildCompositeNodes(
+  wrappedNodeType: NodeType,
+  wrapNodeType: NodeType | undefined,
+  hintTitle: string,
+  content: string,
+): PNode[] | undefined {
+  const wrappedNode =
+    content.length > 0
+      ? wrappedNodeType.create({}, text(content))
+      : wrappedNodeType.create();
+
+  if (wrapNodeType === undefined) {
+    return [wrappedNode];
+  } else if (wrapNodeType === WaterproofSchema.nodes.hint) {
+    return [hint(hintTitle, [newline(), wrappedNode, newline()])];
+  } else if (wrapNodeType === WaterproofSchema.nodes.input) {
+    return [inputArea([newline(), wrappedNode, newline()])];
+  } else {
+    // Unsupported wrapper type for this helper.
+    return;
+  }
+}
+
+/**
+ * Helper function for inserting a new node below the currently selected one.
  * @param state The current editor state.
  * @param tr The current transaction for the state of the editor.
- * @param nodeType The type of node to insert (one of `WaterproofSchema.nodes`)
+ * @param wrappedNodeType The type of node to insert (one of `WaterproofSchema.nodes`)
+ * @param wrapNodeType The type of node that wraps the inserted node (one of `WaterproofSchema.nodes`)
  * @returns An insertion transaction.
  */
-export function insertAbove(
+export function insertCompositeNodeAbove(
   state: EditorState,
   tr: Transaction,
-  nodeType: NodeType,
+  wrappedNodeType: NodeType,
+  wrapNodeType: NodeType | undefined,
   tagConf: TagConfiguration,
+  hintTitle: string = "💡 Hint",
+  content: string = "",
 ): Transaction | undefined {
   const sel = state.selection;
   let trans: Transaction = tr;
 
-  const insertNewlineBeforeIfNotExists = needsNewlineBefore(nodeType, tagConf);
-  const insertNewlineAfterIfNotExists = needsNewlineAfter(nodeType, tagConf);
+  const outerNodeType = wrapNodeType ?? wrappedNodeType;
+
+  const insertNewlineBeforeIfNotExists = needsNewlineBefore(
+    outerNodeType,
+    tagConf,
+  );
+  const insertNewlineAfterIfNotExists = needsNewlineAfter(
+    outerNodeType,
+    tagConf,
+  );
 
   const parentAndIndex = getParentAndIndex(sel);
   if (parentAndIndex === null) return;
@@ -108,7 +148,16 @@ export function insertAbove(
   ) {
     toInsert.push(newline());
   }
-  toInsert.push(nodeType.create());
+
+  const nodes = buildCompositeNodes(
+    wrappedNodeType,
+    wrapNodeType,
+    hintTitle,
+    content,
+  );
+  if (nodes === undefined) return;
+  toInsert.push(...nodes);
+
   if (
     (insertNewlineAfterIfNotExists || currentNeedsNewlineBefore) &&
     !beforeIsNewline
@@ -125,20 +174,32 @@ export function insertAbove(
  * Helper function for inserting a new node below the currently selected one.
  * @param state The current editor state.
  * @param tr The current transaction for the state of the editor.
- * @param nodeType The type of node to insert (one of `WaterproofSchema.nodes`)
+ * @param wrappedNodeType The type of node to insert (one of `WaterproofSchema.nodes`)
+ * @param wrapNodeType The type of node that wraps the inserted node (one of `WaterproofSchema.nodes`)
  * @returns An insertion transaction.
  */
-export function insertBelow(
+export function insertCompositeNodeBelow(
   state: EditorState,
   tr: Transaction,
-  nodeType: NodeType,
+  wrappedNodeType: NodeType,
+  wrapNodeType: NodeType | undefined,
   tagConf: TagConfiguration,
+  hintTitle: string = "💡 Hint",
+  content: string = "",
 ): Transaction | undefined {
   const sel = state.selection;
   let trans: Transaction = tr;
 
-  const insertNewlineBeforeIfNotExists = needsNewlineBefore(nodeType, tagConf);
-  const insertNewlineAfterIfNotExists = needsNewlineAfter(nodeType, tagConf);
+  const outerNodeType = wrapNodeType ?? wrappedNodeType;
+
+  const insertNewlineBeforeIfNotExists = needsNewlineBefore(
+    outerNodeType,
+    tagConf,
+  );
+  const insertNewlineAfterIfNotExists = needsNewlineAfter(
+    outerNodeType,
+    tagConf,
+  );
 
   const parentAndIndex = getParentAndIndex(sel);
   if (parentAndIndex === null) return;
@@ -201,7 +262,16 @@ export function insertBelow(
   ) {
     toInsert.push(newline());
   }
-  toInsert.push(nodeType.create());
+
+  const nodes = buildCompositeNodes(
+    wrappedNodeType,
+    wrapNodeType,
+    hintTitle,
+    content,
+  );
+  if (nodes === undefined) return;
+  toInsert.push(...nodes);
+
   // A trailing newline is needed when:
   // 1. The node is inserted after an existing newline and there is no newline further down, OR
   // 2. The node below the insertion point needs a newline before it, OR
@@ -251,6 +321,17 @@ export function allowedToInsert(state: EditorState): boolean {
   // If the user is in teacher mode always return `true`, if not
   // we check wether they are in a input area.
   return isTeacher ? true : checkInputArea(state.selection);
+}
+
+/**
+ * Checks whether the selection sits directly inside a hint or input area.
+ */
+export function isInsideHintOrInput(sel: Selection): boolean {
+  const parentType = getParentAndIndex(sel)?.parent.type;
+  return (
+    parentType === WaterproofSchema.nodes.hint ||
+    parentType === WaterproofSchema.nodes.input
+  );
 }
 
 /**

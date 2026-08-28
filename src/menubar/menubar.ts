@@ -21,8 +21,11 @@ import {
   getCmdInsertCode,
   getCmdInsertLatex,
   getCmdInsertMarkdown,
+  getCmdInsertTextHint,
+  getCmdInsertCodeHint,
+  getCmdInsertExample,
 } from "../commands/insert-command";
-import { MenuBarEntry, TagConfiguration } from "../api";
+import { MenuBarEntry, TagConfiguration, TemplateConfiguration } from "../api";
 
 /** MenuEntry type contains the DOM, whether to only show it in teacher mode and the command to execute on click */
 type MenuEntry = {
@@ -197,6 +200,7 @@ function createDefaultMenu(
   os: OS,
   tagConf: TagConfiguration,
   customEntries: Array<MenuBarEntry> | undefined,
+  templates: TemplateConfiguration,
 ): MenuView {
   // Platform specific keybinding string:
   const cmdOrCtrl = os == OS.MacOS ? "Cmd" : "Ctrl";
@@ -275,6 +279,36 @@ function createDefaultMenu(
       "Delete selection",
       teacherOnlyWrapper(deleteSelection(tagConf)),
       teacherOnly,
+    ),
+    createMenuItem(
+      "Text Hint↑",
+      "Insert new text hint above",
+      getCmdInsertTextHint(InsertionPlace.Above, tagConf),
+    ),
+    createMenuItem(
+      "Text Hint↓",
+      "Insert new text hint below",
+      getCmdInsertTextHint(InsertionPlace.Below, tagConf),
+    ),
+    createMenuItem(
+      "Math Hint↑",
+      "Insert new math hint above",
+      getCmdInsertCodeHint(InsertionPlace.Above, tagConf),
+    ),
+    createMenuItem(
+      "Math Hint↓",
+      "Insert new math hint below",
+      getCmdInsertCodeHint(InsertionPlace.Below, tagConf),
+    ),
+    createMenuItem(
+      "Example↑",
+      "Insert new example block above",
+      getCmdInsertExample(InsertionPlace.Above, tagConf, templates),
+    ),
+    createMenuItem(
+      "Example↓",
+      "Insert new example block below",
+      getCmdInsertExample(InsertionPlace.Below, tagConf, templates),
     ),
   ];
 
@@ -364,12 +398,19 @@ export function menuPlugin(
   os: OS,
   tagConf: TagConfiguration,
   customEntries: Array<MenuBarEntry> | undefined,
+  templates: TemplateConfiguration,
 ) {
   return new Plugin({
     // This plugin has an associated `view`. This allows it to add DOM elements.
     view(outerView: EditorView) {
       // Create the default menu.
-      const menuView = createDefaultMenu(outerView, os, tagConf, customEntries);
+      const menuView = createDefaultMenu(
+        outerView,
+        os,
+        tagConf,
+        customEntries,
+        templates,
+      );
       // Get the parent node (the parent node of the outer prosemirror dom)
       const parentNode = outerView.dom.parentNode;
       if (parentNode == null) {
