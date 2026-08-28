@@ -411,7 +411,7 @@ export function parse(
 
   function handleHintTitleCase(): void {
     // Parse until we find the closing quote and >
-    while (i < document.length) {
+    while (i < stopParsingAt) {
       const char = document[i];
       if (char === '"' && document[i + 1] === ">") {
         i += 2; // Skip the closing quote and >

@@ -32,7 +32,7 @@ $$</input-area>`;
 test("test", () => {
   const blocks = parse(exampleDocument, { language: "python" });
 
-  expect(blocks.length).toBe(6);
+  expect(blocks).toHaveLength(6);
   const [b1, nl1, b2, nl2, b3, b4] = blocks;
   expect(isMarkdownBlock(b1)).toBe(true);
   expect(isNewlineBlock(nl1)).toBe(true);
