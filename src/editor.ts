@@ -32,6 +32,8 @@ import {
   WaterproofEditorConfig,
   TextContentOfSpecifier,
   MessageHandlerEditor,
+  OffsetCodeAction,
+  OffsetEdit,
 } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
@@ -75,7 +77,23 @@ export type DiagnosticObjectProse = {
   start: number;
   end: number;
   severity: Severity;
+  codeActions?: OffsetCodeAction[];
 };
+
+function toProseDiagnostic(
+  diagnostic: OffsetDiagnostic,
+  start: number,
+  end: number,
+): DiagnosticObjectProse {
+  const { message, severity, codeActions } = diagnostic;
+  return {
+    message,
+    severity,
+    start,
+    end,
+    ...(codeActions ? { codeActions } : {}),
+  };
+}
 
 /**
  * WaterproofEditor class. Configured via the WaterproofEditorConfig object.
@@ -101,6 +119,13 @@ export class WaterproofEditor implements MessageHandlerEditor {
   public get diagnosticsVersion() {
     return this.diagnosticsUpdateCounter;
   }
+
+  /**
+   * The document version that was current the last time `setActiveDiagnostics` ran.
+   * Used by `patchDiagnosticCodeActions` to discard patches computed against a
+   * now-stale diagnostics snapshot.
+   */
+  private activeDiagnosticsDocVersion: number | undefined;
   private diagnosticsUpdateCounter = 0;
 
   private _lineNumbersShown: boolean = false;
@@ -635,12 +660,42 @@ export class WaterproofEditor implements MessageHandlerEditor {
     endOffset: number,
     text: string,
   ): boolean {
+    return this.replaceRanges([
+      { start: startOffset, end: endOffset, newText: text },
+    ]);
+  }
+
+  /**
+   * Applies offset-based edits as one editor transaction.
+   *
+   * All offsets refer to the same document snapshot, so edits are applied from
+   * the end of the document backwards to keep earlier offsets stable.
+   */
+  public replaceRanges(edits: readonly OffsetEdit[]): boolean {
     if (!this._view || !this._mapping) return false;
-    const from = this._mapping.textOffsetToPmIndex(startOffset);
-    const to = this._mapping.textOffsetToPmIndex(endOffset);
-    const tr = this._view.state.tr.insertText(text, from, to);
-    this._view.dispatch(tr);
-    return true;
+    if (edits.length === 0) return false;
+
+    // textOffsetToPmIndex can throw
+    try {
+      const positionedEdits = edits
+        .map((edit, index) => ({
+          from: this._mapping!.textOffsetToPmIndex(edit.start),
+          to: this._mapping!.textOffsetToPmIndex(edit.end),
+          text: edit.newText,
+          index,
+        }))
+        .sort((a, b) => b.from - a.from || b.to - a.to || b.index - a.index);
+
+      const tr = this._view.state.tr;
+      for (const edit of positionedEdits) {
+        tr.insertText(edit.text, edit.from, edit.to);
+      }
+      this._view.dispatch(tr);
+      return true;
+    } catch (error) {
+      console.error("Error occurred while replacing ranges:", error);
+      return false;
+    }
   }
 
   /**
@@ -765,12 +820,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
       const start = map.textOffsetToPmIndex(d.startOffset);
       const end = map.textOffsetToPmIndex(d.endOffset);
 
-      return {
-        message: d.message,
-        severity: d.severity,
-        start,
-        end,
-      };
+      return toProseDiagnostic(d, start, end);
     });
     // Add the new diagnostics to the array of stored diagnostics
     this.currentProseDiagnostics.push(...newDiags);
@@ -793,12 +843,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
     const start = map.textOffsetToPmIndex(toRemove.startOffset);
     const end = map.textOffsetToPmIndex(toRemove.endOffset);
 
-    const proseDiag: DiagnosticObjectProse = {
-      start,
-      end,
-      message: toRemove.message,
-      severity: toRemove.severity,
-    };
+    const proseDiag = toProseDiagnostic(toRemove, start, end);
 
     const oldLength = this.currentProseDiagnostics.length;
     this.currentProseDiagnostics = this.currentProseDiagnostics.filter(
@@ -831,28 +876,68 @@ export class WaterproofEditor implements MessageHandlerEditor {
    *
    * @param msg The set of diagnostics for the current document.
    */
-  public setActiveDiagnostics(diagnostics: Array<OffsetDiagnostic>) {
+  public setActiveDiagnostics(
+    diagnostics: Array<OffsetDiagnostic>,
+    version?: number,
+  ) {
     // The diagnostics are positioned in offset based positions.
     // We map the positions through the mapping to get prosemirror positions.
     const map = this._mapping;
     if (map === undefined) return;
 
-    this.currentProseDiagnostics = new Array<DiagnosticObjectProse>(
-      diagnostics.length,
-    );
+    const previous = this.currentProseDiagnostics;
+    this.activeDiagnosticsDocVersion = version;
+
+    const previousByKey = new Map<string, DiagnosticObjectProse>();
+    for (const p of previous) {
+      if (p?.codeActions) {
+        previousByKey.set(`${p.start}:${p.end}:${p.message}`, p);
+      }
+    }
+
+    const next = new Array<DiagnosticObjectProse>(diagnostics.length);
     for (let i = 0; i < diagnostics.length; i++) {
       const diag = diagnostics[i];
       const start = map.textOffsetToPmIndex(diag.startOffset);
       const end = map.textOffsetToPmIndex(diag.endOffset);
       if (start >= end) continue;
-      this.currentProseDiagnostics[i] = {
-        message: diag.message,
-        start,
-        end,
-        severity: diag.severity,
-      };
+
+      const base = toProseDiagnostic(diag, start, end);
+
+      // Carry forward code actions from a matching diagnostic in the previous
+      // pass, so a diagnostic that persists across progressive LSP passes
+      // doesn't lose its already-resolved actions while waiting for this
+      // pass's own patch to arrive.
+      const carried = previousByKey.get(`${start}:${end}:${base.message}`);
+
+      next[i] = carried ? { ...base, codeActions: carried.codeActions } : base;
     }
+
+    this.currentProseDiagnostics = next;
     // diagnostics have changed
+    this.diagnosticsUpdateCounter++;
+    this.informCodemirrorViews();
+  }
+
+  /**
+   * Merges resolved code actions into an already-stored diagnostic, streamed in
+   * separately from the initial diagnostics batch. `index` refers to the position
+   * in the diagnostics array that was current when `version` was last set via
+   * {@linkcode setActiveDiagnostics}; patches for a stale version are dropped.
+   */
+  public patchDiagnosticCodeActions(
+    version: number,
+    index: number,
+    codeActions: OffsetCodeAction[],
+  ) {
+    if (version !== this.activeDiagnosticsDocVersion) {
+      return;
+    }
+    const target = this.currentProseDiagnostics[index];
+
+    if (!target) return;
+
+    this.currentProseDiagnostics[index] = { ...target, codeActions };
     this.diagnosticsUpdateCounter++;
     this.informCodemirrorViews();
   }
@@ -908,10 +993,9 @@ export class WaterproofEditor implements MessageHandlerEditor {
       })
       .map((d) => {
         return {
-          message: d.message,
+          ...d,
           start: Math.max(d.start, low),
           end: Math.min(d.end, high),
-          severity: d.severity,
         };
       });
   }

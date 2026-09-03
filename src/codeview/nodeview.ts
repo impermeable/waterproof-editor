@@ -33,7 +33,7 @@ import { renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, lintGutter } from "@codemirror/lint";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
-import { LanguageConfiguration, ThemeStyle } from "../api";
+import { LanguageConfiguration, OffsetCodeAction, ThemeStyle } from "../api";
 import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
 import { CodeBlockBusyIndicator } from "./busy-indicator";
@@ -492,6 +492,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
           Math.min(d.end - startPos - 1, _view.state.doc.length),
           d.message,
           d.severity,
+          d.codeActions,
         );
       });
 
@@ -507,12 +508,14 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
    * @param to The to postion of the error (should be larger than `from`).
    * @param message The message attached to this error.
    * @param severity The severity attached to this error.
+   * @param codeActions The code actions attached to this error.
    */
   public preprocessDiagnostic(
     from: number,
     to: number,
     message: string,
     severity: number,
+    codeActions?: OffsetCodeAction[],
   ): Diagnostic {
     const severityString = severityToString(severity);
 
@@ -520,7 +523,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
     let actions = [
       {
         name: "📋",
-        apply: (view: CodeMirror, from: number, _to: number) => {
+        apply: (_view: CodeMirror, from: number, _to: number) => {
           // give focus to this current codeblock instante to ensure it updates
           this._codemirror?.focus();
           navigator.clipboard.writeText(message);
@@ -528,8 +531,20 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
         },
       },
     ];
-    let trimmedMessage: string = "";
-    if (message.startsWith("Hint, replace with: ")) {
+
+    let trimmedMessage = "";
+
+    if (codeActions && codeActions.length > 0) {
+      for (const action of codeActions) {
+        actions.push({
+          name: `$↩️ {action.title}`,
+          apply: (_view: CodeMirror, _from: number, _to: number) => {
+            this._codemirror?.focus();
+            this.editorInstance.replaceRanges(action.edits);
+          },
+        });
+      }
+    } else if (message.startsWith("Hint, replace with: ")) {
       trimmedMessage = message
         .trim()
         .replace("Hint, replace with: ", "")
@@ -563,7 +578,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
       actions = [
         {
           name: "Insert ⤵️",
-          apply: (view: CodeMirror, from: number, to: number) => {
+          apply: (_view: CodeMirror, _from: number, to: number) => {
             // give focus to this current codeblock instante to ensure it updates
             this._codemirror?.focus();
             const toInsert =
