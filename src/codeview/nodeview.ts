@@ -537,7 +537,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
     if (codeActions && codeActions.length > 0) {
       for (const action of codeActions) {
         actions.push({
-          name: `${action.title} ↩️`,
+          name: `$↩️ {action.title}`,
           apply: (_view: CodeMirror, _from: number, _to: number) => {
             this._codemirror?.focus();
             this.editorInstance.replaceRanges(action.edits);
