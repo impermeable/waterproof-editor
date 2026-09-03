@@ -35,7 +35,11 @@
 
     ".cm-diagnosticAction": {
       "gridColumn": "1",
-      "marginBottom": "4px"
+      "marginBottom": "4px",
+	  "whiteSpace": "nowrap",
+      "overflow": "hidden",
+      "textOverflow": "ellipsis",
+      "maxWidth": "220px"
     },
 
     ".cm-diagnosticAction:last-of-type": {
