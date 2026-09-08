@@ -9,23 +9,24 @@ import {
   isContainerBlock,
 } from "../src/document/blocks";
 import { HintBlock, ContainerBlock } from "../src/document";
-import { Mapping, Range, WaterproofDocument } from "../src/api";
-import {
-  CodeBlock,
-  InputAreaBlock,
-  MarkdownBlock,
-  MathDisplayBlock,
-  NewlineBlock,
-} from "../src/document";
+import { CodeBlock, InputAreaBlock, MarkdownBlock } from "../src/document";
 import { configuration } from "../src/markdown-defaults";
 import { DefaultTagSerializer } from "../src/serialization/DocumentSerializer";
 import { constructDocument } from "../src/document";
 import { sanityCheckTree } from "./mapping/util";
 import { TagConfiguration } from "../src/api";
 import { wrapInContainer, wpLift } from "../src/commands";
+import {
+  applyCommand,
+  createTestMapping,
+  docChildTypes,
+  groupingChildCases,
+  serializeBlocks,
+  stateWithNodeSelAt,
+} from "./helpers";
 
-import { EditorState, NodeSelection, Transaction } from "prosemirror-state";
-import { Fragment, Node as PNode } from "prosemirror-model";
+import { EditorState } from "prosemirror-state";
+import { Fragment } from "prosemirror-model";
 import { WaterproofSchema } from "../src/schema";
 import { checkInputArea } from "../src/commands/command-helpers";
 
@@ -42,47 +43,6 @@ const multileanConfig: TagConfiguration = {
   },
 };
 const multileanSerializer = new DefaultTagSerializer(multileanConfig);
-
-function createTestMapping(blocks: WaterproofDocument) {
-  const mapping = new Mapping(blocks, 1, config, serializer);
-  return mapping.getMapping();
-}
-
-// ============================================================
-// Test utility helpers
-// ============================================================
-
-/** Constructs a document from blocks and serializes it with the given serializer (defaults to `serializer`). */
-function serializeBlocks(blocks: WaterproofDocument, ser = serializer): string {
-  return ser.serializeDocument(constructDocument(blocks));
-}
-
-/** Creates an EditorState with a NodeSelection at `pos`. */
-function stateWithNodeSelAt(doc: PNode, pos: number): EditorState {
-  const state = EditorState.create({ doc });
-  return state.apply(
-    state.tr.setSelection(NodeSelection.create(state.doc, pos)),
-  );
-}
-
-/** Applies a ProseMirror command to `state`, returning the resulting state or null if not dispatched. */
-function applyCommand(
-  state: EditorState,
-  cmd: (s: EditorState, dispatch?: (tr: Transaction) => void) => boolean,
-): EditorState | null {
-  let newState: EditorState | null = null;
-  cmd(state, (tr) => {
-    newState = state.apply(tr);
-  });
-  return newState;
-}
-
-/** Returns the type names of all direct children of a doc node. */
-function docChildTypes(doc: PNode): string[] {
-  const types: string[] = [];
-  doc.forEach((child) => types.push(child.type.name));
-  return types;
-}
 
 // ============================================================
 // Parsing tests — the .mv parser (statemachine.ts) does not
@@ -107,126 +67,21 @@ Some markdown content
 // ============================================================
 
 describe("container serialization", () => {
-  test("serialize container with markdown", () => {
-    const innerBlocks = [
-      new MarkdownBlock(
-        "Some text",
-        { from: 14, to: 23 },
-        { from: 14, to: 23 },
+  // With empty tags, the expected output equals the container's string content.
+  test.each(groupingChildCases())(
+    "serialize container with $child",
+    ({ stringContent, range, innerRange, innerBlocks }) => {
+      const cg = new ContainerBlock(
+        stringContent,
+        "test",
+        range,
+        innerRange,
         0,
-      ),
-    ];
-    const cg = new ContainerBlock(
-      "Some text",
-      "test",
-      { from: 0, to: 28 },
-      { from: 14, to: 23 },
-      0,
-      innerBlocks,
-    );
-    expect(serializeBlocks([cg])).toBe("Some text");
-  });
-
-  test("serialize container with code block", () => {
-    const innerBlocks = [
-      new CodeBlock(
-        "def x := 1",
-        { from: 14, to: 37 },
-        { from: 21, to: 31 },
-        0,
-      ),
-    ];
-    const cg = new ContainerBlock(
-      "```lean4\ndef x := 1\n```",
-      "test",
-      { from: 0, to: 42 },
-      { from: 14, to: 37 },
-      0,
-      innerBlocks,
-    );
-    expect(serializeBlocks([cg])).toBe("```lean4\ndef x := 1\n```");
-  });
-
-  test("serialize container with input area", () => {
-    const inputInnerBlocks = [
-      new MarkdownBlock(
-        "input text",
-        { from: 26, to: 36 },
-        { from: 26, to: 36 },
-        0,
-      ),
-    ];
-    const innerBlocks = [
-      new InputAreaBlock(
-        "input text",
-        { from: 14, to: 49 },
-        { from: 26, to: 36 },
-        0,
-        inputInnerBlocks,
-      ),
-    ];
-    const cg = new ContainerBlock(
-      "<input-area>input text</input-area>",
-      "test",
-      { from: 0, to: 54 },
-      { from: 14, to: 49 },
-      0,
-      innerBlocks,
-    );
-    expect(serializeBlocks([cg])).toBe("<input-area>input text</input-area>");
-  });
-
-  test("serialize container with hint", () => {
-    const hintInnerBlocks = [
-      new MarkdownBlock(
-        "hint text",
-        { from: 40, to: 49 },
-        { from: 40, to: 49 },
-        0,
-      ),
-    ];
-    const innerBlocks = [
-      new HintBlock(
-        "hint text",
-        "My Hint",
-        { from: 14, to: 56 },
-        { from: 40, to: 49 },
-        0,
-        hintInnerBlocks,
-      ),
-    ];
-    const cg = new ContainerBlock(
-      '<hint title="My Hint">hint text</hint>',
-      "test",
-      { from: 0, to: 61 },
-      { from: 14, to: 52 },
-      0,
-      innerBlocks,
-    );
-    expect(serializeBlocks([cg])).toBe(
-      '<hint title="My Hint">hint text</hint>',
-    );
-  });
-
-  test("serialize container with math_display", () => {
-    const innerBlocks = [
-      new MathDisplayBlock(
-        "x^2",
-        { from: 14, to: 21 },
-        { from: 16, to: 19 },
-        0,
-      ),
-    ];
-    const cg = new ContainerBlock(
-      "$$x^2$$",
-      "test",
-      { from: 0, to: 26 },
-      { from: 14, to: 21 },
-      0,
-      innerBlocks,
-    );
-    expect(serializeBlocks([cg])).toBe("$$x^2$$");
-  });
+        innerBlocks,
+      );
+      expect(serializeBlocks([cg], serializer)).toBe(stringContent);
+    },
+  );
 
   test("serialize container with non-empty tags (multilean)", () => {
     const innerBlocks = [
@@ -248,27 +103,6 @@ describe("container serialization", () => {
     expect(serializeBlocks([cg], multileanSerializer)).toBe(
       "::::multilean\nSome content\n::::",
     );
-  });
-
-  test("serialize container with multiple children", () => {
-    const innerBlocks = [
-      new MarkdownBlock("intro", { from: 14, to: 19 }, { from: 14, to: 19 }, 0),
-      new CodeBlock(
-        "def x := 1",
-        { from: 19, to: 42 },
-        { from: 26, to: 36 },
-        0,
-      ),
-    ];
-    const cg = new ContainerBlock(
-      "intro```lean4\ndef x := 1\n```",
-      "test",
-      { from: 0, to: 47 },
-      { from: 14, to: 42 },
-      0,
-      innerBlocks,
-    );
-    expect(serializeBlocks([cg])).toBe("intro```lean4\ndef x := 1\n```");
   });
 });
 
@@ -293,7 +127,7 @@ describe("container mapping", () => {
         ),
       ],
     );
-    const tree = createTestMapping([cg]);
+    const tree = createTestMapping([cg], config, serializer);
 
     expect(tree.root.children.length).toBe(1);
     const cgNode = tree.root.children[0];
@@ -327,7 +161,7 @@ describe("container mapping", () => {
       [inputInner],
     );
 
-    const tree = createTestMapping([cg]);
+    const tree = createTestMapping([cg], config, serializer);
 
     expect(tree.root.children.length).toBe(1);
     const cgNode = tree.root.children[0];
@@ -365,7 +199,7 @@ describe("container mapping", () => {
       0,
       [hintBlock],
     );
-    const tree = createTestMapping([cg]);
+    const tree = createTestMapping([cg], config, serializer);
 
     const cgNode = tree.root.children[0];
     expect(cgNode.type).toBe("container");

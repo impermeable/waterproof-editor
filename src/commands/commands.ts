@@ -36,9 +36,10 @@ export function wpLift(_tagConf: TagConfiguration): Command {
     if (
       type !== WaterproofSchema.nodes.hint &&
       type !== WaterproofSchema.nodes.input &&
-      type !== WaterproofSchema.nodes.container
+      type !== WaterproofSchema.nodes.container &&
+      type !== WaterproofSchema.nodes.student_hidden
     ) {
-      // We can only lift hint, input area, or container nodes.
+      // We can only lift hint, input area, container, or student-hidden nodes.
       return false;
     }
 
@@ -253,6 +254,25 @@ export function wrapInContainer(
   return (state, dispatch) => {
     if (!preWrapCheck(state, [WaterproofSchema.nodes.container])) return false;
     return wpWrapIn(WaterproofSchema.nodes.container, tagConf, { name })(
+      state,
+      dispatch,
+    );
+  };
+}
+
+export function wrapInStudentHidden(tagConf: TagConfiguration): Command {
+  return (state, dispatch) => {
+    // student_hidden only accepts containercontent (which excludes container
+    // and student_hidden itself) and is only valid at document level, so both
+    // types are disallowed as target, ancestor, and descendant.
+    if (
+      !preWrapCheck(state, [
+        WaterproofSchema.nodes.container,
+        WaterproofSchema.nodes.student_hidden,
+      ])
+    )
+      return false;
+    return wpWrapIn(WaterproofSchema.nodes.student_hidden, tagConf)(
       state,
       dispatch,
     );

@@ -126,6 +126,22 @@ export abstract class DocumentSerializer {
     },
   ): string;
 
+  /**
+   * Describes how to turn a student-hidden node into a string representation.
+   * This node can have children (including input areas and hints), so you probably want to call `this.serializeNode` on every child node.
+   * @param studentHiddenNode The student-hidden node that is going to be serialized
+   * @param parentNode The parent node of this node (if it has one)
+   * @param neighbors Function that upon calling will return the neighbors of the node being serialized.
+   */
+  abstract serializeStudentHidden(
+    studentHiddenNode: Node,
+    parentNode: string | null,
+    neighbors: (skipNewlines: boolean) => {
+      nodeAbove: string | null;
+      nodeBelow: string | null;
+    },
+  ): string;
+
   serializeText(node: Node): string {
     return node.textContent;
   }
@@ -163,6 +179,8 @@ export abstract class DocumentSerializer {
         return this.serializeHint(node, parent, neighbors);
       case WaterproofSchema.nodes.container:
         return this.serializeContainer(node, parent, neighbors);
+      case WaterproofSchema.nodes.student_hidden:
+        return this.serializeStudentHidden(node, parent, neighbors);
       case WaterproofSchema.nodes.text:
         return this.serializeText(node);
       case WaterproofSchema.nodes.newline:
@@ -275,6 +293,14 @@ export class DefaultTagSerializer extends DocumentSerializer {
       this.tagConf.container.openTag(name) +
       this.serializeFragment(node.content, "container") +
       this.tagConf.container.closeTag
+    );
+  }
+
+  serializeStudentHidden(node: Node): string {
+    return (
+      this.tagConf.studentHidden.openTag +
+      this.serializeFragment(node.content, "student_hidden") +
+      this.tagConf.studentHidden.closeTag
     );
   }
 }

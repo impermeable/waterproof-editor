@@ -40,6 +40,11 @@ export const container = (name: string, childNodes: ProseNode[]): ProseNode => {
   return WaterproofSchema.nodes.container.create({ name }, childNodes);
 };
 
+/** Construct a ProseMirror node of the student-hidden type */
+export const studentHidden = (childNodes: ProseNode[]): ProseNode => {
+  return WaterproofSchema.nodes.student_hidden.create({}, childNodes);
+};
+
 // ##### Special newline block ######
 export const newline = () => {
   return WaterproofSchema.nodes.newline.create();

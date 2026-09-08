@@ -8,6 +8,7 @@ export const SchemaCell = {
   Code: "code",
   Newline: "newline",
   Container: "container",
+  StudentHidden: "student_hidden",
 } as const;
 
 export type SchemaKeys = keyof typeof SchemaCell;
@@ -128,5 +129,13 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text">({
       },
     },
     //#endregion
+
+    student_hidden: {
+      content: "containercontent+",
+      group: "cell",
+      toDOM() {
+        return ["div", {}, 0];
+      },
+    },
   },
 });

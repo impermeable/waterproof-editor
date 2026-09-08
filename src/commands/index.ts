@@ -4,6 +4,7 @@ export {
   wrapInHint,
   wrapInInput,
   wrapInContainer,
+  wrapInStudentHidden,
   deleteSelection,
 } from "./commands";
 export { InsertionPlace } from "./types";

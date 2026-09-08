@@ -4,6 +4,7 @@ import { RenderedView } from "./RenderedView";
 import { NodeSelection, PluginKey } from "prosemirror-state";
 import { Node as PNode } from "prosemirror-model";
 import { WaterproofSchema } from "../../schema";
+import { isPositionEditable } from "../../inputArea";
 
 /**
  * Abstract class for a switchable view.
@@ -17,22 +18,22 @@ export class SwitchableView implements NodeView {
   /** Whether we are in rendered mode */
   private inRenderMode: boolean = true;
   /** The place to insert the views into */
-  private _place: HTMLElement;
+  private readonly _place: HTMLElement;
   /** The outer prosemirror editor */
-  private _outerView: EditorView;
+  private readonly _outerView: EditorView;
   /** The node that is passed when constructing the NodeView */
   private _node: PNode;
 
   /** Represents whether the view is currently updating */
   private _updating: boolean;
-  private _getPos: () => number | undefined;
+  private readonly _getPos: () => number | undefined;
 
-  private _pluginKey: PluginKey;
+  private readonly _pluginKey: PluginKey;
 
-  private _emptyClassName: string;
-  private _viewClassName: string;
-  private _editorClassName: string;
-  private _renderedClassName: string;
+  private readonly _emptyClassName: string;
+  private readonly _viewClassName: string;
+  private readonly _editorClassName: string;
+  private readonly _renderedClassName: string;
 
   public get content() {
     return this._node.textContent;
@@ -88,12 +89,13 @@ export class SwitchableView implements NodeView {
     // eventHandler for the onclick event.
     // Creates a new node selection that selects 'this' node.
     const eventHandler = () => {
-      const tr = outerView.state.tr;
       const pos = getPos();
       if (pos === undefined) {
         console.error("why pos undefined?!");
         return;
       }
+      if (!isPositionEditable(outerView.state, pos)) return;
+      const tr = outerView.state.tr;
       const nodeSel = new NodeSelection(outerView.state.doc.resolve(pos));
       tr.setSelection(nodeSel);
       outerView.dispatch(tr);
@@ -108,7 +110,7 @@ export class SwitchableView implements NodeView {
   /**
    * Returns whether this view is currently in the updating state.
    */
-  public get isUpdating() {
+  public get updating() {
     return this._updating;
   }
 
@@ -168,8 +170,18 @@ export class SwitchableView implements NodeView {
 
   update(node: PNode, decorations: readonly Decoration[]) {
     if (!node.sameMarkup(this._node)) return false;
+
+    const previousTextContent = this._node.textContent;
     this._node = node;
-    if (this.view instanceof RenderedView) this.makeEditableView();
+
+    if (this.view instanceof RenderedView) {
+      // If the content has changed we need to remake the view.
+      if (previousTextContent !== node.textContent) {
+        this.makeRenderedView();
+      }
+      return this.view.update();
+    }
+
     return this.view.update(node, decorations);
   }
 

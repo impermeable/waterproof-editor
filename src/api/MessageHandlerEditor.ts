@@ -18,7 +18,7 @@ export interface MessageHandlerEditor {
   setShowLineNumbers: (show: boolean) => void;
   setShowMenuItems: (show: boolean) => void;
   handleHistoryChange: (historyChange: HistoryChange) => void;
-  updateLockingState: (teacherModeEnabled: boolean) => void;
+  setTeacherMode: (teacherModeEnabled: boolean) => void;
   refreshDocument: (content: string, version: number) => void;
   removeBusyIndicators: () => void;
   reportProgress: (at: number, numberOfLines: number, label: string) => void;

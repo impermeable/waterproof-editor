@@ -9,6 +9,7 @@ import {
   markdown,
   mathDisplay,
   newline,
+  studentHidden,
 } from "./schema";
 
 const indentation = (level: number): string => "  ".repeat(level);
@@ -16,32 +17,37 @@ const debugInfo = (block: Block): string =>
   `{range=${block.range.from}-${block.range.to}}`;
 
 /**
- * InputAreaBlocks are the parts of the document that should be editable by students.
- * Every input area has an accompanying status to indicate whether the input area is 'correct'.
+ * The child blocks of a grouping block: either an array of blocks, or a
+ * function that constructs the child blocks given the inner content, inner
+ * range, and line start.
  */
-export class InputAreaBlock implements Block {
-  public type = BLOCK_NAME.INPUT_AREA;
+export type ChildBlocks =
+  | Block[]
+  | ((
+      innerContent: string,
+      innerRange: BlockRange,
+      lineStartOffset: number,
+    ) => Block[]);
+
+/**
+ * Base class for blocks that group child blocks together (input areas, hints,
+ * containers, and student-hidden blocks).
+ *
+ * @param stringContent Content of the block
+ * @param range The range (from position to to position in the original document) of the entire block, including its tags.
+ * @param innerRange The range (from position to to position in the original document) of the inner content of the block, excluding its tags.
+ * @param childBlocks Either an array of child blocks of this block, or a function that constructs the child blocks given the inner range and content.
+ */
+export abstract class GroupingBlock implements Block {
+  abstract type: BLOCK_NAME;
   public innerBlocks: Block[];
 
-  /**
-   * Construct a new InputAreaBlock.
-   * @param stringContent Content of the input area
-   * @param range The range (from position to to position in the original document) of the entire input area block, including the its tags.
-   * @param innerRange The range (from position to to position in the original document) of the inner content of the input area block, excluding its tags.
-   * @param childBlocks Either an array of child blocks of this input area block, or a function that constructs the child blocks given the inner range and content.
-   */
   constructor(
     public stringContent: string,
     public range: BlockRange,
     public innerRange: BlockRange,
     public lineStart: number,
-    childBlocks:
-      | Block[]
-      | ((
-          innerContent: string,
-          innerRange: BlockRange,
-          lineStartOffset: number,
-        ) => Block[]),
+    childBlocks: ChildBlocks,
   ) {
     if (typeof childBlocks === "function") {
       this.innerBlocks = childBlocks(stringContent, innerRange, lineStart);
@@ -50,16 +56,38 @@ export class InputAreaBlock implements Block {
     }
   }
 
-  toProseMirror() {
+  /** Wrap the given ProseMirror child nodes in this block's node type. */
+  protected abstract wrapChildNodes(childNodes: Node[]): Node;
+
+  toProseMirror(): Node {
     const childNodes = this.innerBlocks.map((block) => block.toProseMirror());
-    return inputArea(childNodes);
+    return this.wrapChildNodes(childNodes);
   }
+
+  /** The part of the debug print line before the child block listing. */
+  protected abstract debugHeader(): string;
 
   // Debug print function. // FIXME: Maybe remove?
   debugPrint(level: number): void {
-    console.log(`${indentation(level)}InputAreaBlock {${debugInfo(this)}} [`);
+    console.log(`${indentation(level)}${this.debugHeader()} [`);
     this.innerBlocks.forEach((block) => block.debugPrint(level + 1));
     console.log(`${indentation(level)}]`);
+  }
+}
+
+/**
+ * InputAreaBlocks are the parts of the document that should be editable by students.
+ * Every input area has an accompanying status to indicate whether the input area is 'correct'.
+ */
+export class InputAreaBlock extends GroupingBlock {
+  public type = BLOCK_NAME.INPUT_AREA;
+
+  protected wrapChildNodes(childNodes: Node[]): Node {
+    return inputArea(childNodes);
+  }
+
+  protected debugHeader(): string {
+    return `InputAreaBlock {${debugInfo(this)}}`;
   }
 }
 
@@ -67,52 +95,33 @@ export class InputAreaBlock implements Block {
  * HintBlocks are foldable blocks that can be used to hide parts of the document by default.
  * Useful for giving hints to students or hiding import/configuration statements from the student.
  */
-export class HintBlock implements Block {
+export class HintBlock extends GroupingBlock {
   public type = BLOCK_NAME.HINT;
-  public innerBlocks: Block[];
 
   /**
    * Construct a new HintBlock.
-   * @param stringContent Content of the hint block
    * @param title Title of the hint block (the part that is displayed in the document when folded)
-   * @param range The range (from position to to position in the original document) of the entire hint block, including its tags.
-   * @param innerRange The range (from position to to position in the original document) of the inner content of the hint block, excluding its tags.
-   * @param childBlocks Either an array of child blocks of this hint block, or a function that constructs the child blocks given the inner range and content.
+   *
+   * See {@linkcode GroupingBlock} for the other parameters.
    */
   constructor(
-    public stringContent: string,
+    stringContent: string,
     public title: string,
-    public range: BlockRange,
-    public innerRange: BlockRange,
-    public lineStart: number,
-    childBlocks:
-      | Block[]
-      | ((
-          innerContent: string,
-          innerRange: BlockRange,
-          lineStartOffset: number,
-        ) => Block[]),
+    range: BlockRange,
+    innerRange: BlockRange,
+    lineStart: number,
+    childBlocks: ChildBlocks,
   ) {
-    if (typeof childBlocks === "function") {
-      this.innerBlocks = childBlocks(stringContent, innerRange, lineStart);
-    } else {
-      this.innerBlocks = childBlocks;
-    }
+    super(stringContent, range, innerRange, lineStart, childBlocks);
   }
 
-  toProseMirror() {
+  protected wrapChildNodes(childNodes: Node[]): Node {
     // We need to construct a hint node with a title and inner blocks.
-    const childNodes = this.innerBlocks.map((block) => block.toProseMirror());
     return hint(this.title, childNodes);
   }
 
-  // Debug print function.
-  debugPrint(level: number): void {
-    console.log(
-      `${indentation(level)}HintBlock {${debugInfo(this)}} {title="${this.title}"} [`,
-    );
-    this.innerBlocks.forEach((block) => block.debugPrint(level + 1));
-    console.log(`${indentation(level)}]`);
+  protected debugHeader(): string {
+    return `HintBlock {${debugInfo(this)}} {title="${this.title}"}`;
   }
 }
 
@@ -236,41 +245,50 @@ export class NewlineBlock implements Block {
  * In Lean context, multilean blocks are represented as containers with name "multilean".
  * They can contain both top-level blocks (input, hint) and leaf blocks (math, code, markdown).
  */
-export class ContainerBlock implements Block {
+export class ContainerBlock extends GroupingBlock {
   public type = BLOCK_NAME.CONTAINER;
-  public innerBlocks: Block[];
 
+  /**
+   * Construct a new ContainerBlock.
+   * @param name Name identifying the container type (e.g. "multilean")
+   *
+   * See {@linkcode GroupingBlock} for the other parameters.
+   */
   constructor(
-    public stringContent: string,
+    stringContent: string,
     public name: string,
-    public range: BlockRange,
-    public innerRange: BlockRange,
-    public lineStart: number,
-    childBlocks:
-      | Block[]
-      | ((
-          innerContent: string,
-          innerRange: BlockRange,
-          lineStartOffset: number,
-        ) => Block[]),
+    range: BlockRange,
+    innerRange: BlockRange,
+    lineStart: number,
+    childBlocks: ChildBlocks,
   ) {
-    if (typeof childBlocks === "function") {
-      this.innerBlocks = childBlocks(stringContent, innerRange, lineStart);
-    } else {
-      this.innerBlocks = childBlocks;
-    }
+    super(stringContent, range, innerRange, lineStart, childBlocks);
   }
 
-  toProseMirror() {
-    const childNodes = this.innerBlocks.map((block) => block.toProseMirror());
+  protected wrapChildNodes(childNodes: Node[]): Node {
     return container(this.name, childNodes);
   }
 
-  debugPrint(level: number): void {
-    console.log(
-      `${indentation(level)}ContainerBlock(${this.name}) {${debugInfo(this)}} [`,
-    );
-    this.innerBlocks.forEach((block) => block.debugPrint(level + 1));
-    console.log(`${indentation(level)}]`);
+  protected debugHeader(): string {
+    return `ContainerBlock(${this.name}) {${debugInfo(this)}}`;
+  }
+}
+
+/**
+ * The `StudentHiddenBlock` acts similar to the {@linkcode ContainerBlock} in the
+ * sense that it groups child blocks together.
+ *
+ * The child blocks are only shown when in teacher mode and hence never visible
+ * to students.
+ */
+export class StudentHiddenBlock extends GroupingBlock {
+  public type = BLOCK_NAME.STUDENT_HIDDEN;
+
+  protected wrapChildNodes(childNodes: Node[]): Node {
+    return studentHidden(childNodes);
+  }
+
+  protected debugHeader(): string {
+    return `StudentHiddenBlock {${debugInfo(this)}}`;
   }
 }

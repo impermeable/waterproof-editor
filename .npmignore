@@ -1,5 +1,7 @@
 /.github
 /.vscode
+/.claude
+/.prettier*
 /__tests__
 /documentation
 /node_modules
@@ -16,3 +18,5 @@ sonar-project.properties
 /coverage
 /scripts
 impermeable-waterproof-editor*.tgz
+/hooks
+tsconfig.test.json

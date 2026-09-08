@@ -195,13 +195,13 @@ export const keybindings: KeyBinding[] = [
     key: "Space",
     run: (target) => {
       const status = completionStatus(target.state);
-      const anyTactic = currentCompletions(target.state).some(
-        (c) => c.detail === "tactic",
+      const anyProofStep = currentCompletions(target.state).some(
+        (c) => c.detail === "proof step",
       );
 
-      // Accept completion on space, unless no completion active or it's a tactic
-      // (tactics can contain spaces :D)
-      if (status !== null && !anyTactic) {
+      // Accept completion on space, unless no completion active or it's a proof step
+      // (proof steps can contain spaces :D)
+      if (status !== null && !anyProofStep) {
         acceptCompletion(target);
       }
 

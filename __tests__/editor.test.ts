@@ -28,6 +28,11 @@ import {
 } from "../src/api";
 import { CodeBlock } from "../src/document";
 import { configuration } from "../src/markdown-defaults";
+import { WaterproofSchema } from "../src";
+
+import { EditorView } from "prosemirror-view";
+import * as inputAreaModule from "../src/inputArea";
+import { NodeType } from "prosemirror-model";
 
 const cfg: WaterproofEditorConfig = {
   api: {
@@ -50,8 +55,8 @@ const cfg: WaterproofEditorConfig = {
 function makeEditor(): WaterproofEditor {
   const el = document.createElement("div");
   jest.spyOn(WaterproofEditor.prototype, "handleScroll").mockImplementation();
-  //@ts-expect-error private method
   jest
+    //@ts-expect-error private method
     .spyOn(WaterproofEditor.prototype, "informCodemirrorViews")
     .mockImplementation();
   const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
@@ -185,5 +190,106 @@ describe("methods with no view initialised", () => {
 
   test("insertSymbol returns false", () => {
     expect(makeUninitializedEditor().insertSymbol("α")).toBe(false);
+  });
+});
+
+describe("handleMouseDown", () => {
+  let isEditableSpy: jest.SpyInstance;
+  let editor: WaterproofEditor;
+
+  beforeEach(() => {
+    jest.restoreAllMocks();
+    editor = makeEditor();
+    isEditableSpy = jest.spyOn(inputAreaModule, "isPositionEditable");
+  });
+
+  function simulateMouseDown(
+    nodeType: NodeType | null,
+    isEditable: boolean = false,
+    targetIsNull = false,
+  ) {
+    isEditableSpy.mockReturnValue(isEditable);
+
+    const fakeView = {
+      posAtDOM: jest.fn().mockReturnValue(0),
+      state: {
+        doc: {
+          resolve: jest.fn().mockReturnValue({
+            node: () => ({ type: nodeType }),
+          }),
+        },
+      },
+    };
+
+    const event = new MouseEvent("mousedown");
+    const preventDefaultSpy = jest.spyOn(event, "preventDefault");
+
+    // Conditionally mock the target
+    Object.defineProperty(event, "target", {
+      value: targetIsNull ? null : document.createElement("span"),
+    });
+
+    //@ts-expect-error private method
+    const result = editor.handleMouseDown(fakeView, event);
+
+    return { result, preventDefaultSpy };
+  }
+
+  test("null target -> prevents default and returns undefined", () => {
+    const { result, preventDefaultSpy } = simulateMouseDown(null, false, true);
+
+    expect(result).toBeUndefined();
+    expect(preventDefaultSpy).toHaveBeenCalled();
+    expect(isEditableSpy).not.toHaveBeenCalled();
+  });
+
+  test("math_display + not editable -> returns true (event handled)", () => {
+    const { result, preventDefaultSpy } = simulateMouseDown(
+      WaterproofSchema.nodes.math_display,
+      false,
+    );
+
+    expect(result).toBe(true);
+    expect(preventDefaultSpy).not.toHaveBeenCalled();
+  });
+
+  test("math_display + editable -> returns false (event not handled)", () => {
+    const { result, preventDefaultSpy } = simulateMouseDown(
+      WaterproofSchema.nodes.math_display,
+      true,
+    );
+
+    expect(result).toBe(false);
+    expect(preventDefaultSpy).not.toHaveBeenCalled();
+  });
+
+  test("other nodes (e.g. code_block) -> prevents default and returns undefined", () => {
+    const { result, preventDefaultSpy } = simulateMouseDown(
+      WaterproofSchema.nodes.code_block,
+      false,
+    );
+
+    expect(result).toBeUndefined();
+    expect(preventDefaultSpy).toHaveBeenCalled();
+    expect(isEditableSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ── context menu removal ──────────────────────────────────────────────────────
+
+describe("context menu removal", () => {
+  test("constructing the editor does not install a custom context menu", () => {
+    makeEditor();
+
+    // No context menu element is added to the document...
+    expect(document.querySelector(".context-menu")).toBeNull();
+
+    // ...and the browser's native context menu is not suppressed.
+    const event = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+    });
+    document.body.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
   });
 });
