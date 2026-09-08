@@ -213,7 +213,7 @@ export type WaterproofEditorConfig = {
    * The placeholder text to use when there is no content inside the code areas.
    * See {@linkcode EmptyCodePlaceholders} for more details.
    */
-  emptyCodePlaceholders: EmptyCodePlaceholders;
+  emptyCodePlaceholders?: EmptyCodePlaceholders;
 };
 
 export enum HistoryChange {

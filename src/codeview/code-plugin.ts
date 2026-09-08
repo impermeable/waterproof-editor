@@ -49,7 +49,7 @@ export function createCodeBlockView(
   symbols: Array<Completion>,
   editorInstance: WaterproofEditor,
   initialThemeStyle: ThemeStyle,
-  emptyCodePlaceholders: EmptyCodePlaceholders,
+  emptyCodePlaceholders?: EmptyCodePlaceholders,
   languageConfig?: LanguageConfiguration,
 ) {
   return (
@@ -92,7 +92,7 @@ const codePluginSpec = (
   symbols: Array<Completion>,
   editorInstance: WaterproofEditor,
   initialThemeStyle: ThemeStyle,
-  emptyCodePlaceholders: EmptyCodePlaceholders,
+  emptyCodePlaceholders?: EmptyCodePlaceholders,
   languageConfig?: LanguageConfiguration,
 ): PluginSpec<ICodePluginState> => {
   return {
@@ -182,7 +182,7 @@ export const codePlugin = (
   symbols: Array<WaterproofSymbol>,
   editorInstance: WaterproofEditor,
   initialThemeStyle: ThemeStyle,
-  emptyCodePlaceholders: EmptyCodePlaceholders,
+  emptyCodePlaceholders?: EmptyCodePlaceholders,
   languageConfig?: LanguageConfiguration,
 ) => {
   // Here we turn the waterproof completions into proper codemirror completions

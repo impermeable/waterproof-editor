@@ -70,7 +70,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
     completions: Array<Completion>,
     symbols: Array<Completion>,
     initialThemeStyle: ThemeStyle,
-    private readonly emptyCodePlaceholders: EmptyCodePlaceholders,
+    private readonly emptyCodePlaceholders?: EmptyCodePlaceholders,
     private readonly languageConfig?: LanguageConfiguration,
   ) {
     super(node, view, getPos, schema);
@@ -154,7 +154,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
       const div = document.createElement("div");
       const pos = getPos();
       if (pos === undefined) {
-        div.innerText = emptyCodePlaceholders.general;
+        div.innerText = emptyCodePlaceholders?.general ?? "Empty code cell";
         return div;
       }
       const parentNodeType = outerView.state.doc.resolve(pos).parent.type;
@@ -162,14 +162,14 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
         // This codemirror cell is part of an input area, we change
         // the placeholder to the input area specific one and apply
         // the appropriate styling.
-        div.innerText = emptyCodePlaceholders.inInput;
+        div.innerText = emptyCodePlaceholders?.inInput ?? "Empty code cell";
         // The styling of this class is
         // defined in `styles/input-area.css`.
         div.classList.add("empty-input-area-placeholder");
       } else {
         // This codemirror cell is not part of an input area, use the
         // `Empty code cell` placeholder.
-        div.innerText = emptyCodePlaceholders.general;
+        div.innerText = emptyCodePlaceholders?.general ?? "Empty code cell";
       }
 
       return div;
