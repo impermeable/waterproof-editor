@@ -21,6 +21,8 @@ jest.spyOn(global.console, "log").mockImplementation();
 
 import { WaterproofEditor } from "../src/editor";
 import {
+  HistoryChange,
+  OffsetCodeAction,
   OffsetDiagnostic,
   Severity,
   ThemeStyle,
@@ -30,7 +32,6 @@ import { CodeBlock } from "../src/document";
 import { configuration } from "../src/markdown-defaults";
 import { WaterproofSchema } from "../src";
 
-import { EditorView } from "prosemirror-view";
 import * as inputAreaModule from "../src/inputArea";
 import { NodeType } from "prosemirror-model";
 
@@ -166,6 +167,141 @@ describe("getPartialDiagnosticsInRange", () => {
   });
 });
 
+// ── patchDiagnosticCodeActions ────────────────────────────────────────────────
+
+describe("patchDiagnosticCodeActions", () => {
+  const actions: OffsetCodeAction[] = [
+    { title: "Fix", edits: [{ start: 0, end: 1, newText: "x" }] },
+  ];
+
+  test("merges code actions into the diagnostic at the given index when the version matches", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([diag(0, 5)], 3);
+    expect(editor.diagnosticsVersion).toBe(1);
+
+    editor.patchDiagnosticCodeActions(3, 0, actions);
+
+    expect(editor.diagnosticsVersion).toBe(2);
+    expect(editor.getDiagnosticsInRange(0, 5)[0].codeActions).toStrictEqual(
+      actions,
+    );
+  });
+
+  test("is a no-op when index is out of bounds", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([diag(0, 5)], 3);
+
+    // index 5 is out of bounds for a single diagnostic
+    editor.patchDiagnosticCodeActions(3, 5, actions);
+
+    expect(editor.diagnosticsVersion).toBe(1);
+    expect(editor.getDiagnosticsInRange(0, 5)[0].codeActions).toBeUndefined();
+  });
+});
+
+// ── setActiveDiagnostics: carrying forward code actions across passes ─────────
+
+describe("setActiveDiagnostics code action carry-forward", () => {
+  const actions: OffsetCodeAction[] = [
+    { title: "Fix", edits: [{ start: 0, end: 1, newText: "x" }] },
+  ];
+
+  test("carries forward code actions for a diagnostic that persists unchanged across passes", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([diag(0, 5, "same")], 1);
+    editor.patchDiagnosticCodeActions(1, 0, actions);
+
+    // A later LSP pass re-sends the identical diagnostic before its own
+    // code actions have resolved.
+    editor.setActiveDiagnostics([diag(0, 5, "same")], 2);
+
+    expect(editor.getDiagnosticsInRange(0, 5)[0].codeActions).toStrictEqual(
+      actions,
+    );
+  });
+
+  test("does not carry forward code actions when the message differs", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([diag(0, 5, "same")], 1);
+    editor.patchDiagnosticCodeActions(1, 0, actions);
+
+    editor.setActiveDiagnostics([diag(0, 5, "different")], 2);
+
+    expect(editor.getDiagnosticsInRange(0, 5)[0].codeActions).toBeUndefined();
+  });
+
+  test("does not carry forward code actions when the offsets differ", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([diag(0, 5, "same")], 1);
+    editor.patchDiagnosticCodeActions(1, 0, actions);
+
+    editor.setActiveDiagnostics([diag(0, 6, "same")], 2);
+
+    expect(editor.getDiagnosticsInRange(0, 6)[0].codeActions).toBeUndefined();
+  });
+
+  test("drops a patch computed against a version that has since been superseded", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([diag(0, 5, "same")], 1);
+
+    // A new pass starts before the patch for version 1 arrives.
+    editor.setActiveDiagnostics([diag(0, 5, "same")], 2);
+
+    // The late patch, computed against version 1, must be dropped.
+    editor.patchDiagnosticCodeActions(1, 0, actions);
+
+    expect(editor.getDiagnosticsInRange(0, 5)[0].codeActions).toBeUndefined();
+  });
+});
+
+describe("replaceRanges", () => {
+  test("edits computed against one snapshot land correctly regardless of edits array order", () => {
+    const editor = makeEditor();
+    const before = editor.serializeDocument();
+    expect(before).toContain("Hello world.");
+
+    // "Hello" -> pm 1..6, "world" -> pm 7..12 (pm pos 0 is before the code
+    // node opens, pos 1 is the first character, given the identity mapping).
+    const ok = editor.replaceRanges([
+      { start: 1, end: 6, newText: "Hi" },
+      { start: 7, end: 12, newText: "WATERPROOF" },
+    ]);
+
+    expect(ok).toBe(true);
+    expect(editor.serializeDocument()).toBe(
+      before!.replace("Hello world.", "Hi WATERPROOF."),
+    );
+  });
+
+  test("multiple edits from replaceRanges undo as a single step", () => {
+    const editor = makeEditor();
+    const before = editor.serializeDocument();
+
+    editor.replaceRanges([
+      { start: 7, end: 12, newText: "WATERPROOF" },
+      { start: 1, end: 6, newText: "Hi" },
+    ]);
+    expect(editor.serializeDocument()).toBe(
+      before!.replace("Hello world.", "Hi WATERPROOF."),
+    );
+
+    editor.handleHistoryChange(HistoryChange.Undo);
+
+    expect(editor.serializeDocument()).toBe(before);
+  });
+
+  test("returns false and does not dispatch when given an empty edits array", () => {
+    const editor = makeEditor();
+    const before = editor.serializeDocument();
+    // @ts-expect-error private field, used only to spy on the real view's dispatch
+    const dispatchSpy = jest.spyOn(editor._view, "dispatch");
+    expect(editor.replaceRanges([])).toBe(false);
+    expect(dispatchSpy).not.toHaveBeenCalled();
+
+    expect(editor.serializeDocument()).toBe(before);
+  });
+});
+
 // ── early returns without an initialized view ─────────────────────────────────
 
 describe("methods with no view initialised", () => {
@@ -186,6 +322,14 @@ describe("methods with no view initialised", () => {
 
   test("replaceRange returns false", () => {
     expect(makeUninitializedEditor().replaceRange(0, 5, "x")).toBe(false);
+  });
+
+  test("replaceRanges returns false", () => {
+    expect(
+      makeUninitializedEditor().replaceRanges([
+        { start: 0, end: 5, newText: "x" },
+      ]),
+    ).toBe(false);
   });
 
   test("insertSymbol returns false", () => {
