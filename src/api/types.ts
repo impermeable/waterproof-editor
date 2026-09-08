@@ -141,6 +141,18 @@ export type LanguageConfiguration = {
 };
 
 /**
+ * The placeholder text for empty code cells.
+ * - `inInput: string` applies when the code cell is inside of an input area.
+ * - `general: string` applies when the code cell is *not* inside of an input area.
+ */
+export type EmptyCodePlaceholders = {
+  /** Placeholder text to apply to empty code cells in input areas */
+  inInput: string;
+  /** Placeholder text to apply to empty code cells not part of an input area */
+  general: string;
+};
+
+/**
  * Configuration object for the WaterproofEditor.
  *
  * - `api` contains the callbacks that the editor will use to communicate with the host application.
@@ -196,6 +208,12 @@ export type WaterproofEditorConfig = {
   menubarEntries?: Array<MenuBarEntry>;
 
   languageConfig?: LanguageConfiguration;
+
+  /**
+   * The placeholder text to use when there is no content inside the code areas.
+   * See {@linkcode EmptyCodePlaceholders} for more details.
+   */
+  emptyCodePlaceholders?: EmptyCodePlaceholders;
 };
 
 export enum HistoryChange {

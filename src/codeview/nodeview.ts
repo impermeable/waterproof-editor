@@ -33,7 +33,11 @@ import { renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, lintGutter } from "@codemirror/lint";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
-import { LanguageConfiguration, ThemeStyle } from "../api";
+import {
+  EmptyCodePlaceholders,
+  LanguageConfiguration,
+  ThemeStyle,
+} from "../api";
 import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
 import { CodeBlockBusyIndicator } from "./busy-indicator";
@@ -66,6 +70,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
     completions: Array<Completion>,
     symbols: Array<Completion>,
     initialThemeStyle: ThemeStyle,
+    private readonly emptyCodePlaceholders?: EmptyCodePlaceholders,
     private readonly languageConfig?: LanguageConfiguration,
   ) {
     super(node, view, getPos, schema);
@@ -149,22 +154,22 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
       const div = document.createElement("div");
       const pos = getPos();
       if (pos === undefined) {
-        div.innerText = "Empty code cell";
+        div.innerText = emptyCodePlaceholders?.general ?? "Empty code cell";
         return div;
       }
       const parentNodeType = outerView.state.doc.resolve(pos).parent.type;
       if (parentNodeType === WaterproofSchema.nodes.input) {
         // This codemirror cell is part of an input area, we change
-        // the placeholder to `(* Type your proof here *)` and apply
+        // the placeholder to the input area specific one and apply
         // the appropriate styling.
-        //div.innerText = "(* Type your proof here *)";
+        div.innerText = emptyCodePlaceholders?.inInput ?? "Empty code cell";
         // The styling of this class is
-        // defined in `editor/src/kroqed-editor/styles/input-area.css`.
+        // defined in `styles/input-area.css`.
         div.classList.add("empty-input-area-placeholder");
       } else {
         // This codemirror cell is not part of an input area, use the
         // `Empty code cell` placeholder.
-        div.innerText = "Empty code cell";
+        div.innerText = emptyCodePlaceholders?.general ?? "Empty code cell";
       }
 
       return div;
