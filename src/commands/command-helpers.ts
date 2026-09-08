@@ -111,7 +111,7 @@ export function insertCompositeNodeAbove(
   let trans: Transaction = tr;
 
   const firstNodeType = nodes[0].type;
-  const lastNodeType = nodes[nodes.length - 1].type;
+  const lastNodeType = nodes.at(-1)!.type;
 
   const insertNewlineBeforeIfNotExists = needsNewlineBefore(
     firstNodeType,
@@ -225,7 +225,7 @@ export function insertCompositeNodeBelow(
   let trans: Transaction = tr;
 
   const firstNodeType = nodes[0].type;
-  const lastNodeType = nodes[nodes.length - 1].type;
+  const lastNodeType = nodes.at(-1)!.type;
 
   const insertNewlineBeforeIfNotExists = needsNewlineBefore(
     firstNodeType,
