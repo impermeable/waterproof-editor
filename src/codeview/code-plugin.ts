@@ -13,6 +13,7 @@ import { EditorView } from "prosemirror-view";
 import { CodeBlockView } from "./nodeview";
 import { ReplaceStep } from "prosemirror-transform";
 import {
+  EmptyCodePlaceholders,
   LanguageConfiguration,
   ThemeStyle,
   WaterproofCompletion,
@@ -48,6 +49,7 @@ export function createCodeBlockView(
   symbols: Array<Completion>,
   editorInstance: WaterproofEditor,
   initialThemeStyle: ThemeStyle,
+  emptyCodePlaceholders: EmptyCodePlaceholders,
   languageConfig?: LanguageConfiguration,
 ) {
   return (
@@ -75,6 +77,7 @@ export function createCodeBlockView(
       completions,
       symbols,
       initialThemeStyle,
+      emptyCodePlaceholders,
       languageConfig,
     );
 
@@ -89,6 +92,7 @@ const codePluginSpec = (
   symbols: Array<Completion>,
   editorInstance: WaterproofEditor,
   initialThemeStyle: ThemeStyle,
+  emptyCodePlaceholders: EmptyCodePlaceholders,
   languageConfig?: LanguageConfiguration,
 ): PluginSpec<ICodePluginState> => {
   return {
@@ -165,6 +169,7 @@ const codePluginSpec = (
           symbols,
           editorInstance,
           initialThemeStyle,
+          emptyCodePlaceholders,
           languageConfig,
         ),
       },
@@ -177,6 +182,7 @@ export const codePlugin = (
   symbols: Array<WaterproofSymbol>,
   editorInstance: WaterproofEditor,
   initialThemeStyle: ThemeStyle,
+  emptyCodePlaceholders: EmptyCodePlaceholders,
   languageConfig?: LanguageConfiguration,
 ) => {
   // Here we turn the waterproof completions into proper codemirror completions
@@ -190,6 +196,7 @@ export const codePlugin = (
       symbols,
       editorInstance,
       initialThemeStyle,
+      emptyCodePlaceholders,
       languageConfig,
     ),
   );

@@ -357,6 +357,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
         this._editorConfig.symbols,
         this,
         this.initialThemeStyle,
+        this._editorConfig.emptyCodePlaceholders,
         this._editorConfig.languageConfig,
       ),
       documentProgressDecoratorPlugin,
