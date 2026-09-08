@@ -10,7 +10,13 @@ import {
 } from "prosemirror-state";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import { WaterproofSchema } from "../schema";
-import { newline } from "../document/blocks/schema";
+import {
+  newline,
+  inputArea,
+  hint,
+  text,
+  container,
+} from "../document/blocks/schema";
 import {
   closingTagStartsWithNewline,
   getParentAndIndex,
@@ -22,24 +28,99 @@ import { TagConfiguration } from "../api";
 
 /////// Helper functions /////////
 
+function createNodeWithOptionalTextContent(
+  nodeType: NodeType,
+  content: string,
+): PNode {
+  return content.length > 0
+    ? nodeType.create({}, text(content))
+    : nodeType.create();
+}
+
 /**
- * Helper function for inserting a new node above the currently selected one.
+ * Builds the node (optionally wrapped in a hint or input area) to insert, shared
+ * by {@link insertCompositeNodeAbove} and {@link insertCompositeNodeBelow}.
+ * @returns The nodes to insert, or `undefined` for an unsupported wrapper type.
+ */
+export function buildCompositeNodes(
+  wrappedNodeType: NodeType,
+  wrapNodeType: NodeType | undefined,
+  hintTitle: string,
+  content: string,
+): PNode[] | undefined {
+  const wrappedNode = createNodeWithOptionalTextContent(
+    wrappedNodeType,
+    content,
+  );
+
+  if (wrapNodeType === undefined) {
+    return [wrappedNode];
+  } else if (wrapNodeType === WaterproofSchema.nodes.hint) {
+    return [hint(hintTitle, [newline(), wrappedNode, newline()])];
+  } else if (wrapNodeType === WaterproofSchema.nodes.input) {
+    return [inputArea([newline(), wrappedNode, newline()])];
+  } else {
+    // Unsupported wrapper type for this helper.
+    return;
+  }
+}
+
+export function buildExerciseNodes(
+  containerName: string | undefined,
+  statementContent: string,
+  proofContent: string,
+): PNode[] {
+  const inner = [
+    createNodeWithOptionalTextContent(
+      WaterproofSchema.nodes.code,
+      statementContent,
+    ),
+    newline(),
+    inputArea([
+      newline(),
+      createNodeWithOptionalTextContent(
+        WaterproofSchema.nodes.code,
+        proofContent,
+      ),
+      newline(),
+    ]),
+  ];
+  return containerName === undefined
+    ? inner
+    : [container(containerName, [newline(), ...inner, newline()])];
+}
+
+/**
+ * Helper function for inserting a sequence of nodes above the currently selected one.
  * @param state The current editor state.
  * @param tr The current transaction for the state of the editor.
- * @param nodeType The type of node to insert (one of `WaterproofSchema.nodes`)
+ * @param nodes The nodes to insert, in order. Newline padding before/after this sequence is
+ * decided by the open-tag requirements of `nodes[0]` and the close-tag requirements of the
+ * last node in `nodes`.
  * @returns An insertion transaction.
  */
-export function insertAbove(
+export function insertCompositeNodeAbove(
   state: EditorState,
   tr: Transaction,
-  nodeType: NodeType,
+  nodes: PNode[],
   tagConf: TagConfiguration,
 ): Transaction | undefined {
+  if (nodes.length === 0) return;
+
   const sel = state.selection;
   let trans: Transaction = tr;
 
-  const insertNewlineBeforeIfNotExists = needsNewlineBefore(nodeType, tagConf);
-  const insertNewlineAfterIfNotExists = needsNewlineAfter(nodeType, tagConf);
+  const firstNodeType = nodes[0].type;
+  const lastNodeType = nodes.at(-1)!.type;
+
+  const insertNewlineBeforeIfNotExists = needsNewlineBefore(
+    firstNodeType,
+    tagConf,
+  );
+  const insertNewlineAfterIfNotExists = needsNewlineAfter(
+    lastNodeType,
+    tagConf,
+  );
 
   const parentAndIndex = getParentAndIndex(sel);
   if (parentAndIndex === null) return;
@@ -108,7 +189,9 @@ export function insertAbove(
   ) {
     toInsert.push(newline());
   }
-  toInsert.push(nodeType.create());
+
+  toInsert.push(...nodes);
+
   if (
     (insertNewlineAfterIfNotExists || currentNeedsNewlineBefore) &&
     !beforeIsNewline
@@ -122,23 +205,36 @@ export function insertAbove(
 }
 
 /**
- * Helper function for inserting a new node below the currently selected one.
+ * Helper function for inserting a sequence of nodes below the currently selected one.
  * @param state The current editor state.
  * @param tr The current transaction for the state of the editor.
- * @param nodeType The type of node to insert (one of `WaterproofSchema.nodes`)
+ * @param nodes The nodes to insert, in order. Newline padding before/after this sequence is
+ * decided by the open-tag requirements of `nodes[0]` and the close-tag requirements of the
+ * last node in `nodes`.
  * @returns An insertion transaction.
  */
-export function insertBelow(
+export function insertCompositeNodeBelow(
   state: EditorState,
   tr: Transaction,
-  nodeType: NodeType,
+  nodes: PNode[],
   tagConf: TagConfiguration,
 ): Transaction | undefined {
+  if (nodes.length === 0) return;
+
   const sel = state.selection;
   let trans: Transaction = tr;
 
-  const insertNewlineBeforeIfNotExists = needsNewlineBefore(nodeType, tagConf);
-  const insertNewlineAfterIfNotExists = needsNewlineAfter(nodeType, tagConf);
+  const firstNodeType = nodes[0].type;
+  const lastNodeType = nodes.at(-1)!.type;
+
+  const insertNewlineBeforeIfNotExists = needsNewlineBefore(
+    firstNodeType,
+    tagConf,
+  );
+  const insertNewlineAfterIfNotExists = needsNewlineAfter(
+    lastNodeType,
+    tagConf,
+  );
 
   const parentAndIndex = getParentAndIndex(sel);
   if (parentAndIndex === null) return;
@@ -201,7 +297,9 @@ export function insertBelow(
   ) {
     toInsert.push(newline());
   }
-  toInsert.push(nodeType.create());
+
+  toInsert.push(...nodes);
+
   // A trailing newline is needed when:
   // 1. The node is inserted after an existing newline and there is no newline further down, OR
   // 2. The node below the insertion point needs a newline before it, OR
@@ -251,6 +349,28 @@ export function allowedToInsert(state: EditorState): boolean {
   // If the user is in teacher mode always return `true`, if not
   // we check wether they are in a input area.
   return isTeacher ? true : checkInputArea(state.selection);
+}
+
+/**
+ * Checks whether the selection sits directly inside a hint or input area.
+ */
+export function isInsideHintOrInput(sel: Selection): boolean {
+  const parentType = getParentAndIndex(sel)?.parent.type;
+  return (
+    parentType === WaterproofSchema.nodes.hint ||
+    parentType === WaterproofSchema.nodes.input
+  );
+}
+
+/**
+ * Checks whether the selection targets a top level node, i.e. a direct child of the document.
+ *
+ * Used where a `container` node might be inserted: `container`'s schema group is only `"cell"`,
+ * so unlike `hint`/`input` (also valid inside a `container`), it can never be nested inside an
+ * existing `container`, `hint` or `input`.
+ */
+export function isTopLevelSelection(sel: Selection): boolean {
+  return getParentAndIndex(sel)?.parent.type === WaterproofSchema.nodes.doc;
 }
 
 /**
