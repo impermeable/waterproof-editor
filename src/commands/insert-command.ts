@@ -2,9 +2,12 @@ import { EditorState, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import {
   allowedToInsert,
+  buildCompositeNodes,
+  buildExerciseNodes,
   insertCompositeNodeBelow,
   insertCompositeNodeAbove,
   isInsideHintOrInput,
+  isTopLevelSelection,
 } from "./command-helpers";
 import { WaterproofSchema } from "../schema";
 import { InsertionPlace } from "./types";
@@ -25,18 +28,19 @@ export function getCmdInsertMarkdown(
     // Can we attempt this command in a case where our state and selection is such that
     // we can't actually add the node there?
 
+    const nodes = buildCompositeNodes(
+      WaterproofSchema.nodes.markdown,
+      undefined,
+      "",
+      "",
+    );
+
     const f =
       place === InsertionPlace.Above
         ? insertCompositeNodeAbove
         : insertCompositeNodeBelow;
 
-    const trans = f(
-      state,
-      state.tr,
-      WaterproofSchema.nodes.markdown,
-      undefined,
-      tagConf,
-    );
+    const trans = f(state, state.tr, nodes!, tagConf);
 
     if (trans === undefined) {
       return false;
@@ -62,17 +66,18 @@ export function getCmdInsertLatex(
     // Early return when inserting is not allowed.
     if (!allowedToInsert(state)) return false;
 
+    const nodes = buildCompositeNodes(
+      WaterproofSchema.nodes.math_display,
+      undefined,
+      "",
+      "",
+    );
+
     const f =
       place === InsertionPlace.Above
         ? insertCompositeNodeAbove
         : insertCompositeNodeBelow;
-    const trans = f(
-      state,
-      state.tr,
-      WaterproofSchema.nodes.math_display,
-      undefined,
-      tagConf,
-    );
+    const trans = f(state, state.tr, nodes!, tagConf);
 
     if (trans === undefined) {
       return false;
@@ -98,17 +103,18 @@ export function getCmdInsertCode(
     // Again, early return when inserting is not allowed.
     if (!allowedToInsert(state)) return false;
 
+    const nodes = buildCompositeNodes(
+      WaterproofSchema.nodes.code,
+      undefined,
+      "",
+      "",
+    );
+
     const f =
       place === InsertionPlace.Above
         ? insertCompositeNodeAbove
         : insertCompositeNodeBelow;
-    const trans = f(
-      state,
-      state.tr,
-      WaterproofSchema.nodes.code,
-      undefined,
-      tagConf,
-    );
+    const trans = f(state, state.tr, nodes!, tagConf);
 
     if (trans === undefined) {
       return false;
@@ -135,20 +141,19 @@ export function getCmdInsertCodeHint(
     if (!allowedToInsert(state) || isInsideHintOrInput(state.selection))
       return false;
 
+    const nodes = buildCompositeNodes(
+      WaterproofSchema.nodes.code,
+      WaterproofSchema.nodes.hint,
+      "🛠️ Technical details",
+      "",
+    );
+
     const f =
       place === InsertionPlace.Above
         ? insertCompositeNodeAbove
         : insertCompositeNodeBelow;
 
-    const wrapper = WaterproofSchema.nodes.hint;
-    const trans = f(
-      state,
-      state.tr,
-      WaterproofSchema.nodes.code,
-      wrapper,
-      tagConf,
-      "🛠️ Technical details",
-    );
+    const trans = f(state, state.tr, nodes!, tagConf);
 
     if (trans === undefined) {
       return false;
@@ -174,19 +179,19 @@ export function getCmdInsertTextHint(
     // Early return when inserting is not allowed.
     if (!allowedToInsert(state) || isInsideHintOrInput(state.selection))
       return false;
+    const nodes = buildCompositeNodes(
+      WaterproofSchema.nodes.markdown,
+      WaterproofSchema.nodes.hint,
+      "💡 Hint",
+      "",
+    );
+
     const f =
       place === InsertionPlace.Above
         ? insertCompositeNodeAbove
         : insertCompositeNodeBelow;
 
-    const wrapper = WaterproofSchema.nodes.hint;
-    const trans = f(
-      state,
-      state.tr,
-      WaterproofSchema.nodes.markdown,
-      wrapper,
-      tagConf,
-    );
+    const trans = f(state, state.tr, nodes!, tagConf);
 
     if (trans === undefined) {
       return false;
@@ -213,22 +218,19 @@ export function getCmdInsertExample(
     // Again, early return when inserting is not allowed.
     if (!allowedToInsert(state)) return false;
 
+    const nodes = buildCompositeNodes(
+      WaterproofSchema.nodes.code,
+      undefined,
+      "",
+      templates.example,
+    );
+
     const f =
       place === InsertionPlace.Above
         ? insertCompositeNodeAbove
         : insertCompositeNodeBelow;
 
-    const content = templates.example;
-
-    const trans = f(
-      state,
-      state.tr,
-      WaterproofSchema.nodes.code,
-      undefined,
-      tagConf,
-      undefined,
-      content,
-    );
+    const trans = f(state, state.tr, nodes!, tagConf);
 
     if (trans === undefined) {
       return false;
@@ -245,21 +247,38 @@ export function getCmdInsertExample(
 export function getCmdInsertExercise(
   place: InsertionPlace,
   tagConf: TagConfiguration,
+  templates: TemplateConfiguration,
 ) {
   return (
     state: EditorState,
     dispatch?: (tr: Transaction) => void,
     _view?: EditorView,
   ): boolean => {
-    // Early return when inserting is not allowed.
-    if (!allowedToInsert(state) || isInsideHintOrInput(state.selection))
-      return false;
+    if (!allowedToInsert(state)) return false;
+
+    const containerName =
+      templates.containerOpenTag.length > 0
+        ? templates.containerOpenTag
+        : undefined;
+
+    const refused =
+      containerName !== undefined
+        ? !isTopLevelSelection(state.selection)
+        : isInsideHintOrInput(state.selection);
+    if (refused) return false;
+
+    const nodes = buildExerciseNodes(
+      containerName,
+      templates.exercise.statement,
+      templates.exercise.proof,
+    );
+
     const f =
       place === InsertionPlace.Above
         ? insertCompositeNodeAbove
         : insertCompositeNodeBelow;
 
-    //TODO
+    const trans = f(state, state.tr, nodes, tagConf);
 
     if (trans === undefined) {
       return false;

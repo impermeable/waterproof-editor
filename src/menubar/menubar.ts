@@ -23,6 +23,7 @@ import {
   getCmdInsertTextHint,
   getCmdInsertCodeHint,
   getCmdInsertExample,
+  getCmdInsertExercise,
 } from "../commands/insert-command";
 import { MenuBarEntry, TagConfiguration, TemplateConfiguration } from "../api";
 
@@ -302,6 +303,16 @@ function createDefaultMenu(
       "Example↓",
       "Insert new example block below",
       getCmdInsertExample(InsertionPlace.Below, tagConf, templates),
+    ),
+    createMenuItem(
+      "Exercise↑",
+      "Insert new exercise block above",
+      getCmdInsertExercise(InsertionPlace.Above, tagConf, templates),
+    ),
+    createMenuItem(
+      "Exercise↓",
+      "Insert new exercise block below",
+      getCmdInsertExercise(InsertionPlace.Below, tagConf, templates),
     ),
   ];
 

@@ -12,6 +12,7 @@ import {
   getCmdInsertCodeHint,
   getCmdInsertTextHint,
   getCmdInsertExample,
+  getCmdInsertExercise,
 } from "../../src/commands/insert-command";
 import { InsertionPlace } from "../../src/commands";
 import { configuration } from "../../src/markdown-defaults";
@@ -793,19 +794,20 @@ const hintWrappingCommands: Array<
   ["code hint", (place) => getCmdInsertCodeHint(place, leanConfig)],
 ];
 
-for (const [stateName, stateJSON] of nestedInHintOrInputStates) {
-  for (const [cmdName, makeCmd] of hintWrappingCommands) {
-    for (const [placeName, place] of [
-      ["above", InsertionPlace.Above],
-      ["below", InsertionPlace.Below],
-    ] as Array<[string, InsertionPlace]>) {
-      test(`Insert ${cmdName} ${placeName} a node inside a ${stateName} is refused`, () => {
+const places: Array<[string, InsertionPlace]> = [
+  ["above", InsertionPlace.Above],
+  ["below", InsertionPlace.Below],
+];
+
+for (const [state, stateJSON] of nestedInHintOrInputStates) {
+  for (const [cmdName, getCmd] of hintWrappingCommands) {
+    for (const [placeName, place] of places) {
+      test(`Insert ${cmdName} ${placeName} a node inside a ${state} is refused`, () => {
         const view = new EditorView(null, {
           state: EditorState.fromJSON({ schema: WaterproofSchema }, stateJSON),
         });
         const before = view.state.doc.toJSON();
-
-        expect(makeCmd(place)(view.state, view.dispatch, view)).toBe(false);
+        expect(getCmd(place)(view.state, view.dispatch, view)).toBe(false);
 
         // The document must be left untouched.
         expect(view.state.doc.toJSON()).toStrictEqual(before);
@@ -834,7 +836,7 @@ test("Insert text hint relative to a selected top level input area is allowed", 
 });
 
 test("Insert code hint below a markdown nested inside a container is allowed", () => {
-  // `hint` is a valid direct child of `container` (e.g. Lean's "multilean" block), so this
+  // `hint` is a valid direct child of `container`, so this
   // nesting is schema-valid and must not be refused.
   const view = new EditorView(null, {
     state: EditorState.fromJSON(
@@ -887,3 +889,143 @@ test("Insert example below a markdown nested inside an existing hint is still al
   expect(hintContent[1].type).toBe("newline");
   expect(hintContent[2].type).toBe("code");
 });
+
+test("Insert rocq exercise below markdown (no container)", () => {
+  const view = new EditorView(null, {
+    state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown),
+  });
+  const rocqConf = configuration("coq");
+  const cmd = getCmdInsertExercise(
+    InsertionPlace.Below,
+    rocqConf,
+    templateRocq,
+  );
+  expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+  const content = view.state.doc.toJSON().content;
+  expect(content[0].type).toBe("markdown");
+  expect(content[1].type).toBe("newline");
+  expect(content[2].type).toBe("code");
+  expect(content[2].content[0].text).toBe(templateRocq.exercise.statement);
+  expect(content[3].type).toBe("newline");
+  expect(content[4].type).toBe("input");
+  expect(content[4].content).toStrictEqual([
+    { type: "newline" },
+    {
+      type: "code",
+      content: [{ type: "text", text: templateRocq.exercise.proof }],
+    },
+    { type: "newline" },
+  ]);
+});
+
+test("Insert lean exercise below markdown wraps it in a multilean container", () => {
+  const view = new EditorView(null, {
+    state: EditorState.fromJSON({ schema: WaterproofSchema }, stateOneMarkdown),
+  });
+  const cmd = getCmdInsertExercise(
+    InsertionPlace.Below,
+    leanConfig,
+    templateLean,
+  );
+  expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+  const content = view.state.doc.toJSON().content;
+  expect(content[0].type).toBe("markdown");
+  expect(content[1].type).toBe("newline");
+  expect(content[2].type).toBe("container");
+  expect(content[2].attrs.name).toBe(templateLean.containerOpenTag);
+
+  expect(content[2].content).toEqual([
+    { type: "newline" },
+    {
+      type: "code",
+      content: [{ type: "text", text: templateLean.exercise.statement }],
+    },
+    { type: "newline" },
+    {
+      type: "input",
+      attrs: { status: null },
+      content: [
+        { type: "newline" },
+        {
+          type: "code",
+          content: [{ type: "text", text: templateLean.exercise.proof }],
+        },
+        { type: "newline" },
+      ],
+    },
+    { type: "newline" },
+  ]);
+});
+
+const rocqExerciseNestedRefusedCases: Array<[string, any]> = [
+  ["input area", stateInputWithTwoMarkdowns],
+  ["hint", stateHintWithMarkdown],
+];
+
+for (const [stateName, stateJSON] of rocqExerciseNestedRefusedCases) {
+  for (const [placeName, place] of [
+    ["above", InsertionPlace.Above],
+    ["below", InsertionPlace.Below],
+  ] as Array<[string, InsertionPlace]>) {
+    test(`Insert exercise (no container) ${placeName} a node inside a ${stateName} is refused`, () => {
+      const view = new EditorView(null, {
+        state: EditorState.fromJSON({ schema: WaterproofSchema }, stateJSON),
+      });
+      const before = view.state.doc.toJSON();
+
+      const rocqConf = configuration("coq");
+      const cmd = getCmdInsertExercise(place, rocqConf, templateRocq);
+      expect(cmd(view.state, view.dispatch, view)).toBe(false);
+      expect(view.state.doc.toJSON()).toStrictEqual(before);
+    });
+  }
+}
+
+test("Insert exercise (no container) below a markdown nested inside a container is allowed", () => {
+  // `input` is a valid direct child of `container`, so this nesting is schema-valid.
+  const view = new EditorView(null, {
+    state: EditorState.fromJSON(
+      { schema: WaterproofSchema },
+      stateContainerWithMarkdown,
+    ),
+  });
+  const rocqConf = configuration("coq");
+  const cmd = getCmdInsertExercise(
+    InsertionPlace.Below,
+    rocqConf,
+    templateRocq,
+  );
+  expect(cmd(view.state, view.dispatch, view)).toBe(true);
+
+  const containerContent = view.state.doc.toJSON().content[0].content;
+  expect(containerContent[0].type).toBe("markdown");
+  expect(containerContent[1].type).toBe("newline");
+  expect(containerContent[2].type).toBe("code");
+  expect(containerContent[4].type).toBe("input");
+});
+
+const leanExerciseRefusedCases: Array<[string, any]> = [
+  ["input area", stateInputWithTwoMarkdowns],
+  ["hint", stateHintWithMarkdown],
+  ["container", stateContainerWithMarkdown],
+];
+
+for (const [stateName, stateJSON] of leanExerciseRefusedCases) {
+  for (const [placeName, place] of [
+    ["above", InsertionPlace.Above],
+    ["below", InsertionPlace.Below],
+  ] as Array<[string, InsertionPlace]>) {
+    test(`Insert exercise (with container) ${placeName} a node inside a ${stateName} is refused`, () => {
+      const view = new EditorView(null, {
+        state: EditorState.fromJSON({ schema: WaterproofSchema }, stateJSON),
+      });
+      const before = view.state.doc.toJSON();
+
+      const cmd = getCmdInsertExercise(place, leanConfig, templateLean);
+      expect(cmd(view.state, view.dispatch, view)).toBe(false);
+      expect(view.state.doc.toJSON()).toStrictEqual(before);
+    });
+  }
+}
