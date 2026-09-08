@@ -93,8 +93,8 @@ test("LSP code actions are exposed and apply all edits as one batch", () => {
 
   expect(result.actions?.map((action) => action.name)).toStrictEqual([
     "📋",
-    "Apply suggestion ↩️",
-    "Apply alternative ↩️",
+    "↩️ Apply suggestion",
+    "↩️ Apply alternative",
   ]);
 
   //@ts-expect-error private
