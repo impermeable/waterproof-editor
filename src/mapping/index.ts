@@ -1,4 +1,4 @@
 // Export the mapping
 export { Mapping } from "./mapping";
-export { Tree } from "./Tree";
-export { TreeNode } from "./Tree";
+export { Tree, TreeNode } from "./Tree";
+export { textOffset, pmIndex } from "./types";

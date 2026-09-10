@@ -1,7 +1,7 @@
 import { Tree, TreeNode } from "./Tree";
 import { TextUpdate } from "./textUpdate";
 import { NodeUpdate } from "./nodeUpdate";
-import { ParsedStep } from "./types";
+import { ParsedStep, pmIndex, PmIndex, textOffset, TextOffset } from "./types";
 import { Block, typeguards } from "../document";
 import {
   DocChange,
@@ -85,13 +85,13 @@ export class Mapping {
    * @param index A valid ProseMirror offset.
    * @returns The corresponding text offset into the document.
    */
-  public pmIndexToTextOffset(index: number) {
+  public pmIndexToTextOffset(index: PmIndex): TextOffset {
     const node = this.tree.findNodeByProsePos(index);
     if (node === null)
       throw new MappingError(
         ` [findPosition] The vscode document offset for prosemirror index (${index}) could not be found `,
       );
-    return index - node.prosemirrorStart + node.contentRange.from;
+    return textOffset(index - node.prosemirrorStart + node.contentRange.from);
   }
 
   /**
@@ -99,15 +99,15 @@ export class Mapping {
    * @param offset The offset (in characters) in the document.
    * @returns The corresponding ProseMirror index into the ProseMirror view.
    */
-  public textOffsetToPmIndex(offset: number) {
+  public textOffsetToPmIndex(offset: TextOffset): PmIndex {
     const correctNode: TreeNode | null =
       this.tree.findNodeByOriginalPosition(offset);
     if (correctNode === null)
       throw new MappingError(
         ` [findInvPosition] The prosemirror index for offset (${offset}) could not be found `,
       );
-    return (
-      offset - correctNode.contentRange.from + correctNode.prosemirrorStart
+    return pmIndex(
+      offset - correctNode.contentRange.from + correctNode.prosemirrorStart,
     );
   }
 

@@ -20,3 +20,24 @@ export enum OperationType {
   delete = "delete",
   replace = "replace",
 }
+
+declare const pmIndexBrand: unique symbol;
+declare const textOffsetBrand: unique symbol;
+
+export type TextOffset = number & {
+  readonly [textOffsetBrand]: "TextOffset";
+};
+
+export type PmIndex = number & {
+  readonly [pmIndexBrand]: "pmIndex";
+};
+
+/** Creates a textoffset index type from a number */
+export function textOffset(value: number): TextOffset {
+  return value as TextOffset;
+}
+
+/** Creates a ProseMirror index type from a number */
+export function pmIndex(value: number): PmIndex {
+  return value as PmIndex;
+}

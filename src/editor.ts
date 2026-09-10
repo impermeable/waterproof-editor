@@ -65,7 +65,7 @@ import {
 } from "./commands/insert-command";
 import { InsertionPlace } from "./commands";
 import { deleteSelection } from "./commands/commands";
-import { Mapping } from "./mapping";
+import { Mapping, pmIndex, textOffset } from "./mapping";
 import { ProgressBar } from "./progressBar";
 import { studentHiddenPlugin } from "./student-hidden";
 
@@ -445,8 +445,8 @@ export class WaterproofEditor implements MessageHandlerEditor {
         contents.push([
           node.textContent,
           {
-            start: mapping.pmIndexToTextOffset(_pos + 1),
-            end: mapping.pmIndexToTextOffset(_pos + 1 + node.nodeSize),
+            start: mapping.pmIndexToTextOffset(pmIndex(_pos + 1)),
+            end: mapping.pmIndexToTextOffset(pmIndex(_pos + 1 + node.nodeSize)),
           },
         ]);
         return false;
@@ -521,7 +521,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
     if (this._mapping === undefined)
       throw new Error(" Mapping is undefined, cannot synchronize with vscode");
     this._editorConfig.api.cursorChange(
-      this._mapping.pmIndexToTextOffset(pos.$head.pos),
+      this._mapping.pmIndexToTextOffset(pmIndex(pos.$head.pos)),
     );
   }
 
@@ -584,13 +584,13 @@ export class WaterproofEditor implements MessageHandlerEditor {
     // Translate postions to line/offset
     let offsetStart;
     try {
-      offsetStart = this._mapping?.pmIndexToTextOffset(pmOffsetStart);
+      offsetStart = this._mapping?.pmIndexToTextOffset(pmIndex(pmOffsetStart));
     } catch {
       offsetStart = pmOffsetStart;
     }
     let offsetEnd;
     try {
-      offsetEnd = this._mapping?.pmIndexToTextOffset(pmOffsetEnd);
+      offsetEnd = this._mapping?.pmIndexToTextOffset(pmIndex(pmOffsetEnd));
     } catch {
       offsetEnd = pmOffsetEnd;
     }
@@ -636,8 +636,8 @@ export class WaterproofEditor implements MessageHandlerEditor {
     text: string,
   ): boolean {
     if (!this._view || !this._mapping) return false;
-    const from = this._mapping.textOffsetToPmIndex(startOffset);
-    const to = this._mapping.textOffsetToPmIndex(endOffset);
+    const from = this._mapping.textOffsetToPmIndex(textOffset(startOffset));
+    const to = this._mapping.textOffsetToPmIndex(textOffset(endOffset));
     const tr = this._view.state.tr.insertText(text, from, to);
     this._view.dispatch(tr);
     return true;
@@ -716,7 +716,9 @@ export class WaterproofEditor implements MessageHandlerEditor {
 
     if (this._mapping === undefined || this._view === undefined) return;
 
-    const pmPos: number = this._mapping.textOffsetToPmIndex(busyPos);
+    const pmPos: number = this._mapping.textOffsetToPmIndex(
+      textOffset(busyPos),
+    );
 
     const views = CODE_PLUGIN_KEY.getState(this._view.state)?.activeNodeViews;
     if (views === undefined) return;
@@ -762,8 +764,8 @@ export class WaterproofEditor implements MessageHandlerEditor {
 
     // Map the positions
     const newDiags = diagnostics.map((d) => {
-      const start = map.textOffsetToPmIndex(d.startOffset);
-      const end = map.textOffsetToPmIndex(d.endOffset);
+      const start = map.textOffsetToPmIndex(textOffset(d.startOffset));
+      const end = map.textOffsetToPmIndex(textOffset(d.endOffset));
 
       return {
         message: d.message,
@@ -790,8 +792,8 @@ export class WaterproofEditor implements MessageHandlerEditor {
     const map = this._mapping;
     if (map === undefined) return false;
 
-    const start = map.textOffsetToPmIndex(toRemove.startOffset);
-    const end = map.textOffsetToPmIndex(toRemove.endOffset);
+    const start = map.textOffsetToPmIndex(textOffset(toRemove.startOffset));
+    const end = map.textOffsetToPmIndex(textOffset(toRemove.endOffset));
 
     const proseDiag: DiagnosticObjectProse = {
       start,
@@ -842,8 +844,8 @@ export class WaterproofEditor implements MessageHandlerEditor {
     );
     for (let i = 0; i < diagnostics.length; i++) {
       const diag = diagnostics[i];
-      const start = map.textOffsetToPmIndex(diag.startOffset);
-      const end = map.textOffsetToPmIndex(diag.endOffset);
+      const start = map.textOffsetToPmIndex(textOffset(diag.startOffset));
+      const end = map.textOffsetToPmIndex(textOffset(diag.endOffset));
       if (start >= end) continue;
       this.currentProseDiagnostics[i] = {
         message: diag.message,
