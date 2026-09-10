@@ -278,7 +278,7 @@ export class Mapping {
    * @returns The updated offset after computing the current node.
    */
   private computeProsemirrorOffsets(
-    node: TreeNode | null,
+    node: TreeNode,
     currentOffset: number = 0,
     level: number = 0,
   ): number {
@@ -287,8 +287,6 @@ export class Mapping {
     // That is, if we are processing some document that looks like this: <md>Test</md> where the <md> and </md> denote the boundaries of the markdown node.
     // We ensure that at the start of processing this node `offset` is at the position marked with A and at the end of the function `offset` is at
     // the position marked with B. The prosemirror start and end of the markdown are at C and D, respectively: A<md>CTestD</md>B.
-
-    if (!node) return currentOffset;
 
     let offset = currentOffset;
 
