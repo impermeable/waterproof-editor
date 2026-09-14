@@ -24,7 +24,7 @@ test("testMapping markdown only", () => {
   ];
   const nodes = createTestMapping(blocks);
 
-  expect(nodes.root.type).toBe("");
+  expect(nodes.root.type).toBe("root");
 
   expect(nodes.root.children.length).toBe(1);
   const markdownNode = nodes.root.children[0];

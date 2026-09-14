@@ -52,10 +52,8 @@ export class Mapping {
     this.nodeUpdate = new NodeUpdate(tMap, serializer);
     this._version = versionNum;
     this.tree = new Tree(
-      "", // type
       { from: 0, to: inputBlocks.at(-1)!.range.to }, // contentRange
       { from: 0, to: inputBlocks.at(-1)!.range.to }, // tagRange
-      "", // title
       0, // prosemirrorStart
       0, // prosemirrorEnd
       { from: 0, to: 0 },

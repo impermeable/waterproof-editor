@@ -22,10 +22,8 @@ function fromJSON(json: any): Tree {
   };
   const rootObj = json.root;
   const tree = new Tree(
-    rootObj.type,
     rootObj.innerRange,
     rootObj.range,
-    rootObj.title,
     rootObj.prosemirrorStart,
     rootObj.prosemirrorEnd,
     rootObj.pmRange,
@@ -405,7 +403,7 @@ test("traverseDepthFirst visits all nodes depth-first", () => {
 
   // root ("") -> markdown -> input -> newline -> code -> newline
   expect(visited).toEqual([
-    "",
+    "root",
     "markdown",
     "input",
     "newline",
@@ -501,10 +499,8 @@ test("nodesInProseRange returns only top-level nodes in range, not their childre
   // With the fix: only [container] is returned — the children travel with
   // their parent; callers must not double-process them.
   const tree = new Tree(
-    "",
     { from: 0, to: 20 },
     { from: 0, to: 20 },
-    "",
     0,
     19,
     { from: 0, to: 20 },

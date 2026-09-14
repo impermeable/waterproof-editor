@@ -452,7 +452,7 @@ export class NodeUpdate {
 
     const [wrappedOpenTag, wrappedCloseTag] = this.nodeNameToTagPair(
       wrapperNode.type,
-      wrapperNode.title,
+      wrapperNode.title ?? undefined,
     );
 
     // We remove the wrapper node from the tree

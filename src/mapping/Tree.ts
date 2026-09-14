@@ -5,8 +5,8 @@ export class TreeNode {
   contentRange: { to: number; from: number };
   /** The outer range of the node, that is, the range of the content including possible tags */
   tagRange: { to: number; from: number };
-  /** The title of a node, only relevant for hint nodes */
-  title: string;
+  /** The title of a node, only relevant for hint and container nodes */
+  title: string | null;
   /** The computed start position in ProseMirror, this is the prosemirror position at which the content starts.
    * Thus, for nodes with content this includes a +1 due to stepping in to the node.
    * For newlines, there is no content, so the start points directly before the newline.
@@ -23,7 +23,7 @@ export class TreeNode {
     type: string,
     contentRange: { to: number; from: number },
     tagRange: { to: number; from: number },
-    title: string,
+    title: string | null,
     prosemirrorStart: number,
     prosemirrorEnd: number,
     pmRange: { to: number; from: number },
@@ -85,21 +85,20 @@ export class Tree {
   root: TreeNode;
 
   constructor(
-    type: string,
     contentRange: { from: number; to: number },
     range: { from: number; to: number },
-    title: string,
     prosemirrorStart: number,
     prosemirrorEnd: number,
     pmRange: { from: number; to: number },
     lineStart: number,
   ) {
     // Explicitly create new ranges for the TreeNode to avoid shared references
+    // Sets the type to 'root' and the title to null by default
     this.root = new TreeNode(
-      type,
+      "root",
       { from: contentRange.from, to: contentRange.to },
       { from: range.from, to: range.to },
-      title,
+      null,
       prosemirrorStart,
       prosemirrorEnd,
       { from: pmRange.from, to: pmRange.to },
