@@ -83,7 +83,6 @@ export class NodeUpdate {
   ): ParsedStep {
     // Determine operation type
     const type = typeFromStep(step);
-    console.log("In doReplaceStep, operation type:", type);
     switch (type) {
       case OperationType.insert:
         return this.replaceInsert(
@@ -245,11 +244,10 @@ export class NodeUpdate {
         "newline",
         { from: startOrig, to: startOrig + 1 },
         { from: startOrig, to: startOrig + 1 },
-        "",
-        startProse,
-        startProse,
+        null,
         { from: startProse, to: startProse + node.nodeSize },
         0,
+        [],
       );
     }
     // Shortcut for text nodes
@@ -258,11 +256,10 @@ export class NodeUpdate {
         "text",
         { from: startOrig, to: startOrig + node.nodeSize },
         { from: startOrig, to: startOrig + node.nodeSize },
-        "",
-        startProse,
-        startProse + node.nodeSize,
+        null,
         { from: startProse, to: startProse + node.nodeSize },
         0,
+        [],
       );
     }
 
@@ -270,7 +267,7 @@ export class NodeUpdate {
       ? node.attrs.title
       : node.attrs.name
         ? node.attrs.name
-        : "";
+        : null;
     const [openTagForNode, closeTagForNode] = this.nodeNameToTagPair(
       node.type.name,
       nodeTitle,
@@ -287,10 +284,9 @@ export class NodeUpdate {
       { from: startOrig + openTagForNode.length, to: 0 }, // inner range
       { from: startOrig, to: 0 }, // full range
       nodeTitle, // title
-      startProse + 1,
-      0, // prosemirror start, end
       { from: startProse, to: 0 },
       lineStart,
+      [],
     );
 
     let childOffsetOriginal = startOrig + openTagForNode.length;
@@ -332,7 +328,6 @@ export class NodeUpdate {
     // Now fill in the to positions for innerRange and range
     treeNode.contentRange.to = childOffsetOriginal;
     treeNode.tagRange.to = childOffsetOriginal + closeTagForNode.length;
-    treeNode.prosemirrorEnd = childOffsetProse;
     treeNode.pmRange.to = childOffsetProse + 1;
     return treeNode;
   }
@@ -550,14 +545,17 @@ export class NodeUpdate {
     }
 
     // If we are wrapping in a hint node we need to have a title attribute; container uses name attribute
-    const title: string =
+    const title: string | null =
       insertedNodeType === "hint"
         ? wrappingNode.attrs.title
         : insertedNodeType === "container"
           ? wrappingNode.attrs.name
-          : "";
+          : null;
     // Get the tags for the wrapping node
-    const [openTag, closeTag] = this.nodeNameToTagPair(insertedNodeType, title);
+    const [openTag, closeTag] = this.nodeNameToTagPair(
+      insertedNodeType,
+      title ?? undefined,
+    );
 
     // The step includes a range of nodes that are wrapped. We use the mapping
     // to find the node at gapFrom (the first one being wrapped) and the node
@@ -617,10 +615,9 @@ export class NodeUpdate {
       { from: positions.startFrom + openTag.length, to: contentEnd }, // inner range
       { from: positions.startFrom, to: tagEnd }, // full range
       title,
-      positions.proseStart + 1,
-      positions.proseEnd + 1, // prosemirror start, end
       { from: positions.proseStart, to: positions.proseEnd + 2 }, // pmRange
       0,
+      [],
     );
 
     // We need to find the parent of the first node being wrapped

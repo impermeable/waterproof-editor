@@ -2,7 +2,6 @@ import { Tree, TreeNode } from "./Tree";
 import { TextUpdate } from "./textUpdate";
 import { NodeUpdate } from "./nodeUpdate";
 import { ParsedStep, pmIndex, PmIndex, textOffset, TextOffset } from "./types";
-import { Block, typeguards } from "../document";
 import {
   DocChange,
   DocumentSerializer,
@@ -42,24 +41,16 @@ export class Mapping {
    * @param inputBlocks Array containing the blocks that make up this document.
    */
   constructor(
-    inputBlocks: Block[],
     versionNum: number,
     tMap: TagConfiguration,
     serializer: DocumentSerializer,
+    tree: Tree,
   ) {
     this.serializer = serializer;
     this.textUpdate = new TextUpdate();
     this.nodeUpdate = new NodeUpdate(tMap, serializer);
     this._version = versionNum;
-    this.tree = new Tree(
-      { from: 0, to: inputBlocks.at(-1)!.range.to }, // contentRange
-      { from: 0, to: inputBlocks.at(-1)!.range.to }, // tagRange
-      0, // prosemirrorStart
-      0, // prosemirrorEnd
-      { from: 0, to: 0 },
-      0, // lineStart
-    );
-    this.initTree(inputBlocks);
+    this.tree = tree;
   }
 
   //// The getters of this class
@@ -220,109 +211,5 @@ export class Mapping {
     if (change.endInFile === change.startInFile && change.finalText.length == 0)
       return false;
     return true;
-  }
-
-  //// The methods used to manage the mapping
-
-  /**
-   * Initializes the mapping given the input document in the form of a Block array.
-   * @param blocks
-   */
-  private initTree(blocks: Block[]): void {
-    function buildSubtree(blocks: Block[]): TreeNode[] {
-      return blocks.map((block) => {
-        const title = typeguards.isHintBlock(block)
-          ? block.title
-          : typeguards.isContainerBlock(block)
-            ? block.name
-            : "";
-
-        const node = new TreeNode(
-          block.type,
-          // Explicit dereferencing of object properties to avoid shared references to innerRange and range
-          { from: block.innerRange.from, to: block.innerRange.to },
-          { from: block.range.from, to: block.range.to },
-          title,
-          0, // prosemirrorStart (to be calculated later)
-          0, // prosemirrorEnd (to be calculated later)
-          { from: 0, to: 0 }, // full prosemirror range (to be computed later)
-          block.lineStart,
-        );
-
-        if (block.innerBlocks && block.innerBlocks.length > 0) {
-          const children = buildSubtree(block.innerBlocks);
-          children.forEach((child) => node.addChild(child));
-        }
-
-        return node;
-      });
-    }
-
-    const topLevelNodes = buildSubtree(blocks);
-    topLevelNodes.forEach((child) => this.tree.root.addChild(child));
-
-    // Now compute the ProseMirror offsets after creating the tree structure
-    this.computeProsemirrorOffsets(this.tree.root);
-  }
-
-  /**
-   * Recursively computes the prosemirrorStart and prosemirrorEnd offsets for each node.
-   *
-   * @param node The current node to compute the offsets for.
-   * @param startTagMap The start tag mapping for each block type.
-   * @param endTagMap The end tag mapping for each block type.
-   * @param currentOffset The current offset from where the computation should begin.
-   * @param level The current depth level in the tree (used for adjusting offsets).
-   * @returns The updated offset after computing the current node.
-   */
-  private computeProsemirrorOffsets(
-    node: TreeNode,
-    currentOffset: number = 0,
-    level: number = 0,
-  ): number {
-    // INVARIANT:
-    // At the start of this function `offset` points exactly before the tag of `node` and at the end of the function `offset` points right after the tag.
-    // That is, if we are processing some document that looks like this: <md>Test</md> where the <md> and </md> denote the boundaries of the markdown node.
-    // We ensure that at the start of processing this node `offset` is at the position marked with A and at the end of the function `offset` is at
-    // the position marked with B. The prosemirror start and end of the markdown are at C and D, respectively: A<md>CTestD</md>B.
-
-    let offset = currentOffset;
-
-    // We handle the newline separately as this node has a size of just 1.
-    if (node.type === "newline") {
-      node.prosemirrorStart = offset;
-      node.prosemirrorEnd = offset;
-      node.pmRange.from = offset;
-      node.pmRange.to = offset + 1;
-      return offset + 1;
-      // return offset;
-    }
-
-    node.pmRange.from = offset;
-
-    if (node !== this.tree.root) {
-      // Add start tag and +1 for going one level deeper (entering the node)
-      offset += 1;
-    }
-
-    // Record the ProseMirror start after entering this node
-    node.prosemirrorStart = offset;
-
-    if (node.children.length === 0) {
-      // Leaf: add length of content + end tag + +1 for exiting level
-      offset += node.contentRange.to - node.contentRange.from;
-    } else {
-      // Non-leaf: handle children and end tag
-      for (const child of node.children) {
-        offset = this.computeProsemirrorOffsets(child, offset, level + 1);
-      }
-    }
-
-    // Record the ProseMirror end offset after all child nodes have been processed.
-    node.prosemirrorEnd = offset;
-    // To satisfy the invariant we add one to the offset to move outside of the current node again.
-    offset += 1;
-    node.pmRange.to = offset;
-    return offset;
   }
 }

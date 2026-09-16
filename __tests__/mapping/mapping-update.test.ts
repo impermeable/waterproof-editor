@@ -1,29 +1,16 @@
 import { Fragment, Slice } from "prosemirror-model";
 import { ReplaceAroundStep, ReplaceStep } from "prosemirror-transform";
 import { DocChange } from "../../src/api";
-import {
-  Block,
-  CodeBlock,
-  MarkdownBlock,
-  NewlineBlock,
-} from "../../src/document";
+import { CodeBlock, MarkdownBlock, NewlineBlock } from "../../src/document";
 import { Mapping, TreeNode } from "../../src/mapping";
 import { configuration, parse } from "../../src/markdown-defaults";
 import { WaterproofSchema } from "../../src/schema";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 import { sanityCheckTree } from "./util";
-import { Node as ProseNode } from "prosemirror-model";
+import { constructDocAndMapping } from "../../src/thingie";
 
 const config = configuration("coq");
 const serializer = new DefaultTagSerializer(config);
-
-function root(childNodes: ProseNode[]) {
-  return WaterproofSchema.nodes.doc.create({}, childNodes);
-}
-
-function constructDocument(blocks: Block[]): ProseNode {
-  return root(blocks.map((block) => block.toProseMirror()));
-}
 
 function findFirstCodeNode(root: TreeNode): TreeNode | null {
   let found: TreeNode | null = null;
@@ -40,8 +27,12 @@ test("Mapping.update text insert inside input shifts wrapper and later blocks", 
   const doc = "<input-area>\n```coq\nTest\n```\n</input-area>\nAfter";
 
   const blocks = parse(doc, { language: "coq" });
-  const mapping = new Mapping(blocks, 0, config, serializer);
-  const proseDoc = constructDocument(blocks);
+  const [proseDoc, mapping] = constructDocAndMapping(
+    blocks,
+    0,
+    config,
+    serializer,
+  );
 
   const tree = mapping.getMapping();
   const inputNode = tree.root.children.find((node) => node.type === "input");
@@ -105,8 +96,12 @@ test("Mapping.update node insert shifts lineStart of subsequent code blocks", ()
   const doc = "```coq\nFirst\n```\n```coq\nSecond\n```";
 
   const blocks = parse(doc, { language: "coq" });
-  const mapping = new Mapping(blocks, 0, config, serializer);
-  const proseDoc = constructDocument(blocks);
+  const [proseDoc, mapping] = constructDocAndMapping(
+    blocks,
+    0,
+    config,
+    serializer,
+  );
 
   const tree = mapping.getMapping();
   const codeNodes = tree.root.children.filter((node) => node.type === "code");
@@ -162,8 +157,12 @@ test("Mapping.update node insert in the middle shifts lineStart of later code bl
   const doc = "```coq\nFirst\n```\n```coq\nSecond\n```";
 
   const blocks = parse(doc, { language: "coq" });
-  const mapping = new Mapping(blocks, 0, config, serializer);
-  const proseDoc = constructDocument(blocks);
+  const [proseDoc, mapping] = constructDocAndMapping(
+    blocks,
+    0,
+    config,
+    serializer,
+  );
 
   const tree = mapping.getMapping();
   const codeNodes = tree.root.children.filter((node) => node.type === "code");
@@ -221,8 +220,12 @@ test("Regression: character deletion inside a code block is classified as a text
   const docString = "```coq\nabc\n```";
 
   const blocks = parse(docString, { language: "coq" });
-  const mapping = new Mapping(blocks, 0, config, serializer);
-  const proseDoc = constructDocument(blocks);
+  const [proseDoc, mapping] = constructDocAndMapping(
+    blocks,
+    0,
+    config,
+    serializer,
+  );
 
   const tree = mapping.getMapping();
   const codeNode = tree.root.children.find((n) => n.type === "code");
@@ -267,8 +270,12 @@ test("Regression: wpLift newline-deduplication steps are not misclassified as te
     "```coq\nabc\n```\n<input-area>\n```coq\ndef\n```\n</input-area>\n```coq\nghi\n```";
 
   const blocks = parse(docString, { language: "coq" });
-  const mapping = new Mapping(blocks, 0, config, serializer);
-  const proseDoc = constructDocument(blocks);
+  const [proseDoc, mapping] = constructDocAndMapping(
+    blocks,
+    0,
+    config,
+    serializer,
+  );
 
   const tree = mapping.getMapping();
   const inputNode = tree.root.children.find((n) => n.type === "input");
@@ -325,8 +332,12 @@ test("Regression: deleting the first code block at position 0 routes to nodeUpda
   const docString = "```coq\nabc\n```\n```coq\ndef\n```";
 
   const blocks = parse(docString, { language: "coq" });
-  const mapping = new Mapping(blocks, 0, config, serializer);
-  const proseDoc = constructDocument(blocks);
+  const [proseDoc, mapping] = constructDocAndMapping(
+    blocks,
+    0,
+    config,
+    serializer,
+  );
 
   const tree = mapping.getMapping();
   const codeNodes = tree.root.children.filter((n) => n.type === "code");
@@ -378,8 +389,12 @@ test("Regression: typing inside a code block after undo of its deletion does not
     new NewlineBlock({ from: 15, to: 16 }, { from: 15, to: 16 }, 0),
     new MarkdownBlock("# Hello", { from: 16, to: 23 }, { from: 16, to: 23 }, 0),
   ];
-  const proseDoc = constructDocument(blocks);
-  const mapping = new Mapping(blocks, 0, config, serializer);
+  const [proseDoc, mapping] = constructDocAndMapping(
+    blocks,
+    0,
+    config,
+    serializer,
+  );
 
   const tree = mapping.getMapping();
   const codeNode = tree.root.children.find((n) => n.type === "code");

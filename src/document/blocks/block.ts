@@ -32,6 +32,6 @@ export interface Block {
   innerBlocks?: Block[];
 
   /** Convert this block to the corresponding ProseMirror node. */
-  toProseMirror(): ProseNode;
+  toProseMirror(content: ProseNode[]): ProseNode;
   debugPrint(level: number): void;
 }

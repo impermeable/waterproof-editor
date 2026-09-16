@@ -21,6 +21,7 @@ import {
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 import { sanityCheckTree } from "./util";
 import { Node } from "prosemirror-model";
+import { constructDocAndMapping } from "../../src/thingie";
 
 const config = configuration("coq");
 const serializer = new DefaultTagSerializer(config);
@@ -28,7 +29,7 @@ const serializer = new DefaultTagSerializer(config);
 const nodeMock: Node = new Node();
 
 function createMapping(blocks: WaterproofDocument) {
-  const mapping = new Mapping(blocks, 0, config, serializer);
+  const [_, mapping] = constructDocAndMapping(blocks, 0, config, serializer);
   return mapping;
 }
 
@@ -81,7 +82,13 @@ const leanConfig = {
 const leanSerializer = new DefaultTagSerializer(leanConfig);
 
 function createLeanMapping(blocks: WaterproofDocument) {
-  return new Mapping(blocks, 0, leanConfig, leanSerializer);
+  const [_, mapping] = constructDocAndMapping(
+    blocks,
+    0,
+    leanConfig,
+    leanSerializer,
+  );
+  return mapping;
 }
 
 test("Insert code underneath markdown", () => {
@@ -121,7 +128,7 @@ test("Insert code underneath markdown", () => {
   expect(newTree.root.contentRange).toEqual({ from: 0, to: 19 });
 
   // For prosemirror, the begin and end tags of the code node count as one, and each newline counts as one, so this gives 5 new prosemirror positions
-  expect(newTree.root.prosemirrorStart).toEqual(0);
+  expect(newTree.root.prosemirrorStart).toEqual(1);
   expect(newTree.root.prosemirrorEnd).toEqual(12);
   expect(newTree.root.pmRange).toEqual({ from: 0, to: 13 });
 
@@ -131,9 +138,7 @@ test("Insert code underneath markdown", () => {
     type: "markdown",
     contentRange: { from: 0, to: 7 },
     tagRange: { from: 0, to: 7 },
-    title: "",
-    prosemirrorStart: 1,
-    prosemirrorEnd: 8,
+    title: null,
     pmRange: { from: 0, to: 9 },
     lineStart: 0,
     children: [],
@@ -142,9 +147,7 @@ test("Insert code underneath markdown", () => {
     type: "newline",
     contentRange: { from: 7, to: 8 },
     tagRange: { from: 7, to: 8 },
-    title: "",
-    prosemirrorStart: 9,
-    prosemirrorEnd: 9,
+    title: null,
     pmRange: { from: 9, to: 10 },
     lineStart: 0,
     children: [],
@@ -156,9 +159,7 @@ test("Insert code underneath markdown", () => {
     type: "code",
     contentRange: { from: 15, to: 15 },
     tagRange: { from: 8, to: 19 },
-    title: "",
-    prosemirrorStart: 11,
-    prosemirrorEnd: 11,
+    title: null,
     pmRange: { from: 10, to: 12 },
     lineStart: 2,
     children: [],
@@ -249,7 +250,6 @@ test("Unwrap input area", () => {
     serializer,
     nodeMock,
   );
-  console.log(JSON.stringify(newTree.root, null, " "));
   sanityCheckTree(newTree.root);
   expect(result).toStrictEqual<WrappingDocChange>({
     firstEdit: {
@@ -297,7 +297,6 @@ test("Unwrap hint area", () => {
     serializer,
     nodeMock,
   );
-  console.log(JSON.stringify(newTree.root, null, " "));
   sanityCheckTree(newTree.root);
   expect(result).toStrictEqual<WrappingDocChange>({
     firstEdit: {
@@ -352,7 +351,6 @@ test("Unwrap hint area with content after", () => {
     serializer,
     nodeMock,
   );
-  console.log(JSON.stringify(newTree.root, null, " "));
   sanityCheckTree(newTree.root);
   expect(result).toStrictEqual<WrappingDocChange>({
     firstEdit: {
@@ -703,7 +701,6 @@ test("Complex deletion", () => {
     serializer,
     nodeMock,
   );
-  console.log(JSON.stringify(newTree.root, null, " "));
   sanityCheckTree(newTree.root);
 
   expect(result).toStrictEqual<DocChange>({
@@ -757,7 +754,6 @@ test("Complex deletion undo", () => {
     serializer,
     nodeMock,
   );
-  console.log(JSON.stringify(newTree.root, null, " "));
   sanityCheckTree(newTree.root);
 
   expect(result).toStrictEqual<DocChange>({

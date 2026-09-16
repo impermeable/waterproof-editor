@@ -3,7 +3,6 @@ import { Node as PNode } from "prosemirror-model";
 import { EditorView } from "prosemirror-view";
 import {
   DocumentSerializer,
-  Mapping,
   TagConfiguration,
   WaterproofDocument,
 } from "../src/api";
@@ -15,8 +14,14 @@ import {
   InputAreaBlock,
   MarkdownBlock,
   MathDisplayBlock,
-  constructDocument,
 } from "../src/document";
+import { constructDocAndMapping } from "../src/thingie";
+
+export function constructDocument(blocks: Block[]) {
+  //@ts-expect-error We are not allowed to pass 'undefined' here, but we want to construct the document only without the mapping.
+  const [doc] = constructDocAndMapping(blocks, 0, undefined, undefined);
+  return doc;
+}
 
 // ============================================================
 // Shared test utility helpers
@@ -36,7 +41,7 @@ export function createTestMapping(
   config: TagConfiguration,
   serializer: DocumentSerializer,
 ) {
-  const mapping = new Mapping(blocks, 1, config, serializer);
+  const [_, mapping] = constructDocAndMapping(blocks, 1, config, serializer);
   return mapping.getMapping();
 }
 

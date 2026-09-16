@@ -1,7 +1,6 @@
 import { Slice, Fragment } from "prosemirror-model";
 import { ReplaceStep } from "prosemirror-transform";
 import { DocChange, WaterproofDocument } from "../../src/api";
-import { Mapping } from "../../src/mapping";
 import { TextUpdate } from "../../src/mapping/textUpdate";
 import { configuration } from "../../src/markdown-defaults";
 import { WaterproofSchema } from "../../src/schema";
@@ -14,9 +13,10 @@ import {
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 import { sanityCheckTree } from "./util";
 import { TreeNode } from "../../src/mapping";
+import { constructDocAndMapping } from "../../src/thingie";
 
 function createMapping(doc: WaterproofDocument) {
-  const mapping = new Mapping(
+  const [_, mapping] = constructDocAndMapping(
     doc,
     0,
     configuration("coq"),
@@ -45,7 +45,6 @@ test("ReplaceStep insert — inserts text into a block", () => {
     0,
   );
   const step: ReplaceStep = new ReplaceStep(6, 6, slice);
-  console.log("here is the step", step);
   const textUpdate = new TextUpdate();
   const { newTree, result } = textUpdate.textUpdate(step, mapping);
 

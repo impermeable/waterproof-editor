@@ -59,9 +59,8 @@ export abstract class GroupingBlock implements Block {
   /** Wrap the given ProseMirror child nodes in this block's node type. */
   protected abstract wrapChildNodes(childNodes: Node[]): Node;
 
-  toProseMirror(): Node {
-    const childNodes = this.innerBlocks.map((block) => block.toProseMirror());
-    return this.wrapChildNodes(childNodes);
+  toProseMirror(content: Node[]): Node {
+    return this.wrapChildNodes(content);
   }
 
   /** The part of the debug print line before the child block listing. */

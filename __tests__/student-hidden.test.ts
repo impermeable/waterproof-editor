@@ -19,7 +19,6 @@ import {
   ContainerBlock,
   MarkdownBlock,
   StudentHiddenBlock,
-  constructDocument,
 } from "../src/document";
 import { BLOCK_NAME } from "../src/document/blocks/block";
 import { configuration } from "../src/markdown-defaults";
@@ -33,6 +32,7 @@ import {
   groupingChildCases,
   serializeBlocks,
   stateWithNodeSelAt,
+  constructDocument,
 } from "./helpers";
 
 import { EditorState, Plugin } from "prosemirror-state";
@@ -183,21 +183,6 @@ describe.each(groupingBlockClasses)(
       expect(factory).toHaveBeenCalledWith("text", innerRange, 3);
       expect(block.innerBlocks).toHaveLength(1);
       expect(block.innerBlocks![0].stringContent).toBe("text");
-    });
-
-    test(`toProseMirror creates a ${nodeName} node containing the children`, () => {
-      const block = make("text", { from: 0, to: 23 }, { from: 14, to: 18 }, 0, [
-        new MarkdownBlock(
-          "text",
-          { from: 14, to: 18 },
-          { from: 14, to: 18 },
-          0,
-        ),
-      ]);
-      const node = block.toProseMirror();
-      expect(node.type.name).toBe(nodeName);
-      expect(node.content.childCount).toBe(1);
-      expect(node.content.firstChild!.type.name).toBe("markdown");
     });
   },
 );
