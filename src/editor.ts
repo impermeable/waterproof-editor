@@ -14,7 +14,6 @@ import {
 import { ReplaceAroundStep, ReplaceStep, Step } from "prosemirror-transform";
 import { EditorView } from "prosemirror-view";
 import { undo, redo, history } from "prosemirror-history";
-import { constructDocument } from "./document/construct-document";
 
 import {
   DocChange,
@@ -68,6 +67,7 @@ import { deleteSelection } from "./commands/commands";
 import { Mapping, pmIndex, textOffset } from "./mapping";
 import { ProgressBar } from "./progressBar";
 import { studentHiddenPlugin } from "./student-hidden";
+import { constructProseMirrorDocument } from "./thingie";
 
 /** Type that contains a diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {
@@ -147,14 +147,23 @@ export class WaterproofEditor implements MessageHandlerEditor {
     }
 
     const blocks = this._editorConfig.documentConstructor(content);
-    const proseDoc = constructDocument(blocks);
+    // const proseDoc = constructDocument(blocks);
 
-    this._mapping = new Mapping(
+    const [proseDoc, mapping] = constructProseMirrorDocument(
       blocks,
       version,
       this._editorConfig.tagConfiguration,
       this._serializer,
     );
+
+    this._mapping = mapping;
+
+    // this._mapping = new Mapping(
+    //   blocks,
+    //   version,
+    //   this._editorConfig.tagConfiguration,
+    //   this._serializer,
+    // );
     this.createProseMirrorEditor(proseDoc);
 
     /** Ask for line numbers */
@@ -171,14 +180,24 @@ export class WaterproofEditor implements MessageHandlerEditor {
     if (this._mapping?.version == version) return;
 
     const blocks = this._editorConfig.documentConstructor(content);
-    const proseDoc = constructDocument(blocks);
 
-    this._mapping = new Mapping(
+    const [proseDoc, mapping] = constructProseMirrorDocument(
       blocks,
       version,
       this._editorConfig.tagConfiguration,
       this._serializer,
     );
+
+    this._mapping = mapping;
+
+    // const proseDoc = constructDocument(blocks);
+
+    // this._mapping = new Mapping(
+    //   blocks,
+    //   version,
+    //   this._editorConfig.tagConfiguration,
+    //   this._serializer,
+    // );
     const newState = EditorState.create({
       doc: proseDoc,
       plugins: this._view.state.plugins,

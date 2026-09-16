@@ -64,6 +64,8 @@ export abstract class GroupingBlock implements Block {
     return this.wrapChildNodes(childNodes);
   }
 
+  abstract toProseMirrorNew(content: Node[]): Node;
+
   /** The part of the debug print line before the child block listing. */
   protected abstract debugHeader(): string;
 
@@ -84,6 +86,10 @@ export class InputAreaBlock extends GroupingBlock {
 
   protected wrapChildNodes(childNodes: Node[]): Node {
     return inputArea(childNodes);
+  }
+
+  toProseMirrorNew(content: Node[]): Node {
+    return inputArea(content);
   }
 
   protected debugHeader(): string {
@@ -120,6 +126,10 @@ export class HintBlock extends GroupingBlock {
     return hint(this.title, childNodes);
   }
 
+  toProseMirrorNew(content: Node[]): Node {
+    return hint(this.title, content);
+  }
+
   protected debugHeader(): string {
     return `HintBlock {${debugInfo(this)}} {title="${this.title}"}`;
   }
@@ -142,6 +152,10 @@ export class MathDisplayBlock implements Block {
       // If the string content is empty, we create an empty math display node.
       return WaterproofSchema.nodes.math_display.create();
     }
+    return mathDisplay(this.stringContent);
+  }
+
+  toProseMirrorNew(content: Node[]): Node {
     return mathDisplay(this.stringContent);
   }
 
@@ -177,6 +191,10 @@ export class MarkdownBlock implements Block {
     return markdown(this.stringContent);
   }
 
+  toProseMirrorNew(content: Node[]): Node {
+    return markdown(this.stringContent);
+  }
+
   // Debug print function.
   debugPrint(level: number): void {
     console.log(
@@ -199,6 +217,14 @@ export class CodeBlock implements Block {
   ) {}
 
   toProseMirror() {
+    if (this.stringContent === "") {
+      // If the string content is empty, we create an empty code node.
+      return WaterproofSchema.nodes.code.create();
+    }
+    return code(this.stringContent);
+  }
+
+  toProseMirrorNew(content: Node[]): Node {
     if (this.stringContent === "") {
       // If the string content is empty, we create an empty code node.
       return WaterproofSchema.nodes.code.create();
@@ -230,6 +256,10 @@ export class NewlineBlock implements Block {
   stringContent: string = "";
 
   toProseMirror(): Node {
+    return newline();
+  }
+
+  toProseMirrorNew(content: Node[]): Node {
     return newline();
   }
 
@@ -269,6 +299,10 @@ export class ContainerBlock extends GroupingBlock {
     return container(this.name, childNodes);
   }
 
+  toProseMirrorNew(content: Node[]): Node {
+    return container(this.name, content);
+  }
+
   protected debugHeader(): string {
     return `ContainerBlock(${this.name}) {${debugInfo(this)}}`;
   }
@@ -286,6 +320,10 @@ export class StudentHiddenBlock extends GroupingBlock {
 
   protected wrapChildNodes(childNodes: Node[]): Node {
     return studentHidden(childNodes);
+  }
+
+  toProseMirrorNew(content: Node[]): Node {
+    return studentHidden(content);
   }
 
   protected debugHeader(): string {

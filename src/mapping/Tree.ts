@@ -7,13 +7,7 @@ export class TreeNode {
   tagRange: { to: number; from: number };
   /** The title of a node, only relevant for hint and container nodes */
   title: string | null;
-  /** The computed start position in ProseMirror, this is the prosemirror position at which the content starts.
-   * Thus, for nodes with content this includes a +1 due to stepping in to the node.
-   * For newlines, there is no content, so the start points directly before the newline.
-   */
-  prosemirrorStart: number;
-  /** The computed end position in ProseMirror */
-  prosemirrorEnd: number;
+  suffixSize: number;
   pmRange: { from: number; to: number };
   lineStart: number;
   /** Potential children of this tree node */
@@ -24,20 +18,19 @@ export class TreeNode {
     contentRange: { to: number; from: number },
     tagRange: { to: number; from: number },
     title: string | null,
-    prosemirrorStart: number,
-    prosemirrorEnd: number,
     pmRange: { to: number; from: number },
     lineStart: number,
+    children: TreeNode[],
   ) {
     this.type = type;
     this.contentRange = contentRange;
     this.tagRange = tagRange;
     this.title = title;
-    this.prosemirrorStart = prosemirrorStart;
-    this.prosemirrorEnd = prosemirrorEnd;
     this.pmRange = pmRange;
     this.lineStart = lineStart;
-    this.children = [];
+    this.children = children;
+    // The only node that has zero index cost to exit is the 'newline' node
+    this.suffixSize = type === "newline" ? 0 : 1;
   }
 
   addChild(child: TreeNode): void {
@@ -52,15 +45,12 @@ export class TreeNode {
   }
 
   shiftCloseOffsets(offset: number, offsetProsemirror?: number): void {
-    this.prosemirrorEnd += offsetProsemirror ?? offset;
     this.pmRange.to += offsetProsemirror ?? offset;
     this.contentRange.to += offset;
     this.tagRange.to += offset;
   }
 
   shiftOffsets(offset: number, offsetProsemirror?: number): void {
-    this.prosemirrorStart += offsetProsemirror ?? offset;
-    this.prosemirrorEnd += offsetProsemirror ?? offset;
     this.pmRange.from += offsetProsemirror ?? offset;
     this.pmRange.to += offsetProsemirror ?? offset;
     this.contentRange.from += offset;
@@ -79,6 +69,14 @@ export class TreeNode {
       child.traverseDepthFirst(callback);
     }
   }
+
+  get prosemirrorStart() {
+    return this.pmRange.from + 1;
+  }
+
+  get prosemirrorEnd() {
+    return this.pmRange.to - this.suffixSize;
+  }
 }
 
 export class Tree {
@@ -87,10 +85,9 @@ export class Tree {
   constructor(
     contentRange: { from: number; to: number },
     range: { from: number; to: number },
-    prosemirrorStart: number,
-    prosemirrorEnd: number,
     pmRange: { from: number; to: number },
     lineStart: number,
+    subtrees: TreeNode[],
   ) {
     // Explicitly create new ranges for the TreeNode to avoid shared references
     // Sets the type to 'root' and the title to null by default
@@ -99,10 +96,9 @@ export class Tree {
       { from: contentRange.from, to: contentRange.to },
       { from: range.from, to: range.to },
       null,
-      prosemirrorStart,
-      prosemirrorEnd,
       { from: pmRange.from, to: pmRange.to },
       lineStart,
+      subtrees,
     );
   }
 
