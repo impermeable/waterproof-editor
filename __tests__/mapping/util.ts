@@ -22,16 +22,13 @@ export function sanityCheckTree(node: TreeNode, parent?: TreeNode) {
   expect(node.contentRange.from).toBeGreaterThanOrEqual(node.tagRange.from);
   expect(node.contentRange.to).toBeLessThanOrEqual(node.tagRange.to);
 
-  // Assumption: Root node proseMirrorStart starts at pmRange.from; newlines do too, others start one position later.
-  const expectedStart = !parent
-    ? node.pmRange.from
-    : node.type === "newline" || node.type === "text"
-      ? node.pmRange.from
-      : node.pmRange.from + 1;
-  expect(node.prosemirrorStart).toBe(expectedStart);
-  const expectedEnd =
-    node.type === "text" ? node.pmRange.to : node.pmRange.to - 1;
+  // Assumption: For every node in the tree (which does not include text nodes), the prosemirrorStart index (at which the content starts)
+  // is always one more than the full ProseMirror index range start.
+  expect(node.prosemirrorStart).toBe(node.pmRange.from + 1);
+
   // Assumption: For all nodes, prosemirrorEnd is one less than pmRange.to
+  const expectedEnd =
+    node.type === "newline" ? node.pmRange.to : node.pmRange.to - 1;
   expect(node.prosemirrorEnd).toBe(expectedEnd);
 
   if (node.children.length > 0) {

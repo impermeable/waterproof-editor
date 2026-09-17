@@ -4,16 +4,10 @@ import { configuration, parse } from "../../src/markdown-defaults";
 import { WaterproofSchema } from "../../src/schema";
 import { Node as ProseNode } from "prosemirror-model";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
+import { constructDocAndMapping } from "../../src/thingie";
 
 function root(childNodes: ProseNode[]) {
   return WaterproofSchema.nodes.doc.create({}, childNodes);
-}
-
-function constructDocument(blocks: Block[]): ProseNode {
-  const documentContent: ProseNode[] = blocks.map((block) =>
-    block.toProseMirror(),
-  );
-  return root(documentContent);
 }
 
 test("BlockAt with simple .mv file", () => {
@@ -22,13 +16,13 @@ test("BlockAt with simple .mv file", () => {
 
   const blocks = parse(doc, { language: "coq" });
 
-  const mapping = new Mapping(
+  const [proseDoc, mapping] = constructDocAndMapping(
     blocks,
     0,
     configuration("coq"),
     new DefaultTagSerializer(configuration("coq")),
   );
-  const proseDoc = constructDocument(blocks);
+
   const tree = mapping.getMapping();
 
   tree.traverseDepthFirst((treeNode) => {
@@ -611,13 +605,13 @@ Qed.
 `;
   const blocks = parse(tutorial, { language: "coq" });
 
-  const mapping = new Mapping(
+  const [proseDoc, mapping] = constructDocAndMapping(
     blocks,
     0,
     configuration("coq"),
     new DefaultTagSerializer(configuration("coq")),
   );
-  const proseDoc = constructDocument(blocks);
+
   const tree = mapping.getMapping();
 
   tree.traverseDepthFirst((treeNode) => {

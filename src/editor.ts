@@ -67,7 +67,7 @@ import { deleteSelection } from "./commands/commands";
 import { Mapping, pmIndex, textOffset } from "./mapping";
 import { ProgressBar } from "./progressBar";
 import { studentHiddenPlugin } from "./student-hidden";
-import { constructProseMirrorDocument } from "./thingie";
+import { constructDocAndMapping } from "./thingie";
 
 /** Type that contains a diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {
@@ -149,7 +149,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
     const blocks = this._editorConfig.documentConstructor(content);
     // const proseDoc = constructDocument(blocks);
 
-    const [proseDoc, mapping] = constructProseMirrorDocument(
+    const [proseDoc, mapping] = constructDocAndMapping(
       blocks,
       version,
       this._editorConfig.tagConfiguration,
@@ -181,7 +181,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
 
     const blocks = this._editorConfig.documentConstructor(content);
 
-    const [proseDoc, mapping] = constructProseMirrorDocument(
+    const [proseDoc, mapping] = constructDocAndMapping(
       blocks,
       version,
       this._editorConfig.tagConfiguration,

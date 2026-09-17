@@ -8,10 +8,9 @@ function fromJSON(json: any): Tree {
       obj.innerRange,
       obj.range,
       obj.title,
-      obj.prosemirrorStart,
-      obj.prosemirrorEnd,
       obj.pmRange,
       obj.lineStart,
+      [],
     );
     if (obj.children && Array.isArray(obj.children)) {
       for (const childObj of obj.children) {
@@ -24,10 +23,9 @@ function fromJSON(json: any): Tree {
   const tree = new Tree(
     rootObj.innerRange,
     rootObj.range,
-    rootObj.prosemirrorStart,
-    rootObj.prosemirrorEnd,
     rootObj.pmRange,
     rootObj.lineStart,
+    [],
   );
   for (const childObj of rootObj.children) {
     tree.root.addChild(parseNode(childObj));
@@ -501,40 +499,36 @@ test("nodesInProseRange returns only top-level nodes in range, not their childre
   const tree = new Tree(
     { from: 0, to: 20 },
     { from: 0, to: 20 },
-    0,
-    19,
     { from: 0, to: 20 },
     0,
+    [],
   );
   const container = new TreeNode(
     "container",
     { from: 1, to: 9 },
     { from: 0, to: 10 },
-    "",
-    1,
-    9,
+    null,
     { from: 0, to: 10 },
     0,
+    [],
   );
   const child1 = new TreeNode(
     "markdown",
     { from: 2, to: 4 },
     { from: 1, to: 5 },
-    "",
-    2,
-    4,
+    null,
     { from: 1, to: 5 },
     0,
+    [],
   );
   const child2 = new TreeNode(
     "markdown",
     { from: 6, to: 8 },
     { from: 5, to: 9 },
-    "",
-    6,
-    8,
+    null,
     { from: 5, to: 9 },
     0,
+    [],
   );
   container.addChild(child1);
   container.addChild(child2);
@@ -543,11 +537,10 @@ test("nodesInProseRange returns only top-level nodes in range, not their childre
     "markdown",
     { from: 11, to: 19 },
     { from: 10, to: 20 },
-    "",
-    11,
-    19,
+    null,
     { from: 10, to: 20 },
     0,
+    [],
   );
   tree.root.addChild(container);
   tree.root.addChild(sibling);

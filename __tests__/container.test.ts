@@ -7,12 +7,12 @@ import {
   isMathDisplayBlock,
   isNewlineBlock,
   isContainerBlock,
+  Block,
 } from "../src/document/blocks";
 import { HintBlock, ContainerBlock } from "../src/document";
 import { CodeBlock, InputAreaBlock, MarkdownBlock } from "../src/document";
 import { configuration } from "../src/markdown-defaults";
 import { DefaultTagSerializer } from "../src/serialization/DocumentSerializer";
-import { constructDocument } from "../src/document";
 import { sanityCheckTree } from "./mapping/util";
 import { TagConfiguration } from "../src/api";
 import { wrapInContainer, wpLift } from "../src/commands";
@@ -29,6 +29,11 @@ import { EditorState } from "prosemirror-state";
 import { Fragment } from "prosemirror-model";
 import { WaterproofSchema } from "../src/schema";
 import { checkInputArea } from "../src/commands/command-helpers";
+import { constructDocAndMapping } from "../src/thingie";
+
+const constructDocument = (blocks: Block[]) =>
+  //@ts-expect-error We can't pass undefined here, but we are only using the document construction logic
+  constructDocAndMapping(blocks, 0, undefined, undefined);
 
 const config = configuration("lean4");
 const serializer = new DefaultTagSerializer(config);
@@ -232,7 +237,7 @@ describe("container ProseMirror construction", () => {
       0,
       innerBlocks,
     );
-    const doc = constructDocument([cg]);
+    const [doc] = constructDocument([cg]);
     expect(doc.type.name).toBe("doc");
     expect(doc.content.childCount).toBe(1);
     expect(doc.content.firstChild!.type.name).toBe("container");
@@ -266,7 +271,7 @@ describe("container ProseMirror construction", () => {
       0,
       [input],
     );
-    const doc = constructDocument([cg]);
+    const [doc] = constructDocument([cg]);
 
     const cgNode = doc.content.firstChild!;
     expect(cgNode.type.name).toBe("container");

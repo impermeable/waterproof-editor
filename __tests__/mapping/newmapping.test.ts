@@ -8,21 +8,16 @@ import {
 } from "../../src/document";
 import { configuration } from "../../src/markdown-defaults";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
+import { createTestMapping } from "../helpers";
 
 const config = configuration("lang");
 const serializer = new DefaultTagSerializer(config);
-
-function createTestMapping(blocks: WaterproofDocument) {
-  const mapping = new Mapping(blocks, 1, config, serializer);
-  const tree = mapping.getMapping();
-  return tree;
-}
 
 test("testMapping markdown only", () => {
   const blocks = [
     new MarkdownBlock("Hello", { from: 0, to: 5 }, { from: 0, to: 5 }, 0),
   ];
-  const nodes = createTestMapping(blocks);
+  const nodes = createTestMapping(blocks, config, serializer);
 
   expect(nodes.root.type).toBe("root");
 
@@ -45,7 +40,7 @@ test("testMapping code", () => {
   const blocks = [
     new CodeBlock("Lemma test", { from: 0, to: 21 }, { from: 7, to: 17 }, 0),
   ];
-  const tree = createTestMapping(blocks);
+  const tree = createTestMapping(blocks, config, serializer);
   const nodes = tree.root.children;
 
   expect(nodes.length).toBe(1);
@@ -79,7 +74,7 @@ test("Input-area with nested code", () => {
     ),
     new MarkdownBlock("Hello", { from: 42, to: 47 }, { from: 42, to: 47 }, 0),
   ];
-  const tree = createTestMapping(blocks);
+  const tree = createTestMapping(blocks, config, serializer);
   const nodes = tree.root.children;
 
   expect(nodes.length).toBe(2);
@@ -153,7 +148,7 @@ test("Hint block with code and markdown inside", () => {
     ),
   ];
 
-  const tree = createTestMapping(blocks);
+  const tree = createTestMapping(blocks, config, serializer);
   const nodes = tree.root.children;
 
   expect(nodes.length).toBe(1);
@@ -231,7 +226,7 @@ test("Mixed content: markdown, code, input-area, markdown", () => {
       ],
     ),
   ];
-  const tree = createTestMapping(blocks);
+  const tree = createTestMapping(blocks, config, serializer);
   const nodes = tree.root.children;
 
   expect(nodes.length).toBe(5);
@@ -314,7 +309,7 @@ test("Empty codeblock", () => {
   const blocks = [
     new CodeBlock("", { from: 0, to: 11 }, { from: 7, to: 7 }, 0),
   ];
-  const tree = createTestMapping(blocks);
+  const tree = createTestMapping(blocks, config, serializer);
   const nodes = tree.root.children;
   expect(nodes.length).toBe(1);
 

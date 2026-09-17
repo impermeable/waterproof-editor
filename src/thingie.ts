@@ -4,14 +4,14 @@ import { Block, typeguards } from "./document";
 import { root } from "./document/blocks/schema";
 import { Tree, TreeNode } from "./mapping";
 
-export function constructProseMirrorDocument(
+export function constructDocAndMapping(
   blocks: Block[],
   version: number,
   tagConf: TagConfiguration,
   serializer: DocumentSerializer,
 ): [Node, Mapping] {
-  console.log("Blocks");
-  console.log(blocks);
+  // console.log("Blocks");
+  // console.log(blocks);
 
   // Start building the tree and document for the blocks on the top level.
   // Blocks in our representation are not stored in a 'doc' or 'root' node.
@@ -26,13 +26,13 @@ export function constructProseMirrorDocument(
     0,
     treeNodes,
   );
-  console.log(proseDoc.toJSON());
-  console.log(tree);
+  // console.log(proseDoc.toJSON());
+  // console.log(tree);
 
   const mapping = new Mapping(version, tagConf, serializer, tree);
 
-  console.log("TREE UNDERNEATH");
-  console.log(JSON.stringify(mapping.getMapping()));
+  // console.log("TREE UNDERNEATH");
+  // console.log(JSON.stringify(mapping.getMapping()));
 
   return [proseDoc, mapping];
 }

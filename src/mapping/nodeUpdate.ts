@@ -83,7 +83,6 @@ export class NodeUpdate {
   ): ParsedStep {
     // Determine operation type
     const type = typeFromStep(step);
-    console.log("In doReplaceStep, operation type:", type);
     switch (type) {
       case OperationType.insert:
         return this.replaceInsert(

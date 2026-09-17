@@ -19,7 +19,6 @@ import {
   ContainerBlock,
   MarkdownBlock,
   StudentHiddenBlock,
-  constructDocument,
 } from "../src/document";
 import { BLOCK_NAME } from "../src/document/blocks/block";
 import { configuration } from "../src/markdown-defaults";
@@ -33,6 +32,7 @@ import {
   groupingChildCases,
   serializeBlocks,
   stateWithNodeSelAt,
+  constructDocument,
 } from "./helpers";
 
 import { EditorState, Plugin } from "prosemirror-state";
@@ -194,7 +194,7 @@ describe.each(groupingBlockClasses)(
           0,
         ),
       ]);
-      const node = block.toProseMirror();
+      const node = block.toProseMirror([]);
       expect(node.type.name).toBe(nodeName);
       expect(node.content.childCount).toBe(1);
       expect(node.content.firstChild!.type.name).toBe("markdown");
