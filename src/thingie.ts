@@ -44,7 +44,7 @@ export function constructProseMirrorDocument(
  * @returns
  */
 function docAndTreeForBlock(offset: number, block: Block): [Node, TreeNode] {
-  const docNode = block.toProseMirrorNew([]);
+  const docNode = block.toProseMirror([]);
   const treeNode = treeNodeForBlock(offset, block, docNode.nodeSize, []);
   return [docNode, treeNode];
 }
@@ -82,7 +82,7 @@ function docAndTreeForBlocks(
 
       // Convert this block to a ProseMirror node, add the child nodes and add
       // the node to the array of nodes for this level.
-      const docNode = block.toProseMirrorNew(childDocNodes);
+      const docNode = block.toProseMirror(childDocNodes);
       docNodes.push(docNode);
 
       // Similarly for the tree nodes at this level
