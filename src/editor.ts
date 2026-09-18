@@ -547,9 +547,11 @@ export class WaterproofEditor implements MessageHandlerEditor {
   /** Called on every transaction update in which the textdocument was modified */
   private updateLineNumbers() {
     if (!this._view || !this._mapping) return;
-    const nrs = this._mapping.computeLineNumbers();
-    const tr = this._view.state.tr.setMeta(CODE_PLUGIN_KEY, nrs);
-    this._view.dispatch(tr);
+    if (this._mapping.shouldUpdateLinenumbers) {
+      const nrs = this._mapping.computeLineNumbers();
+      const tr = this._view.state.tr.setMeta(CODE_PLUGIN_KEY, nrs);
+      this._view.dispatch(tr);
+    }
   }
 
   /**

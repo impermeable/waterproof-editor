@@ -221,6 +221,7 @@ export class NodeUpdate {
         // This node starts at or after the insertion position (sibling)
         thisNode.shiftOffsets(textOffset, proseOffset);
         thisNode.shiftLineStart(lineDelta);
+        tree.invalidateLinenumberCache();
       }
     });
     // The root always contains the insertion
@@ -415,6 +416,7 @@ export class NodeUpdate {
         // This node comes entirely after the deleted range.
         thisNode.shiftOffsets(-originalRemovedLength, -proseRemovedLength);
         thisNode.shiftLineStart(-deletedNewlines);
+        tree.invalidateLinenumberCache();
       }
     });
     tree.root.shiftCloseOffsets(-originalRemovedLength, -proseRemovedLength);
@@ -489,6 +491,7 @@ export class NodeUpdate {
         // Node entirely after the wrapper: shift all offsets.
         thisNode.shiftOffsets(tagTextOffset, tagProseOffset);
         thisNode.shiftLineStart(-removedNewlines);
+        tree.invalidateLinenumberCache();
       }
     });
 
@@ -504,6 +507,7 @@ export class NodeUpdate {
         // The open tag may contain newlines that were counted towards lineStart
         // when wrapping happened; subtract them now.
         subNode.shiftLineStart(-countNewlines(wrappedOpenTag));
+        tree.invalidateLinenumberCache();
       });
       // add to the parent of the wrapper node
       wrapperParent.addChild(n);
@@ -650,6 +654,7 @@ export class NodeUpdate {
         // Node entirely after the wrapped range: shift all offsets.
         thisNode.shiftOffsets(openTag.length + closeTag.length, 2);
         thisNode.shiftLineStart(openTagLines + closeTagLines);
+        tree.invalidateLinenumberCache();
       }
     });
 
@@ -662,6 +667,7 @@ export class NodeUpdate {
       n.traverseDepthFirst((subNode) => {
         subNode.shiftOffsets(openTag.length, 1);
         subNode.shiftLineStart(openTagLines);
+        tree.invalidateLinenumberCache();
       });
       newNode.addChild(n);
     });

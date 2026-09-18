@@ -83,6 +83,8 @@ export class TreeNode {
 
 export class Tree {
   root: TreeNode;
+  private linenrs: number[] = [];
+  private shouldRecomputeLinenrs = true;
 
   constructor(
     contentRange: { from: number; to: number },
@@ -227,13 +229,24 @@ export class Tree {
     return result;
   }
 
+  invalidateLinenumberCache() {
+    this.shouldRecomputeLinenrs = true;
+  }
+
+  shouldUpdateLinenumbers() {
+    return this.shouldRecomputeLinenrs;
+  }
+
   computeLineNumbers(): Array<number> {
-    const arr: Array<number> = [];
-    this.traverseDepthFirst((node) => {
-      if (node.type === "code") {
-        arr.push(node.lineStart);
-      }
-    });
-    return arr;
+    if (this.shouldRecomputeLinenrs) {
+      this.linenrs = [];
+      this.traverseDepthFirst((node) => {
+        if (node.type === "code") {
+          this.linenrs.push(node.lineStart);
+        }
+      });
+    }
+    this.shouldRecomputeLinenrs = false;
+    return this.linenrs;
   }
 }
