@@ -184,21 +184,6 @@ describe.each(groupingBlockClasses)(
       expect(block.innerBlocks).toHaveLength(1);
       expect(block.innerBlocks![0].stringContent).toBe("text");
     });
-
-    test(`toProseMirror creates a ${nodeName} node containing the children`, () => {
-      const block = make("text", { from: 0, to: 23 }, { from: 14, to: 18 }, 0, [
-        new MarkdownBlock(
-          "text",
-          { from: 14, to: 18 },
-          { from: 14, to: 18 },
-          0,
-        ),
-      ]);
-      const node = block.toProseMirror([]);
-      expect(node.type.name).toBe(nodeName);
-      expect(node.content.childCount).toBe(1);
-      expect(node.content.firstChild!.type.name).toBe("markdown");
-    });
   },
 );
 

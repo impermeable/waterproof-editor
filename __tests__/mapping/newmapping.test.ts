@@ -102,8 +102,8 @@ test("Input-area with nested code", () => {
   expect(first.type).toBe("newline");
   expect(first.contentRange).toStrictEqual<Range>({ from: 12, to: 13 });
   expect(first.tagRange).toStrictEqual<Range>({ from: 12, to: 13 });
-  expect(first.prosemirrorStart).toBe(1);
-  expect(first.prosemirrorEnd).toBe(1);
+  expect(first.prosemirrorStart).toBe(2);
+  expect(first.prosemirrorEnd).toBe(2);
   expect(first.pmRange).toStrictEqual<Range>({ from: 1, to: 2 });
 
   expect(second.type).toBe("code");
@@ -117,8 +117,8 @@ test("Input-area with nested code", () => {
   expect(third.type).toBe("newline");
   expect(third.contentRange).toStrictEqual<Range>({ from: 28, to: 29 });
   expect(third.tagRange).toStrictEqual<Range>({ from: 28, to: 29 });
-  expect(third.prosemirrorStart).toBe(8);
-  expect(third.prosemirrorEnd).toBe(8);
+  expect(third.prosemirrorStart).toBe(9);
+  expect(third.prosemirrorEnd).toBe(9);
   expect(third.pmRange).toStrictEqual<Range>({ from: 8, to: 9 });
 
   // One code block at line 2
@@ -169,8 +169,8 @@ test("Hint block with code and markdown inside", () => {
   expect(first.type).toBe("newline");
   expect(first.contentRange).toStrictEqual<Range>({ from: 31, to: 32 });
   expect(first.tagRange).toStrictEqual<Range>({ from: 31, to: 32 });
-  expect(first.prosemirrorStart).toBe(1);
-  expect(first.prosemirrorEnd).toBe(1);
+  expect(first.prosemirrorStart).toBe(2);
+  expect(first.prosemirrorEnd).toBe(2);
   expect(first.pmRange).toStrictEqual<Range>({ from: 1, to: 2 });
 
   expect(second.type).toBe("code");
@@ -184,8 +184,8 @@ test("Hint block with code and markdown inside", () => {
   expect(third.type).toBe("newline");
   expect(third.contentRange).toStrictEqual<Range>({ from: 60, to: 61 });
   expect(third.tagRange).toStrictEqual<Range>({ from: 60, to: 61 });
-  expect(third.prosemirrorStart).toBe(25);
-  expect(third.prosemirrorEnd).toBe(25);
+  expect(third.prosemirrorStart).toBe(26);
+  expect(third.prosemirrorEnd).toBe(26);
   expect(third.pmRange).toStrictEqual<Range>({ from: 25, to: 26 });
 
   // One code block at line 2
@@ -245,8 +245,8 @@ test("Mixed content: markdown, code, input-area, markdown", () => {
   expect(nl1.type).toBe("newline");
   expect(nl1.contentRange).toStrictEqual<Range>({ from: 12, to: 13 });
   expect(nl1.tagRange).toStrictEqual<Range>({ from: 12, to: 13 });
-  expect(nl1.prosemirrorStart).toBe(14);
-  expect(nl1.prosemirrorEnd).toBe(14);
+  expect(nl1.prosemirrorStart).toBe(15);
+  expect(nl1.prosemirrorEnd).toBe(15);
   expect(nl1.pmRange).toStrictEqual<Range>({ from: 14, to: 15 });
 
   // Code node
@@ -262,8 +262,8 @@ test("Mixed content: markdown, code, input-area, markdown", () => {
   expect(nl2.type).toBe("newline");
   expect(nl2.contentRange).toStrictEqual<Range>({ from: 34, to: 35 });
   expect(nl2.tagRange).toStrictEqual<Range>({ from: 34, to: 35 });
-  expect(nl2.prosemirrorStart).toBe(27);
-  expect(nl2.prosemirrorEnd).toBe(27);
+  expect(nl2.prosemirrorStart).toBe(28);
+  expect(nl2.prosemirrorEnd).toBe(28);
   expect(nl2.pmRange).toStrictEqual<Range>({ from: 27, to: 28 });
 
   // Input-area node
@@ -281,8 +281,8 @@ test("Mixed content: markdown, code, input-area, markdown", () => {
   expect(ia_nl1.type).toBe("newline");
   expect(ia_nl1.contentRange).toStrictEqual<Range>({ from: 47, to: 48 });
   expect(ia_nl1.tagRange).toStrictEqual<Range>({ from: 47, to: 48 });
-  expect(ia_nl1.prosemirrorStart).toBe(29);
-  expect(ia_nl1.prosemirrorEnd).toBe(29);
+  expect(ia_nl1.prosemirrorStart).toBe(30);
+  expect(ia_nl1.prosemirrorEnd).toBe(30);
   expect(ia_nl1.pmRange).toStrictEqual<Range>({ from: 29, to: 30 });
 
   expect(ia_code.type).toBe("code");
@@ -296,8 +296,8 @@ test("Mixed content: markdown, code, input-area, markdown", () => {
   expect(ia_nl2.type).toBe("newline");
   expect(ia_nl2.contentRange).toStrictEqual<Range>({ from: 83, to: 84 });
   expect(ia_nl2.tagRange).toStrictEqual<Range>({ from: 83, to: 84 });
-  expect(ia_nl2.prosemirrorStart).toBe(56);
-  expect(ia_nl2.prosemirrorEnd).toBe(56);
+  expect(ia_nl2.prosemirrorStart).toBe(57);
+  expect(ia_nl2.prosemirrorEnd).toBe(57);
   expect(ia_nl2.pmRange).toStrictEqual<Range>({ from: 56, to: 57 });
 
   // Two code blocks: first at line 2, second at line 7

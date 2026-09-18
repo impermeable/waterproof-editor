@@ -70,12 +70,12 @@ export class TreeNode {
     }
   }
 
-  /** The ProseMirror index at which the content of this node starts */
+  /** The ProseMirror index at which the content of this node starts (after entering the node) */
   get prosemirrorStart() {
     return this.pmRange.from + 1;
   }
 
-  /** The ProseMirror index after the content of this node */
+  /** The ProseMirror index after the content of this node (but before escaping this node) */
   get prosemirrorEnd() {
     return this.pmRange.to - this.suffixSize;
   }
