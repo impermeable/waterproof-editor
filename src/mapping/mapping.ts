@@ -104,6 +104,10 @@ export class Mapping {
     return this.tree.computeLineNumbers();
   }
 
+  public get shouldUpdateLinenumbers(): boolean {
+    return this.tree.shouldUpdateLinenumbers();
+  }
+
   public updateLines(lineDelta: number, from: number): void {
     const targetCell: TreeNode | null = this.tree.findNodeByProsePos(from);
     if (targetCell === null)
@@ -118,6 +122,7 @@ export class Mapping {
         node.prosemirrorEnd > target.prosemirrorEnd
       ) {
         node.shiftLineStart(lineDelta);
+        this.tree.invalidateLinenumberCache();
       }
     });
   }
