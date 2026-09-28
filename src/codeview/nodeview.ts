@@ -26,7 +26,7 @@ import {
   lineNumbers,
   placeholder,
 } from "@codemirror/view";
-import { Node, Schema } from "prosemirror-model";
+import { Node } from "prosemirror-model";
 import { EditorView } from "prosemirror-view";
 import { customTheme } from "./color-scheme";
 import { renderIcon } from "../autocomplete";
@@ -62,13 +62,12 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
     view: EditorView,
     private readonly editorInstance: WaterproofEditor,
     getPos: () => number | undefined,
-    schema: Schema,
     completions: Array<Completion>,
     symbols: Array<Completion>,
     initialThemeStyle: ThemeStyle,
     private readonly languageConfig?: LanguageConfiguration,
   ) {
-    super(node, view, getPos, schema);
+    super(node, view, getPos);
     this._node = node;
     this._outerView = view;
     this._getPos = getPos;

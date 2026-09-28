@@ -71,7 +71,6 @@ export function createCodeBlockView(
       view,
       editorInstance,
       getPos,
-      pluginState.schema,
       completions,
       symbols,
       initialThemeStyle,

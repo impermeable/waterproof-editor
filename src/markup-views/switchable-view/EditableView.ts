@@ -4,7 +4,7 @@ import {
   placeholder,
 } from "@codemirror/view";
 
-import { Node, Schema } from "prosemirror-model";
+import { Node } from "prosemirror-model";
 import { PluginKey, TextSelection, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { SwitchableView } from "./SwitchableView";
@@ -27,18 +27,16 @@ export class EditableView extends EmbeddedCodeMirrorEditor {
   constructor(
     node: Node,
     outerView: EditorView,
-    schema: Schema,
     getPos: () => number | undefined,
     place: HTMLElement,
     parent: SwitchableView,
     pluginKey: PluginKey,
   ) {
-    super(node, outerView, getPos, schema);
+    super(node, outerView, getPos);
     this._node = node;
     this._parent = parent;
     this._outerView = outerView;
     this._getPos = getPos;
-    this._schema = schema;
     this._pluginKey = pluginKey;
     this.view = new CodeMirror({
       doc: this._node.textContent,

@@ -3,7 +3,6 @@ import { EditableView } from "./EditableView";
 import { RenderedView } from "./RenderedView";
 import { NodeSelection, PluginKey } from "prosemirror-state";
 import { Node as PNode } from "prosemirror-model";
-import { WaterproofSchema } from "../../schema";
 import { isPositionEditable } from "../../inputArea";
 
 /**
@@ -160,7 +159,6 @@ export class SwitchableView implements NodeView {
     this.view = new EditableView(
       this._node,
       this._outerView,
-      WaterproofSchema,
       this._getPos,
       this._place,
       this,

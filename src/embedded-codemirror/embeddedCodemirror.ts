@@ -4,7 +4,7 @@ import {
   KeyBinding,
   ViewUpdate,
 } from "@codemirror/view";
-import { Node as PNode, Schema } from "prosemirror-model";
+import { Node as PNode } from "prosemirror-model";
 import { TextSelection, Transaction } from "prosemirror-state";
 import {
   Decoration,
@@ -14,6 +14,7 @@ import {
 } from "prosemirror-view";
 import { MovementDirection, MovementUnit } from "./types";
 import { keybindings } from "./embedded-codemirror-keymap";
+import { WaterproofSchema } from "../schema";
 
 /**
  * A class implementing everything required to create an embedded codemirror editor for prosemirror.
@@ -29,22 +30,14 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
   protected _codemirror: CodeMirror | undefined;
   // The outer prosemirror editor view.
   protected _outerView: EditorView;
-  // The schema in use for the prosemirror editor.
-  protected _schema: Schema;
   // The node for which this editor was created.
   protected _node: PNode;
 
-  constructor(
-    node: PNode,
-    view: EditorView,
-    getPos: () => number | undefined,
-    schema: Schema,
-  ) {
+  constructor(node: PNode, view: EditorView, getPos: () => number | undefined) {
     // Store parameters.
     this._node = node;
     this._outerView = view;
     this._getPos = getPos;
-    this._schema = schema;
     // Initialize other parameters to default value
     this.updating = false;
   }
@@ -231,7 +224,7 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
           tr.replaceWith(
             offset + fromA,
             offset + toA,
-            this._schema.text(text.toString()),
+            WaterproofSchema.text(text.toString()),
           );
         } else {
           tr.delete(offset + fromA, offset + toA);
