@@ -1,3 +1,5 @@
+import { BoundaryResolutionStrategy } from "./types";
+
 export class TreeNode {
   /** The type of this node, should be in the WaterproofSchema schema */
   type: string;
@@ -8,6 +10,11 @@ export class TreeNode {
   /** The title of a node, only relevant for hint and container nodes */
   title: string | null;
   suffixSize: number;
+  /**
+   * The outer range of the node in the ProseMirror document.
+   * - `from`: the ProseMirror index right before this node (before entering the node).
+   * - `to`: the ProseMirror index right after this node (after entering the node).
+   */
   pmRange: { from: number; to: number };
   lineStart: number;
   /** Potential children of this tree node */
@@ -173,27 +180,105 @@ export class Tree {
    * @param node The node to start the search from, defaults to the root node of the tree
    * @returns The most specific node containing the position, or null if no such node exists
    */
-  findNodeByProsePos(pos: number, node: TreeNode = this.root): TreeNode | null {
+  // findNodeByProsePos(pos: number, node: TreeNode = this.root): TreeNode | null {
+  //   if (pos < node.pmRange.from || pos > node.pmRange.to) return null;
+
+  //   // Binary search among children
+  //   let left = 0;
+  //   let right = node.children.length - 1;
+  //   while (left <= right) {
+  //     const mid = Math.floor((left + right) / 2);
+  //     const child = node.children[mid];
+  //     if (pos === child.pmRange.from && mid > 0) {
+  //       return node.children[mid - 1];
+  //     } else if (pos >= child.pmRange.from && pos <= child.pmRange.to) {
+  //       if (child.children.length === 0) return child;
+  //       return this.findNodeByProsePos(pos, child);
+  //     } else if (pos <= child.pmRange.to) {
+  //       right = mid - 1;
+  //     } else if (pos > child.pmRange.to) {
+  //       left = mid + 1;
+  //     }
+  //   }
+  //   // If no child contains pos, return current node
+  //   return node;
+  // }
+
+  /**
+   *
+   * @param pos
+   * @param node
+   * @param boundaryResolutionStrategy
+   * @returns
+   */
+  findNodeByProsePos(
+    pos: number,
+    node: TreeNode = this.root,
+    boundaryResolutionStrategy: BoundaryResolutionStrategy = BoundaryResolutionStrategy.Left,
+  ): TreeNode | null {
+    // The position we are searching for is outside the range
     if (pos < node.pmRange.from || pos > node.pmRange.to) return null;
 
-    // Binary search among children
     let left = 0;
     let right = node.children.length - 1;
+
     while (left <= right) {
       const mid = Math.floor((left + right) / 2);
       const child = node.children[mid];
-      if (pos === child.pmRange.from && mid > 0) {
-        return node.children[mid - 1];
-      } else if (pos >= child.pmRange.from && pos <= child.pmRange.to) {
-        if (child.children.length === 0) return child;
-        return this.findNodeByProsePos(pos, child);
-      } else if (pos <= child.pmRange.to) {
+
+      // There are multiple cases:
+      // - Either the position is further to the left or to the right
+      if (pos < child.pmRange.from) {
         right = mid - 1;
-      } else if (pos > child.pmRange.to) {
-        left = mid + 1;
+        continue; // Skip rest of the loop
       }
+
+      if (pos > child.pmRange.to) {
+        left = mid + 1;
+        continue; // Skip the rest of the loop
+      }
+
+      // - The position lies on the left or right boundary of the node
+
+      // TODO: What if mid - 1 < 0?
+      // TODO: Are there cases where this position is then inside of a child node?
+      //       No right, as the position must be necessarilly on the boundary which is
+      //       always part of the parent (incl for newlines, which dont have content anyway
+      if (
+        pos === child.pmRange.from &&
+        boundaryResolutionStrategy === BoundaryResolutionStrategy.Left &&
+        mid > 0
+      ) {
+        // pos: 3
+        //           \/
+        // ...|1--3|3--5|...
+        // But we want the node on the left.
+        return node.children[mid - 1];
+      }
+      // TODO: What if mid + 1 >= children.length?
+      else if (
+        pos === child.pmRange.to &&
+        boundaryResolutionStrategy === BoundaryResolutionStrategy.Right &&
+        mid < node.children.length - 1
+      ) {
+        // pos: 3
+        //      \/
+        // ...|1--3|3--5|...
+        // But we want the node on the right
+        return node.children[mid + 1];
+      }
+
+      // - The position lies within this node
+      // TODO: This comparison is useless here, right?
+      //       At this point this is the only thing that can happen
+      // if (pos > child.pmRange.from && pos < child.pmRange.to) {
+      // * if there are no children, this must be the node
+      if (child.children.length === 0) return child;
+      // * otherwise search within the children of child
+      return this.findNodeByProsePos(pos, child, boundaryResolutionStrategy);
+      // }
     }
-    // If no child contains pos, return current node
+    // TODO: Shouldn't this error?
     return node;
   }
 

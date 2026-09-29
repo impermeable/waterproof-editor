@@ -1,5 +1,11 @@
 import { DocChange, WrappingDocChange } from "../api";
 import { Tree } from "./Tree";
+
+export const enum BoundaryResolutionStrategy {
+  Left,
+  Right,
+}
+
 /**
  * The type returned by the functions converting steps to Document Changes of the
  * underlying vscode model of the document
