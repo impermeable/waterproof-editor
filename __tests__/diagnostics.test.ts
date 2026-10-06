@@ -82,7 +82,7 @@ type outType = Array<DiagnosticObjectProse>;
     editor.setActiveDiagnostics(diags);
     expect(editor.diagnosticsVersion).toBe(1);
 
-    expect(mockDiagsChanged).toBeCalled();
+    expect(mockDiagsChanged).toHaveBeenCalled();
 
     const expected: outType = [
       {
@@ -123,7 +123,7 @@ type outType = Array<DiagnosticObjectProse>;
     editor.setActiveDiagnostics(diags);
     expect(editor.diagnosticsVersion).toBe(1);
 
-    expect(mockDiagnostics).toBeCalled();
+    expect(mockDiagnostics).toHaveBeenCalled();
 
     const expected: outType = [
       {
@@ -172,7 +172,7 @@ type outType = Array<DiagnosticObjectProse>;
     });
     expect(editor.diagnosticsVersion).toBe(2);
 
-    expect(mockDiagnostics).toBeCalled();
+    expect(mockDiagnostics).toHaveBeenCalled();
 
     const expected: outType = [
       {
