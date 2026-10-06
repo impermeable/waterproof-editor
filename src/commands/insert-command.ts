@@ -270,7 +270,7 @@ export function getCmdInsertExercise(
     const nodes = buildExerciseNodes(
       containerName,
       templates.exercise.statement,
-      templates.exercise.proof,
+      templates.exercise.closing,
     );
 
     const f =

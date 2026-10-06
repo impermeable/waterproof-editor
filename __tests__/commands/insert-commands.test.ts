@@ -649,7 +649,7 @@ test("Insert code hint above markdown", () => {
 
 const templateRocq = {
   example: "Example example: True.\nProof.\n\nQed.",
-  exercise: { statement: "Lemma exercise:\nProof", proof: "Qed." },
+  exercise: { statement: "Lemma exercise:\nProof", closing: "Qed." },
   containerOpenTag: "",
 };
 
@@ -713,7 +713,7 @@ const templateLean = {
   example: 'Example "example"\nGiven:\nAssume:\nConclusion:\nProof:\n\nQED',
   exercise: {
     statement: 'Exercise "exercise"\nGiven:\nAssume:\nConclusion:\nProof:',
-    proof: "QED",
+    closing: "QED",
   },
   containerOpenTag: "multilean",
 };
@@ -911,12 +911,12 @@ test("Insert rocq exercise below markdown (no container)", () => {
   expect(content[4].type).toBe("input");
   expect(content[4].content).toStrictEqual([
     { type: "newline" },
-    {
-      type: "code",
-      content: [{ type: "text", text: templateRocq.exercise.proof }],
-    },
+    { type: "code" },
     { type: "newline" },
   ]);
+  expect(content[5].type).toBe("newline");
+  expect(content[6].type).toBe("code");
+  expect(content[6].content[0].text).toBe(templateRocq.exercise.closing);
 });
 
 test("Insert lean exercise below markdown wraps it in a multilean container", () => {
@@ -946,14 +946,12 @@ test("Insert lean exercise below markdown wraps it in a multilean container", ()
     {
       type: "input",
       attrs: { status: null },
-      content: [
-        { type: "newline" },
-        {
-          type: "code",
-          content: [{ type: "text", text: templateLean.exercise.proof }],
-        },
-        { type: "newline" },
-      ],
+      content: [{ type: "newline" }, { type: "code" }, { type: "newline" }],
+    },
+    { type: "newline" },
+    {
+      type: "code",
+      content: [{ type: "text", text: templateLean.exercise.closing }],
     },
     { type: "newline" },
   ]);

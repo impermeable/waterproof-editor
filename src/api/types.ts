@@ -142,7 +142,7 @@ export type LanguageConfiguration = {
 
 export type TemplateConfiguration = {
   example: string;
-  exercise: { statement: string; proof: string };
+  exercise: { statement: string; closing: string };
   containerOpenTag: string;
 };
 

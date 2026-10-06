@@ -68,7 +68,7 @@ export function buildCompositeNodes(
 export function buildExerciseNodes(
   containerName: string | undefined,
   statementContent: string,
-  proofContent: string,
+  closingContent: string,
 ): PNode[] {
   const inner = [
     createNodeWithOptionalTextContent(
@@ -78,12 +78,14 @@ export function buildExerciseNodes(
     newline(),
     inputArea([
       newline(),
-      createNodeWithOptionalTextContent(
-        WaterproofSchema.nodes.code,
-        proofContent,
-      ),
+      createNodeWithOptionalTextContent(WaterproofSchema.nodes.code, ""),
       newline(),
     ]),
+    newline(),
+    createNodeWithOptionalTextContent(
+      WaterproofSchema.nodes.code,
+      closingContent,
+    ),
   ];
   return containerName === undefined
     ? inner
