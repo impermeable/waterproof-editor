@@ -142,8 +142,8 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
     this.updating = false;
   }
 
-  stopEvent?: ((event: Event) => boolean);
-  ignoreMutation?: ((mutation: ViewMutationRecord) => boolean);
+  stopEvent?: (event: Event) => boolean;
+  ignoreMutation?: (mutation: ViewMutationRecord) => boolean;
   destroy?(): void;
 
   /**
