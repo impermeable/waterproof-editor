@@ -1,6 +1,6 @@
 /////// Helper functions /////////
 
-import { NodeType, Node as PNode } from "prosemirror-model";
+import { Fragment, NodeType, Node as PNode } from "prosemirror-model";
 import {
   EditorState,
   TextSelection,
@@ -227,6 +227,22 @@ function needsNewlineBelowInsertion(
 }
 
 /**
+ * Inserts `nodes` at `pos`, unless the schema does not allow them there (e.g. a hint inside a
+ * hint, or a container that is not at the top level).
+ */
+function insertIfValid(
+  state: EditorState,
+  tr: Transaction,
+  pos: number,
+  nodes: PNode[],
+): Transaction | undefined {
+  const $pos = state.doc.resolve(pos);
+  const index = $pos.index();
+  if (!$pos.parent.canReplace(index, index, Fragment.from(nodes))) return;
+  return tr.insert(pos, nodes);
+}
+
+/**
  * Helper function for inserting a sequence of nodes above the currently selected one.
  * @param state The current editor state.
  * @param tr The current transaction for the state of the editor.
@@ -266,7 +282,7 @@ export function insertCompositeNodeAbove(
   toInsert.push(...nodes);
   if (newlineBetweenNewAndCurrent) toInsert.push(newline());
 
-  return tr.insert(pos, toInsert);
+  return insertIfValid(state, tr, pos, toInsert);
 }
 
 /**
@@ -309,7 +325,7 @@ export function insertCompositeNodeBelow(
   toInsert.push(...nodes);
   if (needsNewlineBelowInsertion(ctx, tagConf)) toInsert.push(newline());
 
-  return tr.insert(pos, toInsert);
+  return insertIfValid(state, tr, pos, toInsert);
 }
 
 export function nodeFromSel(sel: Selection): PNode | undefined {
@@ -344,28 +360,6 @@ export function allowedToInsert(state: EditorState): boolean {
   // If the user is in teacher mode always return `true`, if not
   // we check wether they are in a input area.
   return isTeacher ? true : checkInputArea(state.selection);
-}
-
-/**
- * Checks whether the selection sits directly inside a hint or input area.
- */
-export function isInsideHintOrInput(sel: Selection): boolean {
-  const parentType = getParentAndIndex(sel)?.parent.type;
-  return (
-    parentType === WaterproofSchema.nodes.hint ||
-    parentType === WaterproofSchema.nodes.input
-  );
-}
-
-/**
- * Checks whether the selection targets a top level node, i.e. a direct child of the document.
- *
- * Used where a `container` node might be inserted: `container`'s schema group is only `"cell"`,
- * so unlike `hint`/`input` (also valid inside a `container`), it can never be nested inside an
- * existing `container`, `hint` or `input`.
- */
-export function isTopLevelSelection(sel: Selection): boolean {
-  return getParentAndIndex(sel)?.parent.type === WaterproofSchema.nodes.doc;
 }
 
 /**
