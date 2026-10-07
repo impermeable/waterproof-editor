@@ -211,11 +211,31 @@ export enum HistoryChange {
   Redo,
 }
 
+export interface OffsetEdit {
+  // Offsets relative to the on-disk text document.
+  start: number;
+  end: number;
+  newText: string;
+  /**
+   * The text the edit expects to replace, i.e. the on-disk text in `[start, end)` at the
+   * time the edit was computed. When present, the edit is only applied if the document
+   * still contains exactly this text at these offsets, which guards against applying an
+   * edit computed for an older version of the document.
+   */
+  oldText?: string;
+}
+export interface OffsetCodeAction {
+  title: string;
+  edits: OffsetEdit[];
+}
+
 export interface OffsetDiagnostic {
   message: string;
   severity: Severity;
+  // Offsets relative to the on-disk text document.
   startOffset: number;
   endOffset: number;
+  codeActions?: OffsetCodeAction[];
 }
 
 export enum ThemeStyle {
