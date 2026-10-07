@@ -477,6 +477,10 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 
     if (startPos === undefined) return [];
 
+    // Code actions carry absolute document offsets, so they are only offered as long as the
+    // document has not changed since they were received.
+    const documentVersion = this.editorInstance.documentVersion;
+
     // We use the outer editor instance to query for diagnostics in the range of this codemirror instance.
     const diags = this.editorInstance
       .getPartialDiagnosticsInRange(
@@ -492,7 +496,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
           Math.min(d.end - startPos - 1, _view.state.doc.length),
           d.message,
           d.severity,
-          d.codeActions,
+          d.codeActionsVersion === documentVersion ? d.codeActions : undefined,
         );
       });
 
@@ -540,7 +544,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
           name: `↩️ ${action.title}`,
           apply: (_view: CodeMirror, _from: number, _to: number) => {
             this._codemirror?.focus();
-            this.editorInstance.replaceRanges(action.edits);
+            this.editorInstance.replaceRanges(action.edits, {
+              requireEditable: true,
+            });
           },
         });
       }

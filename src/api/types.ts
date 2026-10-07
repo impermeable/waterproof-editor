@@ -216,6 +216,13 @@ export interface OffsetEdit {
   start: number;
   end: number;
   newText: string;
+  /**
+   * The text the edit expects to replace, i.e. the on-disk text in `[start, end)` at the
+   * time the edit was computed. When present, the edit is only applied if the document
+   * still contains exactly this text at these offsets, which guards against applying an
+   * edit computed for an older version of the document.
+   */
+  oldText?: string;
 }
 export interface OffsetCodeAction {
   title: string;

@@ -38,6 +38,11 @@ const cfg: WaterproofEditorConfig = {
   documentConstructor: (doc) => parse(doc, { language: "coq" }),
   symbols: [],
   tagConfiguration: configuration("coq"),
+  templates: {
+    example: "",
+    exercise: { statement: "", closing: "" },
+    containerOpenTag: "",
+  },
 };
 
 function makeEditor(
@@ -264,5 +269,90 @@ describe("replaceRanges across multiple prosemirror nodes (integration, real Map
 
     expect(ok).toBe(true);
     expect(editor.serializeDocument()).toBe(before.replace("Hello ", ""));
+  });
+});
+
+describe("replaceRanges guards against stale or forbidden edits", () => {
+  const helpSource = ["```coq", "Lemma x.", "help.", "```", ""].join("\n");
+
+  test("applies an edit whose oldText still matches the document", () => {
+    const editor = makeEditor(helpSource);
+    const before = editor.serializeDocument()!;
+    const start = before.indexOf("help");
+
+    const ok = editor.replaceRanges([
+      { start, end: start + 4, newText: "exact h", oldText: "help" },
+    ]);
+
+    expect(ok).toBe(true);
+    expect(editor.serializeDocument()).toBe(before.replace("help", "exact h"));
+  });
+
+  test("refuses an edit computed before an earlier change shifted the text", () => {
+    const editor = makeEditor(helpSource);
+    const before = editor.serializeDocument()!;
+    const start = before.indexOf("help");
+    const edits = [
+      { start, end: start + 4, newText: "exact h", oldText: "help" },
+    ];
+
+    // The user types in front of the suggestion before clicking it.
+    const lemma = before.indexOf("Lemma");
+    editor.replaceRanges([{ start: lemma, end: lemma, newText: "AB" }]);
+    const afterTyping = editor.serializeDocument();
+
+    expect(editor.replaceRanges(edits)).toBe(false);
+    expect(editor.serializeDocument()).toBe(afterTyping);
+  });
+
+  test("refuses every edit of a batch when one of them is stale", () => {
+    const editor = makeEditor();
+    const before = editor.serializeDocument()!;
+    const hello = before.indexOf("Hello");
+    const world = before.indexOf("world");
+
+    const ok = editor.replaceRanges([
+      { start: hello, end: hello + 5, newText: "Hi", oldText: "Hello" },
+      { start: world, end: world + 5, newText: "there", oldText: "WORLD" },
+    ]);
+
+    expect(ok).toBe(false);
+    expect(editor.serializeDocument()).toBe(before);
+  });
+
+  test("with requireEditable, refuses edits outside input areas in student mode", () => {
+    const editor = makeEditor(helpSource);
+    const before = editor.serializeDocument()!;
+    const start = before.indexOf("help");
+
+    const ok = editor.replaceRanges(
+      [{ start, end: start + 4, newText: "exact h" }],
+      { requireEditable: true },
+    );
+
+    expect(ok).toBe(false);
+    expect(editor.serializeDocument()).toBe(before);
+  });
+
+  test("with requireEditable, applies edits inside an input area", () => {
+    const source = [
+      "<input-area>",
+      "```coq",
+      "help.",
+      "```",
+      "</input-area>",
+      "",
+    ].join("\n");
+    const editor = makeEditor(source);
+    const before = editor.serializeDocument()!;
+    const start = before.indexOf("help");
+
+    const ok = editor.replaceRanges(
+      [{ start, end: start + 4, newText: "exact h", oldText: "help" }],
+      { requireEditable: true },
+    );
+
+    expect(ok).toBe(true);
+    expect(editor.serializeDocument()).toBe(before.replace("help", "exact h"));
   });
 });

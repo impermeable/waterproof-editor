@@ -100,14 +100,31 @@ describe("clearDiagnostics", () => {
 describe("removeDiagnostic", () => {
   test("returns false when the diagnostic does not exist", () => {
     const editor = makeEditor();
-    // removeDiagnostic filters out entries where ANY field matches, so to get a
-    // true "not found" result we need a query that differs on every field.
     editor.setActiveDiagnostics([diag(0, 5, "present", Severity.Error)]);
     const removed = editor.removeDiagnostic(
       diag(10, 20, "absent", Severity.Warning),
     );
     expect(removed).toBe(false);
     expect(editor.getDiagnosticsInRange(0, 10).length).toBe(1);
+  });
+
+  test("only removes diagnostics that match on every field", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([
+      diag(0, 5, "present", Severity.Error),
+      diag(0, 5, "other message", Severity.Error),
+      diag(0, 5, "present", Severity.Warning),
+    ]);
+    const removed = editor.removeDiagnostic(
+      diag(0, 5, "present", Severity.Error),
+    );
+    expect(removed).toBe(true);
+    expect(
+      editor.getDiagnosticsInRange(0, 10).map((d) => [d.message, d.severity]),
+    ).toStrictEqual([
+      ["other message", Severity.Error],
+      ["present", Severity.Warning],
+    ]);
   });
 });
 
@@ -199,45 +216,36 @@ describe("patchDiagnosticCodeActions", () => {
   });
 });
 
-// ── setActiveDiagnostics: carrying forward code actions across passes ─────────
+// ── setActiveDiagnostics: versioning of code actions ─────────────────────────
 
-describe("setActiveDiagnostics code action carry-forward", () => {
+describe("setActiveDiagnostics code action versioning", () => {
   const actions: OffsetCodeAction[] = [
     { title: "Fix", edits: [{ start: 0, end: 1, newText: "x" }] },
   ];
 
-  test("carries forward code actions for a diagnostic that persists unchanged across passes", () => {
+  test("does not carry code actions over to a later pass", () => {
+    // Carrying actions forward is the extension's job, since only it can check that
+    // the edits are still valid for the new diagnostics.
     const editor = makeEditor();
     editor.setActiveDiagnostics([diag(0, 5, "same")], 1);
     editor.patchDiagnosticCodeActions(1, 0, actions);
 
-    // A later LSP pass re-sends the identical diagnostic before its own
-    // code actions have resolved.
     editor.setActiveDiagnostics([diag(0, 5, "same")], 2);
-
-    expect(editor.getDiagnosticsInRange(0, 5)[0].codeActions).toStrictEqual(
-      actions,
-    );
-  });
-
-  test("does not carry forward code actions when the message differs", () => {
-    const editor = makeEditor();
-    editor.setActiveDiagnostics([diag(0, 5, "same")], 1);
-    editor.patchDiagnosticCodeActions(1, 0, actions);
-
-    editor.setActiveDiagnostics([diag(0, 5, "different")], 2);
 
     expect(editor.getDiagnosticsInRange(0, 5)[0].codeActions).toBeUndefined();
   });
 
-  test("does not carry forward code actions when the offsets differ", () => {
+  test("stamps code actions with the document version they were received at", () => {
     const editor = makeEditor();
-    editor.setActiveDiagnostics([diag(0, 5, "same")], 1);
-    editor.patchDiagnosticCodeActions(1, 0, actions);
+    editor.setActiveDiagnostics(
+      [{ ...diag(0, 5), codeActions: actions }, diag(6, 8)],
+      1,
+    );
+    editor.patchDiagnosticCodeActions(1, 1, actions);
 
-    editor.setActiveDiagnostics([diag(0, 6, "same")], 2);
-
-    expect(editor.getDiagnosticsInRange(0, 6)[0].codeActions).toBeUndefined();
+    const [first, second] = editor.getDiagnosticsInRange(0, 10);
+    expect(first.codeActionsVersion).toBe(editor.documentVersion);
+    expect(second.codeActionsVersion).toBe(editor.documentVersion);
   });
 
   test("drops a patch computed against a version that has since been superseded", () => {

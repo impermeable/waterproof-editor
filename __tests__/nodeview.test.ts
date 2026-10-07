@@ -101,7 +101,9 @@ test("LSP code actions are exposed and apply all edits as one batch", () => {
   result.actions?.at(1)?.apply(nodeview._codemirror, result.from, result.to);
 
   expect(replaceRanges).toHaveBeenCalledTimes(1);
-  expect(replaceRanges).toHaveBeenCalledWith(edits);
+  expect(replaceRanges).toHaveBeenCalledWith(edits, {
+    requireEditable: true,
+  });
 });
 
 test("an empty codeActions array falls back to the default diagnostic handling", () => {
@@ -161,7 +163,53 @@ test("each code action applies only its own edits", () => {
   result.actions?.at(2)?.apply(nodeview._codemirror, result.from, result.to);
 
   expect(replaceRanges).toHaveBeenCalledTimes(1);
-  expect(replaceRanges).toHaveBeenCalledWith(alternativeEdits);
+  expect(replaceRanges).toHaveBeenCalledWith(alternativeEdits, {
+    requireEditable: true,
+  });
+});
+
+test("code actions are only offered while the document is unchanged since they arrived", () => {
+  const codeActions = [
+    { title: "Apply suggestion", edits: [{ start: 0, end: 1, newText: "x" }] },
+  ];
+  const editorInstance = {
+    documentVersion: 5,
+    diagnosticsVersion: 1,
+    getPartialDiagnosticsInRange: () => [
+      {
+        start: 1,
+        end: 1 + docEnd,
+        message: "Help",
+        severity: Severity.Information,
+        codeActions,
+        codeActionsVersion: 5,
+      },
+    ],
+  };
+  const nodeview = new CodeBlockView(
+    node,
+    //@ts-expect-error For test setup supply only the minimal needed editor API
+    { editable: true },
+    editorInstance,
+    () => undefined,
+    null,
+    [],
+    [],
+    ThemeStyle.Light,
+  );
+  //@ts-expect-error private; position the code block at the start of the document
+  nodeview._getPos = () => 0;
+  const lint = () =>
+    //@ts-expect-error private
+    nodeview
+      .lintingFunction(nodeview._codemirror)[0]
+      .actions.map((action: { name: string }) => action.name);
+
+  expect(lint()).toStrictEqual(["📋", "↩️ Apply suggestion"]);
+
+  // The document changed after the code actions were received: their offsets are stale.
+  editorInstance.documentVersion = 6;
+  expect(lint()).toStrictEqual(["📋"]);
 });
 
 test("Severity to string", () => {

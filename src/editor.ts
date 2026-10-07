@@ -78,12 +78,18 @@ export type DiagnosticObjectProse = {
   end: number;
   severity: Severity;
   codeActions?: OffsetCodeAction[];
+  /**
+   * The editor's document version at the time `codeActions` were received. The offsets in
+   * the code actions are only meaningful as long as the document has not changed since.
+   */
+  codeActionsVersion?: number;
 };
 
 function toProseDiagnostic(
   diagnostic: OffsetDiagnostic,
   start: number,
   end: number,
+  documentVersion: number,
 ): DiagnosticObjectProse {
   const { message, severity, codeActions } = diagnostic;
   return {
@@ -91,7 +97,9 @@ function toProseDiagnostic(
     severity,
     start,
     end,
-    ...(codeActions ? { codeActions } : {}),
+    ...(codeActions
+      ? { codeActions, codeActionsVersion: documentVersion }
+      : {}),
   };
 }
 
@@ -121,7 +129,17 @@ export class WaterproofEditor implements MessageHandlerEditor {
   }
 
   /**
-   * The document version that was current the last time `setActiveDiagnostics` ran.
+   * The version of the document as currently shown in the editor. It is incremented on
+   * every change to the document, and is used to tell whether code actions, whose edits
+   * are expressed in document offsets, still apply to the current document.
+   */
+  public get documentVersion(): number | undefined {
+    return this._mapping?.version;
+  }
+
+  /**
+   * The (extension-side) document version that the diagnostics were computed for, as passed
+   * to `setActiveDiagnostics` the last time it ran.
    * Used by `patchDiagnosticCodeActions` to discard patches computed against a
    * now-stale diagnostics snapshot.
    */
@@ -656,6 +674,11 @@ export class WaterproofEditor implements MessageHandlerEditor {
     return true;
   }
 
+  /**
+   * Replaces the text between `startOffset` and `endOffset` (offsets relative to the on-disk
+   * text document) by `text`.
+   * @returns Whether the replacement was applied; `false` when the offsets could not be mapped.
+   */
   public replaceRange(
     startOffset: number,
     endOffset: number,
@@ -671,10 +694,37 @@ export class WaterproofEditor implements MessageHandlerEditor {
    *
    * All offsets refer to the same document snapshot, so edits are applied from
    * the end of the document backwards to keep earlier offsets stable.
+   *
+   * Nothing is applied (and `false` is returned) when an edit specifies an `oldText` that
+   * no longer matches the document, or when `requireEditable` is set and an edit touches
+   * a position that the user is not allowed to edit.
+   *
+   * @param edits The edits to apply, with offsets relative to the on-disk text document.
+   * @param options.requireEditable Only apply the edits if all of them lie in editable
+   *   parts of the document (see {@linkcode isPositionEditable}).
+   * @returns Whether the edits were applied.
    */
-  public replaceRanges(edits: readonly OffsetEdit[]): boolean {
+  public replaceRanges(
+    edits: readonly OffsetEdit[],
+    options: { requireEditable?: boolean } = {},
+  ): boolean {
     if (!this._view || !this._mapping) return false;
     if (edits.length === 0) return false;
+
+    if (edits.some((edit) => edit.oldText !== undefined)) {
+      const text = this.serializeDocument() ?? "";
+      const stale = edits.find(
+        (edit) =>
+          edit.oldText !== undefined &&
+          text.slice(edit.start, edit.end) !== edit.oldText,
+      );
+      if (stale) {
+        console.warn(
+          "Not applying edits: the document no longer matches the text they were computed for.",
+        );
+        return false;
+      }
+    }
 
     // textOffsetToPmIndex can throw
     try {
@@ -687,7 +737,20 @@ export class WaterproofEditor implements MessageHandlerEditor {
         }))
         .sort((a, b) => b.from - a.from || b.to - a.to || b.index - a.index);
 
-      const tr = this._view.state.tr;
+      const state = this._view.state;
+      if (
+        options.requireEditable &&
+        !positionedEdits.every(
+          (edit) =>
+            isPositionEditable(state, edit.from) &&
+            isPositionEditable(state, edit.to),
+        )
+      ) {
+        console.warn("Not applying edits: they touch a non-editable region.");
+        return false;
+      }
+
+      const tr = state.tr;
       for (const edit of positionedEdits) {
         tr.insertText(edit.text, edit.from, edit.to);
       }
@@ -821,7 +884,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
       const start = map.textOffsetToPmIndex(d.startOffset);
       const end = map.textOffsetToPmIndex(d.endOffset);
 
-      return toProseDiagnostic(d, start, end);
+      return toProseDiagnostic(d, start, end, map.version);
     });
     // Add the new diagnostics to the array of stored diagnostics
     this.currentProseDiagnostics.push(...newDiags);
@@ -844,15 +907,13 @@ export class WaterproofEditor implements MessageHandlerEditor {
     const start = map.textOffsetToPmIndex(toRemove.startOffset);
     const end = map.textOffsetToPmIndex(toRemove.endOffset);
 
-    const proseDiag = toProseDiagnostic(toRemove, start, end);
-
     const oldLength = this.currentProseDiagnostics.length;
     this.currentProseDiagnostics = this.currentProseDiagnostics.filter(
       (d) =>
-        d.start != proseDiag.start &&
-        d.end != proseDiag.end &&
-        d.message != proseDiag.message &&
-        d.severity != proseDiag.severity,
+        d.start != start ||
+        d.end != end ||
+        d.message != toRemove.message ||
+        d.severity != toRemove.severity,
     );
     const newLength = this.currentProseDiagnostics.length;
     // diagnostics have changed
@@ -886,15 +947,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
     const map = this._mapping;
     if (map === undefined) return;
 
-    const previous = this.currentProseDiagnostics;
     this.activeDiagnosticsDocVersion = version;
-
-    const previousByKey = new Map<string, DiagnosticObjectProse>();
-    for (const p of previous) {
-      if (p?.codeActions) {
-        previousByKey.set(`${p.start}:${p.end}:${p.message}`, p);
-      }
-    }
 
     const next = new Array<DiagnosticObjectProse>(diagnostics.length);
     for (let i = 0; i < diagnostics.length; i++) {
@@ -903,15 +956,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
       const end = map.textOffsetToPmIndex(diag.endOffset);
       if (start >= end) continue;
 
-      const base = toProseDiagnostic(diag, start, end);
-
-      // Carry forward code actions from a matching diagnostic in the previous
-      // pass, so a diagnostic that persists across progressive LSP passes
-      // doesn't lose its already-resolved actions while waiting for this
-      // pass's own patch to arrive.
-      const carried = previousByKey.get(`${start}:${end}:${base.message}`);
-
-      next[i] = carried ? { ...base, codeActions: carried.codeActions } : base;
+      next[i] = toProseDiagnostic(diag, start, end, map.version);
     }
 
     this.currentProseDiagnostics = next;
@@ -938,7 +983,11 @@ export class WaterproofEditor implements MessageHandlerEditor {
 
     if (!target) return;
 
-    this.currentProseDiagnostics[index] = { ...target, codeActions };
+    this.currentProseDiagnostics[index] = {
+      ...target,
+      codeActions,
+      codeActionsVersion: this._mapping?.version,
+    };
     this.diagnosticsUpdateCounter++;
     this.informCodemirrorViews();
   }
