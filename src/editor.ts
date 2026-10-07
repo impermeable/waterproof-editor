@@ -713,7 +713,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
 
     if (edits.some((edit) => edit.oldText !== undefined)) {
       const text = this.serializeDocument() ?? "";
-      const stale = edits.find(
+      const stale = edits.some(
         (edit) =>
           edit.oldText !== undefined &&
           text.slice(edit.start, edit.end) !== edit.oldText,
