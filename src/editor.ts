@@ -389,6 +389,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
         this._userOS,
         this._editorConfig.tagConfiguration,
         this._editorConfig.menubarEntries,
+        this._editorConfig.templates,
       ),
       keymap({
         "Mod-h": () => {
