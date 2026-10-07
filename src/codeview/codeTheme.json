@@ -36,8 +36,7 @@
 	  "marginBottom": "4px",
 	  "maxWidth": "220px",
 	  "whiteSpace": "normal",
-	  "overflowWrap": "anywhere",
-	  "textAlign": "left"
+	  "overflowWrap": "anywhere"
 	},
 
 	".cm-diagnosticAction:last-of-type": {
