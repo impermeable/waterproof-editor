@@ -51,9 +51,11 @@ export type OpenCloseTag = {
 };
 
 export const enum TextContentOfSpecifier {
-  CODE = 1, // = 001
-  MARKDOWN = 2, // = 010
-  MATH_DISPLAY = 4, // = 100
+  CODE = 0b00001,
+  MARKDOWN = 0b00010,
+  MATH_DISPLAY = 0b00100,
+  INPUT_AREA = 0b01000,
+  HINT = 0b10000,
 }
 
 /**

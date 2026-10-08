@@ -432,7 +432,67 @@ export class WaterproofEditor implements MessageHandlerEditor {
   }
 
   /**
-   * Returns the text content of specified parts of the document as well as the positions where the text starts.
+   * Returns the text content of (parts of) the document as well as the positions where the text starts and ends.
+   *
+   * Does not use the serializer, but extracts the text content directly from the nodes.
+   * @param include Types of content to include.
+   * @returns An array containing the text contents of the selected nodes.
+   * The array contains subarrays which contain the text content in the first slot and information on the node in
+   * the second.
+   * The information on the node is an object specifying:
+   * - `start`: The start of the text in the text document (before the first character).
+   * - `end`: The end of the text in the text document (after the last character in the document).
+   * - `parent`: The type of the parent node.
+   */
+  public textContent(
+    include: number = 0,
+  ): Array<[string, { start: number; end: number; parent: string }]> {
+    if (!this._view || this._mapping === undefined) return [];
+    const mapping = this._mapping;
+    const contents: Array<
+      [
+        string,
+        {
+          start: number;
+          end: number;
+          parent: string;
+        },
+      ]
+    > = [];
+
+    const includeMarkdown = include & TextContentOfSpecifier.MARKDOWN;
+    const includeCode = include & TextContentOfSpecifier.CODE;
+    const includeMath = include & TextContentOfSpecifier.MATH_DISPLAY;
+
+    this._view.state.doc.descendants((node, pos, parent) => {
+      // node type should be in include
+      if (
+        parent !== null &&
+        (include === undefined ||
+          (node.type === WaterproofSchema.nodes.markdown && includeMarkdown) ||
+          (node.type === WaterproofSchema.nodes.code && includeCode) ||
+          (node.type === WaterproofSchema.nodes.math_display && includeMath))
+      ) {
+        // TODO: This is a bit strange since we are converting the positions using the mapping.
+        // Should we *always* do this, even in cases where we are not necessarily dealing with the raw text file?
+
+        // The +1 gives us the prose position inside the text node
+        contents.push([
+          node.textContent,
+          {
+            start: mapping.pmIndexToTextOffset(pmIndex(pos + 1)),
+            end: mapping.pmIndexToTextOffset(pmIndex(pos + node.nodeSize - 1)),
+            parent: parent.type.name,
+          },
+        ]);
+      }
+      return true;
+    });
+    return contents;
+  }
+
+  /**
+   * Returns the text content of the input-areas in the document as well as the positions where the text starts.
    *
    * Does not use the serializer, but extracts the text content directly from the nodes.
    * @param include Types of content to include.
@@ -448,7 +508,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
     const includeCode = include & TextContentOfSpecifier.CODE;
     const includeMath = include & TextContentOfSpecifier.MATH_DISPLAY;
 
-    this._view.state.doc.descendants((node, _pos, parent) => {
+    this._view.state.doc.descendants((node, pos, parent) => {
       // node type should be in include
       if (
         parent !== null &&
@@ -465,8 +525,8 @@ export class WaterproofEditor implements MessageHandlerEditor {
         contents.push([
           node.textContent,
           {
-            start: mapping.pmIndexToTextOffset(pmIndex(_pos + 1)),
-            end: mapping.pmIndexToTextOffset(pmIndex(_pos + 1 + node.nodeSize)),
+            start: mapping.pmIndexToTextOffset(pmIndex(pos + 1)),
+            end: mapping.pmIndexToTextOffset(pmIndex(pos + 1 + node.nodeSize)),
           },
         ]);
         return false;
