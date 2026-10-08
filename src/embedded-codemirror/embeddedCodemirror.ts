@@ -11,6 +11,7 @@ import {
   DecorationSource,
   EditorView,
   NodeView,
+  ViewMutationRecord,
 } from "prosemirror-view";
 import { MovementDirection, MovementUnit } from "./types";
 import { keybindings } from "./embedded-codemirror-keymap";
@@ -141,8 +142,8 @@ export class EmbeddedCodeMirrorEditor implements NodeView {
     this.updating = false;
   }
 
-  stopEvent?: ((event: Event) => boolean) | undefined;
-  ignoreMutation?: ((mutation: MutationRecord) => boolean) | undefined;
+  stopEvent?: (event: Event) => boolean;
+  ignoreMutation?: (mutation: ViewMutationRecord) => boolean;
   destroy?(): void;
 
   /**
