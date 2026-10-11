@@ -36,6 +36,7 @@ import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
 import {
   EmptyCodePlaceholders,
   LanguageConfiguration,
+  OffsetMessageSegment,
   ThemeStyle,
 } from "../api";
 import { WaterproofEditor } from "../editor";
@@ -482,6 +483,10 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 
     if (startPos === undefined) return [];
 
+    // Suggestions carry absolute document offsets, so they are only offered as long as the
+    // document has not changed since the diagnostics were computed.
+    const offerSuggestions = this.editorInstance.diagnosticsMatchDocument;
+
     // We use the outer editor instance to query for diagnostics in the range of this codemirror instance.
     const diags = this.editorInstance
       .getPartialDiagnosticsInRange(
@@ -497,6 +502,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
           Math.min(d.end - startPos - 1, _view.state.doc.length),
           d.message,
           d.severity,
+          offerSuggestions ? d.segments : undefined,
         );
       });
 
@@ -512,12 +518,14 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
    * @param to The to postion of the error (should be larger than `from`).
    * @param message The message attached to this error.
    * @param severity The severity attached to this error.
+   * @param segments The message split into segments; suggestion segments are shown as links.
    */
   public preprocessDiagnostic(
     from: number,
     to: number,
     message: string,
     severity: number,
+    segments?: OffsetMessageSegment[],
   ): Diagnostic {
     const severityString = severityToString(severity);
 
@@ -525,7 +533,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
     let actions = [
       {
         name: "📋",
-        apply: (view: CodeMirror, from: number, _to: number) => {
+        apply: (_view: CodeMirror, from: number, _to: number) => {
           // give focus to this current codeblock instante to ensure it updates
           this._codemirror?.focus();
           navigator.clipboard.writeText(message);
@@ -568,7 +576,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
       actions = [
         {
           name: "Insert ⤵️",
-          apply: (view: CodeMirror, from: number, to: number) => {
+          apply: (_view: CodeMirror, _from: number, to: number) => {
             // give focus to this current codeblock instante to ensure it updates
             this._codemirror?.focus();
             const toInsert =
@@ -597,13 +605,57 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
       ];
     }
 
+    const hasSuggestions =
+      segments?.some((segment) => this.canApplySuggestion(segment)) ?? false;
+
     return {
       from,
       to,
       message: trimmedMessage === "" ? message : trimmedMessage,
       severity: severityString,
       actions,
+      ...(hasSuggestions
+        ? { renderMessage: () => this.renderSegments(segments!) }
+        : {}),
     };
+  }
+
+  private canApplySuggestion(
+    segment: OffsetMessageSegment,
+  ): segment is Required<OffsetMessageSegment> {
+    return (
+      segment.edit !== undefined &&
+      this.editorInstance.canApplyEdit(segment.edit, { requireEditable: true })
+    );
+  }
+
+  /**
+   * Renders a diagnostic message from its segments, with each suggestion that can be applied
+   * as a link that applies its edit.
+   */
+  private renderSegments(segments: OffsetMessageSegment[]): HTMLElement {
+    const container = document.createElement("span");
+    for (const segment of segments) {
+      if (!this.canApplySuggestion(segment)) {
+        container.append(segment.text);
+        continue;
+      }
+      const { edit } = segment;
+      const link = document.createElement("button");
+      link.type = "button";
+      link.className = "cm-diagnosticSuggestion";
+      link.textContent = segment.text;
+      link.title = "Apply suggestion";
+      // Keep the focus in the code block, so the tooltip doesn't close before the click.
+      link.addEventListener("mousedown", (e) => e.preventDefault());
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        this._codemirror?.focus();
+        this.editorInstance.applyEdit(edit, { requireEditable: true });
+      });
+      container.append(link);
+    }
+    return container;
   }
 
   private showCopyNotification(from: number) {

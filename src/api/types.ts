@@ -140,6 +140,12 @@ export type LanguageConfiguration = {
   highlightDark: HighlightStyle;
 };
 
+export type TemplateConfiguration = {
+  example: string;
+  exercise: { statement: string; closing: string };
+  containerOpenTag: string;
+};
+
 /**
  * The placeholder text for empty code cells.
  * - `inInput: string` applies when the code cell is inside of an input area.
@@ -214,6 +220,7 @@ export type WaterproofEditorConfig = {
    * See {@linkcode EmptyCodePlaceholders} for more details.
    */
   emptyCodePlaceholders?: EmptyCodePlaceholders;
+  templates: TemplateConfiguration;
 };
 
 export enum HistoryChange {
@@ -221,11 +228,39 @@ export enum HistoryChange {
   Redo,
 }
 
+export interface OffsetEdit {
+  // Offsets relative to the on-disk text document.
+  start: number;
+  end: number;
+  newText: string;
+  /**
+   * The text the edit expects to replace, i.e. the on-disk text in `[start, end)` at the
+   * time the edit was computed. When present, the edit is only applied if the document
+   * still contains exactly this text at these offsets, which guards against applying an
+   * edit computed for an older version of the document.
+   */
+  oldText?: string;
+}
+/**
+ * A piece of a diagnostic message. A segment with an `edit` is a suggestion: its text is
+ * shown as a link in the message, and clicking it applies the edit.
+ */
+export interface OffsetMessageSegment {
+  text: string;
+  edit?: OffsetEdit;
+}
+
 export interface OffsetDiagnostic {
   message: string;
   severity: Severity;
+  // Offsets relative to the on-disk text document.
   startOffset: number;
   endOffset: number;
+  /**
+   * The message split into segments, some of which are suggestions. Concatenating the
+   * segment texts gives `message`.
+   */
+  segments?: OffsetMessageSegment[];
 }
 
 export enum ThemeStyle {
