@@ -61,155 +61,141 @@ test("Basic diagnostic", () => {
   expect(result.actions?.at(0)?.name).toBe("📋");
 });
 
-test("LSP code actions are exposed and apply all edits as one batch", () => {
-  const replaceRanges = jest.fn();
-  const nodeview = new CodeBlockView(
-    node,
-    //@ts-expect-error For test setup supply only the minimal needed editor API
-    { editable: true },
-    { replaceRanges },
-    () => undefined,
-    null,
-    [],
-    [],
-    ThemeStyle.Light,
-  );
-  const edits = [
-    { start: 0, end: 1, newText: "Finished" },
-    { start: 3, end: 4, newText: "!" },
+describe("message segments", () => {
+  const edit = { start: 0, end: 4, newText: "We apply h", oldText: "Qed." };
+  const segments = [
+    { text: "Help\n  • " },
+    { text: "We apply h", edit },
+    { text: "\n  done" },
   ];
-  const alternativeEdits = [{ start: 0, end: 4, newText: "Done." }];
 
-  const result = nodeview.preprocessDiagnostic(
-    docStart,
-    docEnd,
-    "Help",
-    Severity.Information,
-    [
-      { title: "Apply suggestion", edits },
-      { title: "Apply alternative", edits: alternativeEdits },
-    ],
-  );
+  function makeSegmentView(editorInstance: object) {
+    return new CodeBlockView(
+      node,
+      //@ts-expect-error For test setup supply only the minimal needed editor API
+      { editable: true },
+      editorInstance,
+      () => undefined,
+      null,
+      [],
+      [],
+      ThemeStyle.Light,
+    );
+  }
 
-  expect(result.actions?.map((action) => action.name)).toStrictEqual([
-    "📋",
-    "↩️ Apply suggestion",
-    "↩️ Apply alternative",
-  ]);
-
-  //@ts-expect-error private
-  result.actions?.at(1)?.apply(nodeview._codemirror, result.from, result.to);
-
-  expect(replaceRanges).toHaveBeenCalledTimes(1);
-  expect(replaceRanges).toHaveBeenCalledWith(edits, {
-    requireEditable: true,
+  /** An editor on which every edit can be applied, unless `canApplyEdit` is overridden. */
+  const makeEditorInstance = () => ({
+    applyEdit: jest.fn(() => true),
+    canApplyEdit: jest.fn(() => true),
   });
-});
 
-test("an empty codeActions array falls back to the default diagnostic handling", () => {
-  const replaceRanges = jest.fn();
-  const nodeview = new CodeBlockView(
-    node,
-    //@ts-expect-error For test setup supply only the minimal needed editor API
-    { editable: true },
-    { replaceRanges },
-    () => undefined,
-    null,
-    [],
-    [],
-    ThemeStyle.Light,
-  );
+  const render = (diagnostic: { renderMessage?: unknown }) =>
+    (diagnostic.renderMessage as () => HTMLElement)();
 
-  const result = nodeview.preprocessDiagnostic(
-    docStart,
-    docEnd,
-    "Just a plain diagnostic",
-    Severity.Error,
-    [],
-  );
+  test("renders suggestion segments as buttons in the message", () => {
+    const nodeview = makeSegmentView(makeEditorInstance());
 
-  expect(result.actions?.map((action) => action.name)).toStrictEqual(["📋"]);
-  expect(replaceRanges).not.toHaveBeenCalled();
-});
+    const result = nodeview.preprocessDiagnostic(
+      docStart,
+      docEnd,
+      "Help\n  • We apply h\n  done",
+      Severity.Information,
+      segments,
+    );
 
-test("each code action applies only its own edits", () => {
-  const replaceRanges = jest.fn();
-  const nodeview = new CodeBlockView(
-    node,
-    //@ts-expect-error For test setup supply only the minimal needed editor API
-    { editable: true },
-    { replaceRanges },
-    () => undefined,
-    null,
-    [],
-    [],
-    ThemeStyle.Light,
-  );
-  const edits = [{ start: 0, end: 1, newText: "Finished" }];
-  const alternativeEdits = [{ start: 0, end: 4, newText: "Done." }];
-
-  const result = nodeview.preprocessDiagnostic(
-    docStart,
-    docEnd,
-    "Help",
-    Severity.Information,
-    [
-      { title: "Apply suggestion", edits },
-      { title: "Apply alternative", edits: alternativeEdits },
-    ],
-  );
-
-  //@ts-expect-error private
-  result.actions?.at(2)?.apply(nodeview._codemirror, result.from, result.to);
-
-  expect(replaceRanges).toHaveBeenCalledTimes(1);
-  expect(replaceRanges).toHaveBeenCalledWith(alternativeEdits, {
-    requireEditable: true,
+    const element = render(result);
+    expect(element.textContent).toBe("Help\n  • We apply h\n  done");
+    const links = element.querySelectorAll(".cm-diagnosticSuggestion");
+    expect(links).toHaveLength(1);
+    expect(links[0].textContent).toBe("We apply h");
+    expect(links[0].tagName).toBe("BUTTON");
+    // The plain message is kept, e.g. for the copy action.
+    expect(result.message).toBe("Help\n  • We apply h\n  done");
+    expect(result.actions?.map((action) => action.name)).toStrictEqual(["📋"]);
   });
-});
 
-test("code actions are only offered while the document is unchanged since they arrived", () => {
-  const codeActions = [
-    { title: "Apply suggestion", edits: [{ start: 0, end: 1, newText: "x" }] },
-  ];
-  const editorInstance = {
-    documentVersion: 5,
-    diagnosticsVersion: 1,
-    getPartialDiagnosticsInRange: () => [
-      {
-        start: 1,
-        end: 1 + docEnd,
-        message: "Help",
-        severity: Severity.Information,
-        codeActions,
-        codeActionsVersion: 5,
-      },
-    ],
-  };
-  const nodeview = new CodeBlockView(
-    node,
-    //@ts-expect-error For test setup supply only the minimal needed editor API
-    { editable: true },
-    editorInstance,
-    () => undefined,
-    null,
-    [],
-    [],
-    ThemeStyle.Light,
-  );
-  //@ts-expect-error private; position the code block at the start of the document
-  nodeview._getPos = () => 0;
-  const lint = () =>
-    //@ts-expect-error private
-    nodeview
-      .lintingFunction(nodeview._codemirror)[0]
-      .actions.map((action: { name: string }) => action.name);
+  test("clicking a suggestion applies its edit", () => {
+    const editorInstance = makeEditorInstance();
+    const nodeview = makeSegmentView(editorInstance);
+    const result = nodeview.preprocessDiagnostic(
+      docStart,
+      docEnd,
+      "Help",
+      Severity.Information,
+      segments,
+    );
 
-  expect(lint()).toStrictEqual(["📋", "↩️ Apply suggestion"]);
+    render(result)
+      .querySelector<HTMLElement>(".cm-diagnosticSuggestion")!
+      .click();
 
-  // The document changed after the code actions were received: their offsets are stale.
-  editorInstance.documentVersion = 6;
-  expect(lint()).toStrictEqual(["📋"]);
+    expect(editorInstance.applyEdit).toHaveBeenCalledTimes(1);
+    expect(editorInstance.applyEdit).toHaveBeenCalledWith(edit, {
+      requireEditable: true,
+    });
+  });
+
+  test("shows a suggestion that can't be applied as plain text", () => {
+    const editorInstance = makeEditorInstance();
+    editorInstance.canApplyEdit.mockReturnValue(false);
+    const nodeview = makeSegmentView(editorInstance);
+
+    const result = nodeview.preprocessDiagnostic(
+      docStart,
+      docEnd,
+      "Help",
+      Severity.Information,
+      segments,
+    );
+
+    expect(result.renderMessage).toBeUndefined();
+    expect(editorInstance.canApplyEdit).toHaveBeenCalledWith(edit, {
+      requireEditable: true,
+    });
+  });
+
+  test("does not use a custom renderer when no segment is a suggestion", () => {
+    const nodeview = makeSegmentView(makeEditorInstance());
+    const result = nodeview.preprocessDiagnostic(
+      docStart,
+      docEnd,
+      "Help",
+      Severity.Information,
+      [{ text: "Help" }],
+    );
+
+    expect(result.renderMessage).toBeUndefined();
+  });
+
+  test("suggestions are only offered while the diagnostics match the document", () => {
+    const editorInstance = {
+      ...makeEditorInstance(),
+      diagnosticsMatchDocument: true,
+      diagnosticsVersion: 1,
+      getPartialDiagnosticsInRange: () => [
+        {
+          start: 1,
+          end: 1 + docEnd,
+          message: "Help\n  • We apply h\n  done",
+          severity: Severity.Information,
+          segments,
+        },
+      ],
+    };
+    const nodeview = makeSegmentView(editorInstance);
+    //@ts-expect-error private; position the code block at the start of the document
+    nodeview._getPos = () => 0;
+    const lint = () =>
+      //@ts-expect-error private
+      nodeview.lintingFunction(nodeview._codemirror)[0];
+
+    expect(lint().renderMessage).toBeDefined();
+
+    // The document changed after the diagnostics were computed: their offsets are stale.
+    editorInstance.diagnosticsMatchDocument = false;
+    expect(lint().renderMessage).toBeUndefined();
+    expect(lint().message).toBe("Help\n  • We apply h\n  done");
+  });
 });
 
 test("Severity to string", () => {

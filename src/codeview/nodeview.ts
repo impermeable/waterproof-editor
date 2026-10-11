@@ -33,7 +33,11 @@ import { renderIcon } from "../autocomplete";
 import { EmbeddedCodeMirrorEditor } from "../embedded-codemirror";
 import { linter, LintSource, Diagnostic, lintGutter } from "@codemirror/lint";
 import { INPUT_AREA_PLUGIN_KEY } from "../inputArea";
-import { LanguageConfiguration, OffsetCodeAction, ThemeStyle } from "../api";
+import {
+  LanguageConfiguration,
+  OffsetMessageSegment,
+  ThemeStyle,
+} from "../api";
 import { WaterproofEditor } from "../editor";
 import { WaterproofSchema } from "../schema";
 import { CodeBlockBusyIndicator } from "./busy-indicator";
@@ -477,9 +481,9 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
 
     if (startPos === undefined) return [];
 
-    // Code actions carry absolute document offsets, so they are only offered as long as the
-    // document has not changed since they were received.
-    const documentVersion = this.editorInstance.documentVersion;
+    // Suggestions carry absolute document offsets, so they are only offered as long as the
+    // document has not changed since the diagnostics were computed.
+    const offerSuggestions = this.editorInstance.diagnosticsMatchDocument;
 
     // We use the outer editor instance to query for diagnostics in the range of this codemirror instance.
     const diags = this.editorInstance
@@ -496,7 +500,7 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
           Math.min(d.end - startPos - 1, _view.state.doc.length),
           d.message,
           d.severity,
-          d.codeActionsVersion === documentVersion ? d.codeActions : undefined,
+          offerSuggestions ? d.segments : undefined,
         );
       });
 
@@ -512,14 +516,14 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
    * @param to The to postion of the error (should be larger than `from`).
    * @param message The message attached to this error.
    * @param severity The severity attached to this error.
-   * @param codeActions The code actions attached to this error.
+   * @param segments The message split into segments; suggestion segments are shown as links.
    */
   public preprocessDiagnostic(
     from: number,
     to: number,
     message: string,
     severity: number,
-    codeActions?: OffsetCodeAction[],
+    segments?: OffsetMessageSegment[],
   ): Diagnostic {
     const severityString = severityToString(severity);
 
@@ -535,22 +539,8 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
         },
       },
     ];
-
-    let trimmedMessage = "";
-
-    if (codeActions && codeActions.length > 0) {
-      for (const action of codeActions) {
-        actions.push({
-          name: `↩️ ${action.title}`,
-          apply: (_view: CodeMirror, _from: number, _to: number) => {
-            this._codemirror?.focus();
-            this.editorInstance.replaceRanges(action.edits, {
-              requireEditable: true,
-            });
-          },
-        });
-      }
-    } else if (message.startsWith("Hint, replace with: ")) {
+    let trimmedMessage: string = "";
+    if (message.startsWith("Hint, replace with: ")) {
       trimmedMessage = message
         .trim()
         .replace("Hint, replace with: ", "")
@@ -613,13 +603,57 @@ export class CodeBlockView extends EmbeddedCodeMirrorEditor {
       ];
     }
 
+    const hasSuggestions =
+      segments?.some((segment) => this.canApplySuggestion(segment)) ?? false;
+
     return {
       from,
       to,
       message: trimmedMessage === "" ? message : trimmedMessage,
       severity: severityString,
       actions,
+      ...(hasSuggestions
+        ? { renderMessage: () => this.renderSegments(segments!) }
+        : {}),
     };
+  }
+
+  private canApplySuggestion(
+    segment: OffsetMessageSegment,
+  ): segment is Required<OffsetMessageSegment> {
+    return (
+      segment.edit !== undefined &&
+      this.editorInstance.canApplyEdit(segment.edit, { requireEditable: true })
+    );
+  }
+
+  /**
+   * Renders a diagnostic message from its segments, with each suggestion that can be applied
+   * as a link that applies its edit.
+   */
+  private renderSegments(segments: OffsetMessageSegment[]): HTMLElement {
+    const container = document.createElement("span");
+    for (const segment of segments) {
+      if (!this.canApplySuggestion(segment)) {
+        container.append(segment.text);
+        continue;
+      }
+      const { edit } = segment;
+      const link = document.createElement("button");
+      link.type = "button";
+      link.className = "cm-diagnosticSuggestion";
+      link.textContent = segment.text;
+      link.title = "Apply suggestion";
+      // Keep the focus in the code block, so the tooltip doesn't close before the click.
+      link.addEventListener("mousedown", (e) => e.preventDefault());
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        this._codemirror?.focus();
+        this.editorInstance.applyEdit(edit, { requireEditable: true });
+      });
+      container.append(link);
+    }
+    return container;
   }
 
   private showCopyNotification(from: number) {

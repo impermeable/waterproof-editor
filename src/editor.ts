@@ -32,8 +32,8 @@ import {
   WaterproofEditorConfig,
   TextContentOfSpecifier,
   MessageHandlerEditor,
-  OffsetCodeAction,
   OffsetEdit,
+  OffsetMessageSegment,
 } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
@@ -77,30 +77,16 @@ export type DiagnosticObjectProse = {
   start: number;
   end: number;
   severity: Severity;
-  codeActions?: OffsetCodeAction[];
-  /**
-   * The editor's document version at the time `codeActions` were received. The offsets in
-   * the code actions are only meaningful as long as the document has not changed since.
-   */
-  codeActionsVersion?: number;
+  segments?: OffsetMessageSegment[];
 };
 
 function toProseDiagnostic(
   diagnostic: OffsetDiagnostic,
   start: number,
   end: number,
-  documentVersion: number,
 ): DiagnosticObjectProse {
-  const { message, severity, codeActions } = diagnostic;
-  return {
-    message,
-    severity,
-    start,
-    end,
-    ...(codeActions
-      ? { codeActions, codeActionsVersion: documentVersion }
-      : {}),
-  };
+  const { message, severity, segments } = diagnostic;
+  return { message, severity, start, end, ...(segments ? { segments } : {}) };
 }
 
 /**
@@ -129,21 +115,22 @@ export class WaterproofEditor implements MessageHandlerEditor {
   }
 
   /**
-   * The version of the document as currently shown in the editor. It is incremented on
-   * every change to the document, and is used to tell whether code actions, whose edits
-   * are expressed in document offsets, still apply to the current document.
+   * The document version that the active diagnostics were computed for, as passed to
+   * {@linkcode setActiveDiagnostics}.
    */
-  public get documentVersion(): number | undefined {
-    return this._mapping?.version;
-  }
+  private diagnosticsDocVersion: number | undefined;
 
   /**
-   * The (extension-side) document version that the diagnostics were computed for, as passed
-   * to `setActiveDiagnostics` the last time it ran.
-   * Used by `patchDiagnosticCodeActions` to discard patches computed against a
-   * now-stale diagnostics snapshot.
+   * Whether the active diagnostics were computed for the document as it is shown now. The
+   * edits of suggestions are expressed in document offsets, so they are only offered while
+   * this holds.
    */
-  private activeDiagnosticsDocVersion: number | undefined;
+  public get diagnosticsMatchDocument(): boolean {
+    return (
+      this.diagnosticsDocVersion !== undefined &&
+      this.diagnosticsDocVersion === this._mapping?.version
+    );
+  }
   private diagnosticsUpdateCounter = 0;
 
   private _lineNumbersShown: boolean = false;
@@ -684,82 +671,75 @@ export class WaterproofEditor implements MessageHandlerEditor {
     endOffset: number,
     text: string,
   ): boolean {
-    return this.replaceRanges([
-      { start: startOffset, end: endOffset, newText: text },
-    ]);
+    return this.applyEdit({
+      start: startOffset,
+      end: endOffset,
+      newText: text,
+    });
   }
 
   /**
-   * Applies offset-based edits as one editor transaction.
-   *
-   * All offsets refer to the same document snapshot, so edits are applied from
-   * the end of the document backwards to keep earlier offsets stable.
-   *
-   * Nothing is applied (and `false` is returned) when an edit specifies an `oldText` that
-   * no longer matches the document, or when `requireEditable` is set and an edit touches
-   * a position that the user is not allowed to edit.
-   *
-   * @param edits The edits to apply, with offsets relative to the on-disk text document.
-   * @param options.requireEditable Only apply the edits if all of them lie in editable
-   *   parts of the document (see {@linkcode isPositionEditable}).
-   * @returns Whether the edits were applied.
+   * Applies an offset-based edit, unless {@linkcode canApplyEdit} says it can't be.
+   * @returns Whether the edit was applied.
    */
-  public replaceRanges(
-    edits: readonly OffsetEdit[],
+  public applyEdit(
+    edit: OffsetEdit,
     options: { requireEditable?: boolean } = {},
   ): boolean {
-    if (!this._view || !this._mapping) return false;
-    if (edits.length === 0) return false;
-
-    if (edits.some((edit) => edit.oldText !== undefined)) {
-      const text = this.serializeDocument() ?? "";
-      const stale = edits.some(
-        (edit) =>
-          edit.oldText !== undefined &&
-          text.slice(edit.start, edit.end) !== edit.oldText,
-      );
-      if (stale) {
-        console.warn(
-          "Not applying edits: the document no longer matches the text they were computed for.",
-        );
-        return false;
-      }
-    }
-
-    // textOffsetToPmIndex can throw
-    try {
-      const positionedEdits = edits
-        .map((edit, index) => ({
-          from: this._mapping!.textOffsetToPmIndex(edit.start),
-          to: this._mapping!.textOffsetToPmIndex(edit.end),
-          text: edit.newText,
-          index,
-        }))
-        .sort((a, b) => b.from - a.from || b.to - a.to || b.index - a.index);
-
-      const state = this._view.state;
-      if (
-        options.requireEditable &&
-        !positionedEdits.every(
-          (edit) =>
-            isPositionEditable(state, edit.from) &&
-            isPositionEditable(state, edit.to),
-        )
-      ) {
-        console.warn("Not applying edits: they touch a non-editable region.");
-        return false;
-      }
-
-      const tr = state.tr;
-      for (const edit of positionedEdits) {
-        tr.insertText(edit.text, edit.from, edit.to);
-      }
-      this._view.dispatch(tr);
-      return true;
-    } catch (error) {
-      console.error("Error occurred while replacing ranges:", error);
+    const range = this.positionEdit(edit, options);
+    if (!this._view || !range) {
+      console.warn("Not applying edit: it no longer applies to the document.");
       return false;
     }
+    this._view.dispatch(
+      this._view.state.tr.insertText(edit.newText, range.from, range.to),
+    );
+    return true;
+  }
+
+  /**
+   * Whether `edit` can be applied: its offsets can be mapped, its `oldText` (if any) matches
+   * the document, and, with `requireEditable`, it lies in an editable part of the document
+   * (see {@linkcode isPositionEditable}).
+   */
+  public canApplyEdit(
+    edit: OffsetEdit,
+    options: { requireEditable?: boolean } = {},
+  ): boolean {
+    return this.positionEdit(edit, options) !== undefined;
+  }
+
+  /** Maps `edit` to ProseMirror positions, or `undefined` if it can't be applied. */
+  private positionEdit(
+    edit: OffsetEdit,
+    { requireEditable = false }: { requireEditable?: boolean },
+  ): { from: number; to: number } | undefined {
+    if (!this._view || !this._mapping) return undefined;
+    let from: number, to: number;
+    try {
+      from = this._mapping.textOffsetToPmIndex(edit.start);
+      to = this._mapping.textOffsetToPmIndex(edit.end);
+    } catch {
+      return undefined;
+    }
+    const state = this._view.state;
+    // Compare against the editor's own content at the mapped positions rather than the
+    // serialized document: serialization does not reproduce the file exactly (e.g. the Lean
+    // serializer writes a placeholder title), which would shift the offsets. An edit that
+    // spans several blocks never matches, since the block delimiters are not in the content.
+    if (
+      edit.oldText !== undefined &&
+      state.doc.textBetween(from, to) !== edit.oldText
+    ) {
+      return undefined;
+    }
+    if (
+      requireEditable &&
+      !(isPositionEditable(state, from) && isPositionEditable(state, to))
+    ) {
+      return undefined;
+    }
+    return { from, to };
   }
 
   /**
@@ -884,7 +864,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
       const start = map.textOffsetToPmIndex(d.startOffset);
       const end = map.textOffsetToPmIndex(d.endOffset);
 
-      return toProseDiagnostic(d, start, end, map.version);
+      return toProseDiagnostic(d, start, end);
     });
     // Add the new diagnostics to the array of stored diagnostics
     this.currentProseDiagnostics.push(...newDiags);
@@ -937,6 +917,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
    * If you want to add a diagnostic use {@linkcode pushDiagnostics}
    *
    * @param msg The set of diagnostics for the current document.
+   * @param version The version of the document the diagnostics were computed for.
    */
   public setActiveDiagnostics(
     diagnostics: Array<OffsetDiagnostic>,
@@ -947,7 +928,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
     const map = this._mapping;
     if (map === undefined) return;
 
-    this.activeDiagnosticsDocVersion = version;
+    this.diagnosticsDocVersion = version;
 
     const next = new Array<DiagnosticObjectProse>(diagnostics.length);
     for (let i = 0; i < diagnostics.length; i++) {
@@ -956,38 +937,11 @@ export class WaterproofEditor implements MessageHandlerEditor {
       const end = map.textOffsetToPmIndex(diag.endOffset);
       if (start >= end) continue;
 
-      next[i] = toProseDiagnostic(diag, start, end, map.version);
+      next[i] = toProseDiagnostic(diag, start, end);
     }
 
     this.currentProseDiagnostics = next;
     // diagnostics have changed
-    this.diagnosticsUpdateCounter++;
-    this.informCodemirrorViews();
-  }
-
-  /**
-   * Merges resolved code actions into an already-stored diagnostic, streamed in
-   * separately from the initial diagnostics batch. `index` refers to the position
-   * in the diagnostics array that was current when `version` was last set via
-   * {@linkcode setActiveDiagnostics}; patches for a stale version are dropped.
-   */
-  public patchDiagnosticCodeActions(
-    version: number,
-    index: number,
-    codeActions: OffsetCodeAction[],
-  ) {
-    if (version !== this.activeDiagnosticsDocVersion) {
-      return;
-    }
-    const target = this.currentProseDiagnostics[index];
-
-    if (!target) return;
-
-    this.currentProseDiagnostics[index] = {
-      ...target,
-      codeActions,
-      codeActionsVersion: this._mapping?.version,
-    };
     this.diagnosticsUpdateCounter++;
     this.informCodemirrorViews();
   }
