@@ -43,7 +43,3 @@
 .empty-input-area-placeholder {
   color: var(--wp-empty-input-area-placeholder-color);
 }
-
-.empty-input-area-placeholder::before {
-  content: var(--wp--empty-input-area-placeholder-content);
-}
