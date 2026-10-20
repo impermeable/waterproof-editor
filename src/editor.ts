@@ -67,7 +67,7 @@ import { deleteSelection } from "./commands/commands";
 import { Mapping, pmIndex, textOffset } from "./mapping";
 import { ProgressBar } from "./progressBar";
 import { studentHiddenPlugin } from "./student-hidden";
-import { constructDocAndMapping } from "./thingie";
+import { constructDocAndMapping } from "./constructFromDocString";
 
 /** Type that contains a diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {

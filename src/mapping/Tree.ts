@@ -86,6 +86,15 @@ export class TreeNode {
   get prosemirrorEnd() {
     return this.pmRange.to - this.suffixSize;
   }
+
+  get tagSize() {
+    return (
+      this.tagRange.to -
+      this.contentRange.to +
+      this.tagRange.from -
+      this.contentRange.from
+    );
+  }
 }
 
 export class Tree {
@@ -152,14 +161,14 @@ export class Tree {
     return null;
   }
 
-  findNodeByOriginalPosition(
+  findNodeByTextOffset(
     pos: number,
     node: TreeNode | null = this.root,
   ): TreeNode | null {
     if (!node) return null;
     if (pos >= node.contentRange.from && pos <= node.contentRange.to) {
       for (const child of node.children) {
-        const result = this.findNodeByOriginalPosition(pos, child);
+        const result = this.findNodeByTextOffset(pos, child);
         if (result) return result;
       }
       return node;
@@ -213,8 +222,8 @@ export class Tree {
    */
   findNodeByProsePos(
     pos: number,
-    node: TreeNode = this.root,
     boundaryResolutionStrategy: BoundaryResolutionStrategy = BoundaryResolutionStrategy.Left,
+    node: TreeNode = this.root,
   ): TreeNode | null {
     // The position we are searching for is outside the range
     if (pos < node.pmRange.from || pos > node.pmRange.to) return null;
@@ -275,7 +284,7 @@ export class Tree {
       // * if there are no children, this must be the node
       if (child.children.length === 0) return child;
       // * otherwise search within the children of child
-      return this.findNodeByProsePos(pos, child, boundaryResolutionStrategy);
+      return this.findNodeByProsePos(pos, boundaryResolutionStrategy, child);
       // }
     }
     // TODO: Shouldn't this error?

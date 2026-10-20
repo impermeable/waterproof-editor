@@ -21,7 +21,7 @@ import {
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 import { sanityCheckTree } from "./util";
 import { Node } from "prosemirror-model";
-import { constructDocAndMapping } from "../../src/thingie";
+import { constructDocAndMapping } from "../../src/constructFromDocString";
 
 const config = configuration("coq");
 const serializer = new DefaultTagSerializer(config);

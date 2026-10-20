@@ -29,7 +29,7 @@ import { EditorState } from "prosemirror-state";
 import { Fragment } from "prosemirror-model";
 import { WaterproofSchema } from "../src/schema";
 import { checkInputArea } from "../src/commands/command-helpers";
-import { constructDocAndMapping } from "../src/thingie";
+import { constructDocAndMapping } from "../src/constructFromDocString";
 
 const constructDocument = (blocks: Block[]) =>
   //@ts-expect-error We can't pass undefined here, but we are only using the document construction logic

@@ -7,7 +7,7 @@ import { configuration, parse } from "../../src/markdown-defaults";
 import { WaterproofSchema } from "../../src/schema";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 import { sanityCheckTree } from "./util";
-import { constructDocAndMapping } from "../../src/thingie";
+import { constructDocAndMapping } from "../../src/constructFromDocString";
 
 const config = configuration("coq");
 const serializer = new DefaultTagSerializer(config);

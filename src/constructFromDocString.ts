@@ -10,9 +10,6 @@ export function constructDocAndMapping(
   tagConf: TagConfiguration,
   serializer: DocumentSerializer,
 ): [Node, Mapping] {
-  // console.log("Blocks");
-  // console.log(blocks);
-
   // Start building the tree and document for the blocks on the top level.
   // Blocks in our representation are not stored in a 'doc' or 'root' node.
 
@@ -26,13 +23,7 @@ export function constructDocAndMapping(
     0,
     treeNodes,
   );
-  // console.log(proseDoc.toJSON());
-  // console.log(tree);
-
   const mapping = new Mapping(version, tagConf, serializer, tree);
-
-  // console.log("TREE UNDERNEATH");
-  // console.log(JSON.stringify(mapping.getMapping()));
 
   return [proseDoc, mapping];
 }

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Tree, TreeNode } from "../src/mapping";
+import { Tree, TreeNode } from "../../src/mapping";
 
 function fromJSON(json: any): Tree {
   const parseNode = (obj: any): TreeNode => {
@@ -424,17 +424,17 @@ test("findNodeByOriginalPosition finds deepest node at position", () => {
   const tree = fromJSON(treeJSON);
 
   // Position 2 is within the first markdown (contentRange 0-4)
-  const node = tree.findNodeByOriginalPosition(2);
+  const node = tree.findNodeByTextOffset(2);
   expect(node).not.toBeNull();
   expect(node?.type).toBe("markdown");
 
   // Position 20 is within the first code (contentRange 12-31)
-  const node2 = tree.findNodeByOriginalPosition(20);
+  const node2 = tree.findNodeByTextOffset(20);
   expect(node2).not.toBeNull();
   expect(node2?.type).toBe("code");
 
   // Position 50 is within the second code (contentRange 43-66)
-  const node3 = tree.findNodeByOriginalPosition(50);
+  const node3 = tree.findNodeByTextOffset(50);
   expect(node3).not.toBeNull();
   expect(node3?.type).toBe("code");
 });
@@ -443,7 +443,7 @@ test("findNodeByOriginalPosition finds nested node", () => {
   const tree = fromJSON(secondTreeJSON);
 
   // Position 30 is inside code within input (code contentRange 24-43)
-  const node = tree.findNodeByOriginalPosition(30);
+  const node = tree.findNodeByTextOffset(30);
   expect(node).not.toBeNull();
   expect(node?.type).toBe("code");
 });

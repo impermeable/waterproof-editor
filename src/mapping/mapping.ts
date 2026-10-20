@@ -76,10 +76,24 @@ export class Mapping {
    */
   public pmIndexToTextOffset(index: PmIndex): TextOffset {
     const node = this.tree.findNodeByProsePos(index);
-    if (node === null)
+    if (node === null) {
       throw new MappingError(
         ` [findPosition] The vscode document offset for prosemirror index (${index}) could not be found `,
       );
+    }
+
+    // Is the pmIndex located on the boundary?
+    if (index === node.pmRange.to) {
+      console.log("here");
+      return textOffset(
+        index -
+          node.prosemirrorStart +
+          node.contentRange.from -
+          node.suffixSize -
+          node.tagSize,
+      );
+    }
+
     return textOffset(index - node.prosemirrorStart + node.contentRange.from);
   }
 
@@ -89,12 +103,13 @@ export class Mapping {
    * @returns The corresponding ProseMirror index into the ProseMirror view.
    */
   public textOffsetToPmIndex(offset: TextOffset): PmIndex {
-    const correctNode: TreeNode | null =
-      this.tree.findNodeByOriginalPosition(offset);
-    if (correctNode === null)
+    const correctNode: TreeNode | null = this.tree.findNodeByTextOffset(offset);
+    if (correctNode === null) {
       throw new MappingError(
         ` [findInvPosition] The prosemirror index for offset (${offset}) could not be found `,
       );
+    }
+
     return pmIndex(
       offset - correctNode.contentRange.from + correctNode.prosemirrorStart,
     );
