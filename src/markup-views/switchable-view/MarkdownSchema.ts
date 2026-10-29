@@ -1,6 +1,19 @@
 import { schema } from "prosemirror-markdown";
-import { Schema } from "prosemirror-model";
+import { NodeSpec, Schema } from "prosemirror-model";
 import { mathInlineSpec } from "../../math-integration";
+
+export const kbdSpec: NodeSpec = {
+  group: "inline",
+  content: "text*",
+  inline: true,
+  atom: true,
+  toDOM: () => ["kbd", {}, 0],
+  parseDOM: [
+    {
+      tag: "kbd",
+    },
+  ],
+};
 
 /**
  * The schema in use to render markdown.
@@ -8,6 +21,8 @@ import { mathInlineSpec } from "../../math-integration";
  * prosemirror-math `math_inline` nodes.
  */
 export const markdownRenderingSchema = new Schema({
-  nodes: schema.spec.nodes.update("math_inline", mathInlineSpec),
+  nodes: schema.spec.nodes
+    .update("math_inline", mathInlineSpec)
+    .update("kbd", kbdSpec),
   marks: schema.spec.marks,
 });

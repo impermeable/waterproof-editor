@@ -5,6 +5,7 @@ import { DocumentSerializer } from "../serialization/DocumentSerializer";
 import { WaterproofCompletion, WaterproofSymbol } from "./Completions";
 import { DocChange, WrappingDocChange } from "./DocChange";
 import { Severity } from "./Severity";
+import { PluginSimple } from "markdown-it";
 
 export type Positioned<A> = {
   obj: A;
@@ -191,10 +192,8 @@ export type WaterproofEditorConfig = {
    * @returns The output string should be valid Markdown, with possible inline LaTeX wrapped in the tags as described above.
    */
   toMarkdown?: (inputString: string) => string;
-  /**
-   * Disables Markdown features. Will likely be removed in the future once there is a nice way to support non markdown markup languages.
-   */
-  disableMarkdownFeatures?: Array<string>;
+
+  markdownOptions?: MarkdownOptions;
 
   /**
    * Specify custom entries that should be added to the menubar
@@ -204,6 +203,17 @@ export type WaterproofEditorConfig = {
   languageConfig?: LanguageConfiguration;
 
   templates: TemplateConfiguration;
+};
+
+export type MarkdownOptions = {
+  /**
+   * Disables Markdown features. Will likely be removed in the future once there is a nice way to support non markdown markup languages.
+   */
+  disableMarkdownFeatures?: Array<string>;
+
+  enableHTML?: boolean;
+
+  plugins?: Array<PluginSimple>;
 };
 
 export enum HistoryChange {

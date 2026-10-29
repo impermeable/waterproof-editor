@@ -1,13 +1,18 @@
-import { EditorView } from "prosemirror-view";
-import { DOMParser } from "prosemirror-model";
-import { mathPlugin } from "@benrbray/prosemirror-math";
-import { EditorState, TextSelection } from "prosemirror-state";
+import { EditorView } from "prosemirror-view"; // Kept for type definition of outerView if needed
 import MarkdownIt from "markdown-it";
 import { SwitchableView } from "./SwitchableView";
-import { markdownRenderingSchema } from "./MarkdownSchema";
+import { MarkdownOptions } from "../../api";
+import { kbdPlugin } from "../../markdown-plugins/kbd";
+import { mathPlugin as mdMathPlugin } from "../../markdown-plugins/math";
+import { taskLists } from "../../markdown-plugins/taskLists";
+import { katex as mdKatex } from "@mdit/plugin-katex";
+import { alert } from "@mdit/plugin-alert";
+import { imgSize } from "@mdit/plugin-img-size";
+
+// import "@mdit/plugin-alert/style";
 
 export class RenderedView {
-  public view: EditorView;
+  public target: HTMLElement;
   private _outerView: EditorView;
   private _parent: SwitchableView;
 
@@ -17,47 +22,39 @@ export class RenderedView {
     outerView: EditorView,
     parent: SwitchableView,
     _getPos: () => number | undefined,
-    disableMarkdownFeatures: Array<string>,
+    mdOptions: MarkdownOptions,
   ) {
-    // Create a new MarkdownIt renderer with support for html (this allows
-    //  for the math-inline nodes to be passed through)
-    const mdit = new MarkdownIt({ html: true }).disable(
-      disableMarkdownFeatures,
-    );
-    // Render the markdown (converts it into a HTML string)
-    const mditOutput = mdit.render(content);
-    // Create a container element.
-    const holder = document.createElement("div");
+    this.target = target;
     this._outerView = outerView;
     this._parent = parent;
-    // Set the holder innerHTML to the rendered markdown this way we can parse it to prosemirror.
-    holder.innerHTML = mditOutput;
-    // Create a prosemirror view with the math plugin enabled
-    const view = new EditorView(target, {
-      state: EditorState.create({
-        doc: DOMParser.fromSchema(markdownRenderingSchema).parse(holder),
-        schema: markdownRenderingSchema,
-        plugins: [mathPlugin],
-      }),
-      // This view is not editable
-      editable: (_state) => {
-        return false;
-      },
-    });
-    // Save the view.
-    this.view = view;
+
+    // Create a new MarkdownIt renderer with support for html
+    // TODO: Don't reconstruct on every call to render :)
+    const mdit = (() => {
+      let md = new MarkdownIt({ html: mdOptions.enableHTML })
+        .disable(mdOptions.disableMarkdownFeatures ?? [])
+        .use(kbdPlugin)
+        .use(mdMathPlugin)
+        .use(taskLists, { enabled: true, label: false, labelAfter: false })
+        .use(mdKatex)
+        .use(imgSize)
+        .use(alert);
+
+      for (const plugin of mdOptions.plugins ?? []) {
+        md = md.use(plugin);
+      }
+      return md;
+    })();
+
+    // Render the markdown directly into the target element as HTML
+    const mditOutput = mdit.render(content);
+    this.target.innerHTML = mditOutput;
   }
 
-  setSelection(anchor: number, head: number, _root: Document | ShadowRoot) {
-    this.view.focus();
-    const $anchor = this.view.state.doc.resolve(anchor);
-    const $head = this.view.state.doc.resolve(head);
-    this._parent.updating = true;
-    // Set the inner prosemirror selection by dispatching a new setSelection transaction.
-    this.view.dispatch(
-      this.view.state.tr.setSelection(new TextSelection($anchor, $head)),
-    );
-    this._parent.updating = false;
+  setSelection(_anchor: number, _head: number, _root: Document | ShadowRoot) {
+    // Selection handling can be adapted here using standard DOM ranges/selection
+    // if needed, or left as a no-op since it's a static rendered view.
+    this.target.focus();
   }
 
   update() {
@@ -65,9 +62,10 @@ export class RenderedView {
   }
 
   focus() {
-    this.view.focus();
+    this.target.focus();
   }
+
   destroy() {
-    this.view.destroy();
+    this.target.innerHTML = "";
   }
 }

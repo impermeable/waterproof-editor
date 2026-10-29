@@ -54,7 +54,7 @@ export function createRealMarkdownView(editorConfig: WaterproofEditorConfig) {
       SWITCHABLE_VIEW_PLUGIN_KEY,
       editorConfig.markdownName ?? "markdown",
       editorConfig.toMarkdown ?? ((input) => toMathInline(input)),
-      editorConfig.disableMarkdownFeatures ?? [],
+      editorConfig.markdownOptions ?? {},
     );
 
     nodeViews.push(nodeView);

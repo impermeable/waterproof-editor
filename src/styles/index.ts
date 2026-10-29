@@ -43,3 +43,5 @@ import "./magic.css";
 import "./busy-indicator.css";
 
 import "./student-hidden.css";
+
+import "./markdown-plugins.css";

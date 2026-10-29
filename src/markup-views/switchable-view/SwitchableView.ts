@@ -5,6 +5,7 @@ import { NodeSelection, PluginKey } from "prosemirror-state";
 import { Node as PNode } from "prosemirror-model";
 import { WaterproofSchema } from "../../schema";
 import { isPositionEditable } from "../../inputArea";
+import { MarkdownOptions } from "../../api";
 
 /**
  * Abstract class for a switchable view.
@@ -47,7 +48,7 @@ export class SwitchableView implements NodeView {
     pluginKey: PluginKey,
     viewName: string,
     private readonly processForRendering: (input: string) => string,
-    private readonly disableMarkdownFeatures: Array<string>,
+    private readonly mdOptions: MarkdownOptions,
   ) {
     // Store parameters
     this._node = node;
@@ -57,7 +58,11 @@ export class SwitchableView implements NodeView {
 
     // Set-up dom related things.
     const container = document.createElement("div");
+    const test = document.createElement("div");
     this._place = document.createElement("div");
+    this._place.classList.add("ProseMirror");
+    this._place.setAttribute("contenteditable", "false");
+    this._place.setAttribute("translate", "no");
     this.dom = container;
 
     // Create class names
@@ -66,7 +71,8 @@ export class SwitchableView implements NodeView {
     this._renderedClassName = `${this._viewClassName}-rendered`;
     this._editorClassName = `${this._viewClassName}-editor`;
 
-    this.dom.appendChild(this._place);
+    test.appendChild(this._place);
+    this.dom.appendChild(test);
 
     this.dom.classList.add(this._viewClassName);
     this.dom.setAttribute("markup-name", viewName);
@@ -83,7 +89,7 @@ export class SwitchableView implements NodeView {
       this._outerView,
       this,
       this._getPos,
-      this.disableMarkdownFeatures,
+      this.mdOptions,
     );
 
     // eventHandler for the onclick event.
@@ -142,7 +148,7 @@ export class SwitchableView implements NodeView {
       this._outerView,
       this,
       this._getPos,
-      this.disableMarkdownFeatures,
+      this.mdOptions,
     );
   }
 
