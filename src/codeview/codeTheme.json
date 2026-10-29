@@ -19,6 +19,32 @@
         "flexFlow": "row"
     },
 
+	".cm-diagnosticSuggestion": {
+	  "display": "inline",
+	  "padding": "0",
+	  "border": "none",
+	  "background": "none",
+	  "font": "inherit",
+	  "whiteSpace": "inherit",
+	  "textAlign": "inherit",
+	  "color": "var(--wp-textLinkForeground)",
+	  "cursor": "pointer",
+	  "textDecoration": "underline dotted",
+	  "fontFamily": "var(--wp-editorFontFamily)"
+	},
+
+	".cm-diagnosticSuggestion:hover": {
+	  "textDecoration": "underline"
+	},
+
+	".cm-diagnosticSuggestion:focus-visible": {
+	  "textDecoration": "underline"
+	},
+
+	".cm-panel.cm-panel-lint ul [aria-selected] .cm-diagnosticSuggestion": {
+	  "color": "inherit"
+	},
+
 	".cm-content": {
 	  "caretColor": "auto",
 	  "fontFamily": "var(--wp-editorFontFamily)",

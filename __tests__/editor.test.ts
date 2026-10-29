@@ -21,6 +21,8 @@ jest.spyOn(global.console, "log").mockImplementation();
 
 import { WaterproofEditor } from "../src/editor";
 import {
+  HistoryChange,
+  OffsetMessageSegment,
   OffsetDiagnostic,
   Severity,
   ThemeStyle,
@@ -30,7 +32,6 @@ import { CodeBlock } from "../src/document";
 import { configuration } from "../src/markdown-defaults";
 import { WaterproofSchema } from "../src";
 
-import { EditorView } from "prosemirror-view";
 import * as inputAreaModule from "../src/inputArea";
 import { NodeType } from "prosemirror-model";
 
@@ -99,14 +100,31 @@ describe("clearDiagnostics", () => {
 describe("removeDiagnostic", () => {
   test("returns false when the diagnostic does not exist", () => {
     const editor = makeEditor();
-    // removeDiagnostic filters out entries where ANY field matches, so to get a
-    // true "not found" result we need a query that differs on every field.
     editor.setActiveDiagnostics([diag(0, 5, "present", Severity.Error)]);
     const removed = editor.removeDiagnostic(
       diag(10, 20, "absent", Severity.Warning),
     );
     expect(removed).toBe(false);
     expect(editor.getDiagnosticsInRange(0, 10).length).toBe(1);
+  });
+
+  test("only removes diagnostics that match on every field", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([
+      diag(0, 5, "present", Severity.Error),
+      diag(0, 5, "other message", Severity.Error),
+      diag(0, 5, "present", Severity.Warning),
+    ]);
+    const removed = editor.removeDiagnostic(
+      diag(0, 5, "present", Severity.Error),
+    );
+    expect(removed).toBe(true);
+    expect(
+      editor.getDiagnosticsInRange(0, 10).map((d) => [d.message, d.severity]),
+    ).toStrictEqual([
+      ["other message", Severity.Error],
+      ["present", Severity.Warning],
+    ]);
   });
 });
 
@@ -166,6 +184,84 @@ describe("getPartialDiagnosticsInRange", () => {
   });
 });
 
+// ── message segments ─────────────────────────────────────────────────────────
+
+describe("diagnostics with message segments", () => {
+  const segments: OffsetMessageSegment[] = [
+    { text: "Try " },
+    { text: "x", edit: { start: 0, end: 1, newText: "x" } },
+  ];
+
+  test("keeps the segments sent with setActiveDiagnostics", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([{ ...diag(0, 5), segments }, diag(6, 8)], 1);
+
+    const [first, second] = editor.getDiagnosticsInRange(0, 10);
+    expect(first.segments).toStrictEqual(segments);
+    expect(second.segments).toBeUndefined();
+  });
+
+  test("a later message replaces the segments", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([{ ...diag(0, 5), segments }], 1);
+
+    editor.setActiveDiagnostics([diag(0, 5)], 1);
+
+    expect(editor.getDiagnosticsInRange(0, 5)[0].segments).toBeUndefined();
+  });
+
+  test("the diagnostics match the document only while its version is the one they were computed for", () => {
+    const editor = makeEditor();
+    expect(editor.diagnosticsMatchDocument).toBe(false);
+
+    editor.setActiveDiagnostics([diag(0, 5)], 1);
+    expect(editor.diagnosticsMatchDocument).toBe(true);
+
+    editor.replaceRange(1, 6, "Hi");
+    expect(editor.diagnosticsMatchDocument).toBe(false);
+
+    editor.setActiveDiagnostics([diag(0, 5)], 2);
+    expect(editor.diagnosticsMatchDocument).toBe(true);
+  });
+
+  test("diagnostics without a version never match the document", () => {
+    const editor = makeEditor();
+    editor.setActiveDiagnostics([diag(0, 5)]);
+    expect(editor.diagnosticsMatchDocument).toBe(false);
+  });
+});
+
+describe("applyEdit", () => {
+  test("applies an edit at the mapped positions", () => {
+    const editor = makeEditor();
+    const before = editor.serializeDocument();
+    expect(before).toContain("Hello world.");
+
+    // "Hello" -> pm 1..6 (pm pos 0 is before the code node opens, pos 1 is the first
+    // character, given the identity mapping).
+    const ok = editor.applyEdit({ start: 1, end: 6, newText: "Hi" });
+
+    expect(ok).toBe(true);
+    expect(editor.serializeDocument()).toBe(
+      before!.replace("Hello world.", "Hi world."),
+    );
+  });
+
+  test("refuses an edit whose oldText does not match, without dispatching", () => {
+    const editor = makeEditor();
+    const before = editor.serializeDocument();
+    // @ts-expect-error private field, used only to spy on the real view's dispatch
+    const dispatchSpy = jest.spyOn(editor._view, "dispatch");
+
+    const edit = { start: 1, end: 6, newText: "Hi", oldText: "Howdy" };
+    expect(editor.canApplyEdit(edit)).toBe(false);
+    expect(editor.applyEdit(edit)).toBe(false);
+
+    expect(dispatchSpy).not.toHaveBeenCalled();
+    expect(editor.serializeDocument()).toBe(before);
+  });
+});
+
 // ── early returns without an initialized view ─────────────────────────────────
 
 describe("methods with no view initialised", () => {
@@ -186,6 +282,12 @@ describe("methods with no view initialised", () => {
 
   test("replaceRange returns false", () => {
     expect(makeUninitializedEditor().replaceRange(0, 5, "x")).toBe(false);
+  });
+
+  test("applyEdit returns false", () => {
+    expect(
+      makeUninitializedEditor().applyEdit({ start: 0, end: 5, newText: "x" }),
+    ).toBe(false);
   });
 
   test("insertSymbol returns false", () => {

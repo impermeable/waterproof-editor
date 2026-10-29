@@ -32,6 +32,8 @@ import {
   WaterproofEditorConfig,
   TextContentOfSpecifier,
   MessageHandlerEditor,
+  OffsetEdit,
+  OffsetMessageSegment,
 } from "./api";
 import { CODE_PLUGIN_KEY, codePlugin } from "./codeview";
 import { createHintPlugin } from "./hinting";
@@ -75,7 +77,17 @@ export type DiagnosticObjectProse = {
   start: number;
   end: number;
   severity: Severity;
+  segments?: OffsetMessageSegment[];
 };
+
+function toProseDiagnostic(
+  diagnostic: OffsetDiagnostic,
+  start: number,
+  end: number,
+): DiagnosticObjectProse {
+  const { message, severity, segments } = diagnostic;
+  return { message, severity, start, end, ...(segments ? { segments } : {}) };
+}
 
 /**
  * WaterproofEditor class. Configured via the WaterproofEditorConfig object.
@@ -100,6 +112,24 @@ export class WaterproofEditor implements MessageHandlerEditor {
   // @internal
   public get diagnosticsVersion() {
     return this.diagnosticsUpdateCounter;
+  }
+
+  /**
+   * The document version that the active diagnostics were computed for, as passed to
+   * {@linkcode setActiveDiagnostics}.
+   */
+  private diagnosticsDocVersion: number | undefined;
+
+  /**
+   * Whether the active diagnostics were computed for the document as it is shown now. The
+   * edits of suggestions are expressed in document offsets, so they are only offered while
+   * this holds.
+   */
+  public get diagnosticsMatchDocument(): boolean {
+    return (
+      this.diagnosticsDocVersion !== undefined &&
+      this.diagnosticsDocVersion === this._mapping?.version
+    );
   }
   private diagnosticsUpdateCounter = 0;
 
@@ -357,6 +387,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
         this._editorConfig.symbols,
         this,
         this.initialThemeStyle,
+        this._editorConfig.emptyCodePlaceholders,
         this._editorConfig.languageConfig,
       ),
       documentProgressDecoratorPlugin,
@@ -631,17 +662,85 @@ export class WaterproofEditor implements MessageHandlerEditor {
     return true;
   }
 
+  /**
+   * Replaces the text between `startOffset` and `endOffset` (offsets relative to the on-disk
+   * text document) by `text`.
+   * @returns Whether the replacement was applied; `false` when the offsets could not be mapped.
+   */
   public replaceRange(
     startOffset: number,
     endOffset: number,
     text: string,
   ): boolean {
-    if (!this._view || !this._mapping) return false;
-    const from = this._mapping.textOffsetToPmIndex(startOffset);
-    const to = this._mapping.textOffsetToPmIndex(endOffset);
-    const tr = this._view.state.tr.insertText(text, from, to);
-    this._view.dispatch(tr);
+    return this.applyEdit({
+      start: startOffset,
+      end: endOffset,
+      newText: text,
+    });
+  }
+
+  /**
+   * Applies an offset-based edit, unless {@linkcode canApplyEdit} says it can't be.
+   * @returns Whether the edit was applied.
+   */
+  public applyEdit(
+    edit: OffsetEdit,
+    options: { requireEditable?: boolean } = {},
+  ): boolean {
+    const range = this.positionEdit(edit, options);
+    if (!this._view || !range) {
+      console.warn("Not applying edit: it no longer applies to the document.");
+      return false;
+    }
+    this._view.dispatch(
+      this._view.state.tr.insertText(edit.newText, range.from, range.to),
+    );
     return true;
+  }
+
+  /**
+   * Whether `edit` can be applied: its offsets can be mapped, its `oldText` (if any) matches
+   * the document, and, with `requireEditable`, it lies in an editable part of the document
+   * (see {@linkcode isPositionEditable}).
+   */
+  public canApplyEdit(
+    edit: OffsetEdit,
+    options: { requireEditable?: boolean } = {},
+  ): boolean {
+    return this.positionEdit(edit, options) !== undefined;
+  }
+
+  /** Maps `edit` to ProseMirror positions, or `undefined` if it can't be applied. */
+  private positionEdit(
+    edit: OffsetEdit,
+    { requireEditable = false }: { requireEditable?: boolean },
+  ): { from: number; to: number } | undefined {
+    if (!this._view || !this._mapping) return undefined;
+    let from: number, to: number;
+    try {
+      from = this._mapping.textOffsetToPmIndex(edit.start);
+      to = this._mapping.textOffsetToPmIndex(edit.end);
+    } catch {
+      return undefined;
+    }
+    const state = this._view.state;
+    // Compare against the editor's own content at the mapped positions rather than the
+    // serialized document: serialization does not reproduce the file exactly (e.g. the Lean
+    // serializer writes a placeholder title), which would shift the offsets. An edit that
+    // spans several blocks never matches, since the block delimiters are not in the content.
+    if (
+      edit.oldText !== undefined &&
+      state.doc.textBetween(from, to) !== edit.oldText
+    ) {
+      return undefined;
+    }
+    if (
+      requireEditable &&
+      !(isPositionEditable(state, from) && isPositionEditable(state, to))
+    ) {
+      return undefined;
+    }
+    return { from, to };
   }
 
   /**
@@ -766,12 +865,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
       const start = map.textOffsetToPmIndex(d.startOffset);
       const end = map.textOffsetToPmIndex(d.endOffset);
 
-      return {
-        message: d.message,
-        severity: d.severity,
-        start,
-        end,
-      };
+      return toProseDiagnostic(d, start, end);
     });
     // Add the new diagnostics to the array of stored diagnostics
     this.currentProseDiagnostics.push(...newDiags);
@@ -794,20 +888,13 @@ export class WaterproofEditor implements MessageHandlerEditor {
     const start = map.textOffsetToPmIndex(toRemove.startOffset);
     const end = map.textOffsetToPmIndex(toRemove.endOffset);
 
-    const proseDiag: DiagnosticObjectProse = {
-      start,
-      end,
-      message: toRemove.message,
-      severity: toRemove.severity,
-    };
-
     const oldLength = this.currentProseDiagnostics.length;
     this.currentProseDiagnostics = this.currentProseDiagnostics.filter(
       (d) =>
-        d.start != proseDiag.start &&
-        d.end != proseDiag.end &&
-        d.message != proseDiag.message &&
-        d.severity != proseDiag.severity,
+        d.start != start ||
+        d.end != end ||
+        d.message != toRemove.message ||
+        d.severity != toRemove.severity,
     );
     const newLength = this.currentProseDiagnostics.length;
     // diagnostics have changed
@@ -831,28 +918,30 @@ export class WaterproofEditor implements MessageHandlerEditor {
    * If you want to add a diagnostic use {@linkcode pushDiagnostics}
    *
    * @param msg The set of diagnostics for the current document.
+   * @param version The version of the document the diagnostics were computed for.
    */
-  public setActiveDiagnostics(diagnostics: Array<OffsetDiagnostic>) {
+  public setActiveDiagnostics(
+    diagnostics: Array<OffsetDiagnostic>,
+    version?: number,
+  ) {
     // The diagnostics are positioned in offset based positions.
     // We map the positions through the mapping to get prosemirror positions.
     const map = this._mapping;
     if (map === undefined) return;
 
-    this.currentProseDiagnostics = new Array<DiagnosticObjectProse>(
-      diagnostics.length,
-    );
+    this.diagnosticsDocVersion = version;
+
+    const next = new Array<DiagnosticObjectProse>(diagnostics.length);
     for (let i = 0; i < diagnostics.length; i++) {
       const diag = diagnostics[i];
       const start = map.textOffsetToPmIndex(diag.startOffset);
       const end = map.textOffsetToPmIndex(diag.endOffset);
       if (start >= end) continue;
-      this.currentProseDiagnostics[i] = {
-        message: diag.message,
-        start,
-        end,
-        severity: diag.severity,
-      };
+
+      next[i] = toProseDiagnostic(diag, start, end);
     }
+
+    this.currentProseDiagnostics = next;
     // diagnostics have changed
     this.diagnosticsUpdateCounter++;
     this.informCodemirrorViews();
@@ -909,10 +998,9 @@ export class WaterproofEditor implements MessageHandlerEditor {
       })
       .map((d) => {
         return {
-          message: d.message,
+          ...d,
           start: Math.max(d.start, low),
           end: Math.min(d.end, high),
-          severity: d.severity,
         };
       });
   }

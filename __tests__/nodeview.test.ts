@@ -24,9 +24,9 @@ const node: Node = WaterproofSchema.nodes["code"].create(
 );
 
 test("Basic diagnostic", () => {
-  //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
   const nodeview = new CodeBlockView(
     node,
+    //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
     { editable: true },
     null,
     () => undefined,
@@ -61,6 +61,143 @@ test("Basic diagnostic", () => {
   expect(result.actions?.at(0)?.name).toBe("📋");
 });
 
+describe("message segments", () => {
+  const edit = { start: 0, end: 4, newText: "We apply h", oldText: "Qed." };
+  const segments = [
+    { text: "Help\n  • " },
+    { text: "We apply h", edit },
+    { text: "\n  done" },
+  ];
+
+  function makeSegmentView(editorInstance: object) {
+    return new CodeBlockView(
+      node,
+      //@ts-expect-error For test setup supply only the minimal needed editor API
+      { editable: true },
+      editorInstance,
+      () => undefined,
+      null,
+      [],
+      [],
+      ThemeStyle.Light,
+    );
+  }
+
+  /** An editor on which every edit can be applied, unless `canApplyEdit` is overridden. */
+  const makeEditorInstance = () => ({
+    applyEdit: jest.fn(() => true),
+    canApplyEdit: jest.fn(() => true),
+  });
+
+  const render = (diagnostic: { renderMessage?: unknown }) =>
+    (diagnostic.renderMessage as () => HTMLElement)();
+
+  test("renders suggestion segments as buttons in the message", () => {
+    const nodeview = makeSegmentView(makeEditorInstance());
+
+    const result = nodeview.preprocessDiagnostic(
+      docStart,
+      docEnd,
+      "Help\n  • We apply h\n  done",
+      Severity.Information,
+      segments,
+    );
+
+    const element = render(result);
+    expect(element.textContent).toBe("Help\n  • We apply h\n  done");
+    const links = element.querySelectorAll(".cm-diagnosticSuggestion");
+    expect(links).toHaveLength(1);
+    expect(links[0].textContent).toBe("We apply h");
+    expect(links[0].tagName).toBe("BUTTON");
+    // The plain message is kept, e.g. for the copy action.
+    expect(result.message).toBe("Help\n  • We apply h\n  done");
+    expect(result.actions?.map((action) => action.name)).toStrictEqual(["📋"]);
+  });
+
+  test("clicking a suggestion applies its edit", () => {
+    const editorInstance = makeEditorInstance();
+    const nodeview = makeSegmentView(editorInstance);
+    const result = nodeview.preprocessDiagnostic(
+      docStart,
+      docEnd,
+      "Help",
+      Severity.Information,
+      segments,
+    );
+
+    render(result)
+      .querySelector<HTMLElement>(".cm-diagnosticSuggestion")!
+      .click();
+
+    expect(editorInstance.applyEdit).toHaveBeenCalledTimes(1);
+    expect(editorInstance.applyEdit).toHaveBeenCalledWith(edit, {
+      requireEditable: true,
+    });
+  });
+
+  test("shows a suggestion that can't be applied as plain text", () => {
+    const editorInstance = makeEditorInstance();
+    editorInstance.canApplyEdit.mockReturnValue(false);
+    const nodeview = makeSegmentView(editorInstance);
+
+    const result = nodeview.preprocessDiagnostic(
+      docStart,
+      docEnd,
+      "Help",
+      Severity.Information,
+      segments,
+    );
+
+    expect(result.renderMessage).toBeUndefined();
+    expect(editorInstance.canApplyEdit).toHaveBeenCalledWith(edit, {
+      requireEditable: true,
+    });
+  });
+
+  test("does not use a custom renderer when no segment is a suggestion", () => {
+    const nodeview = makeSegmentView(makeEditorInstance());
+    const result = nodeview.preprocessDiagnostic(
+      docStart,
+      docEnd,
+      "Help",
+      Severity.Information,
+      [{ text: "Help" }],
+    );
+
+    expect(result.renderMessage).toBeUndefined();
+  });
+
+  test("suggestions are only offered while the diagnostics match the document", () => {
+    const editorInstance = {
+      ...makeEditorInstance(),
+      diagnosticsMatchDocument: true,
+      diagnosticsVersion: 1,
+      getPartialDiagnosticsInRange: () => [
+        {
+          start: 1,
+          end: 1 + docEnd,
+          message: "Help\n  • We apply h\n  done",
+          severity: Severity.Information,
+          segments,
+        },
+      ],
+    };
+    const nodeview = makeSegmentView(editorInstance);
+    //@ts-expect-error private; position the code block at the start of the document
+    nodeview._getPos = () => 0;
+    const lint = () =>
+      //@ts-expect-error private
+      nodeview.lintingFunction(nodeview._codemirror)[0];
+
+    expect(lint().renderMessage).toBeDefined();
+
+    // The document changed after the diagnostics were computed: their offsets are stale.
+    editorInstance.diagnosticsMatchDocument = false;
+    expect(lint().renderMessage).toBeUndefined();
+    expect(lint().message).toBe("Help\n  • We apply h\n  done");
+  });
+});
+
 test("Severity to string", () => {
   expect(severityToString(Severity.Error)).toStrictEqual("error");
   expect(severityToString(Severity.Information)).toStrictEqual("info");
@@ -69,9 +206,9 @@ test("Severity to string", () => {
 });
 
 test("Hint Replace", () => {
-  //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
   const nodeview = new CodeBlockView(
     node,
+    //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
     { editable: true },
     null,
     () => undefined,
@@ -116,9 +253,9 @@ test("Hint Replace", () => {
 });
 
 test("Hint Insert", () => {
-  //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
   const nodeview = new CodeBlockView(
     node,
+    //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
     { editable: true },
     null,
     () => undefined,
@@ -165,9 +302,9 @@ test("Hint Insert", () => {
 });
 
 test("Hint Delete", () => {
-  //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
   const nodeview = new CodeBlockView(
     node,
+    //@ts-expect-error For test setup supply only the minimal needed to get a working CodeBlockView
     { editable: true },
     null,
     () => undefined,
@@ -212,9 +349,9 @@ test("Hint Delete", () => {
 
 /** Construct a minimal CodeBlockView for testing. */
 function makeView() {
-  //@ts-expect-error supply only the minimal needed to get a working CodeBlockView
   return new CodeBlockView(
     node,
+    //@ts-expect-error supply only the minimal needed to get a working CodeBlockView
     { editable: true },
     null,
     () => undefined,
