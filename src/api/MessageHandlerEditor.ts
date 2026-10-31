@@ -23,7 +23,10 @@ export interface MessageHandlerEditor {
   removeBusyIndicators: () => void;
   reportProgress: (at: number, numberOfLines: number, label: string) => void;
   setBusyIndicator: (from: number) => void;
-  setActiveDiagnostics: (diagnostics: Array<OffsetDiagnostic>) => void;
+  setActiveDiagnostics: (
+    diagnostics: Array<OffsetDiagnostic>,
+    version?: number,
+  ) => void;
   startSpinner: () => void;
   stopSpinner: () => void;
   updateNodeViewThemes: (theme: ThemeStyle) => void;
