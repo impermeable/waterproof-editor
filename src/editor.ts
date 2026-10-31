@@ -778,6 +778,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
       show: this._lineNumbersShown,
     });
     view.dispatch(tr);
+    this._mapping?.getMapping().invalidateLinenumberCache();
     this.updateLineNumbers();
   }
 

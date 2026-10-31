@@ -230,6 +230,10 @@ export class NodeUpdate {
     // Add the nodes to the parent node. We do this later so that updating in the step
     // before does not affect the positions of the nodes we are adding
     nodes.forEach((n) => parent.addChild(n));
+
+    // Invalidate the linenumber cache as the inserted node could be a code cell
+    tree.invalidateLinenumberCache();
+
     return { result: docChange, newTree: tree };
   }
 
