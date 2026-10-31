@@ -13,7 +13,7 @@ import {
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
 import { sanityCheckTree } from "./util";
 import { TreeNode } from "../../src/mapping";
-import { constructDocAndMapping } from "../../src/thingie";
+import { constructDocAndMapping } from "../../src/constructFromDocString";
 
 function createMapping(doc: WaterproofDocument) {
   const [_, mapping] = constructDocAndMapping(

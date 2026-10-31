@@ -1,14 +1,6 @@
-import { Block } from "../../src/document";
-import { Mapping } from "../../src/mapping";
 import { configuration, parse } from "../../src/markdown-defaults";
-import { WaterproofSchema } from "../../src/schema";
-import { Node as ProseNode } from "prosemirror-model";
 import { DefaultTagSerializer } from "../../src/serialization/DocumentSerializer";
-import { constructDocAndMapping } from "../../src/thingie";
-
-function root(childNodes: ProseNode[]) {
-  return WaterproofSchema.nodes.doc.create({}, childNodes);
-}
+import { constructDocAndMapping } from "../../src/constructFromDocString";
 
 test("BlockAt with simple .mv file", () => {
   const doc =

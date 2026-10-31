@@ -15,7 +15,7 @@ import {
   MarkdownBlock,
   MathDisplayBlock,
 } from "../src/document";
-import { constructDocAndMapping } from "../src/thingie";
+import { constructDocAndMapping } from "../src/constructFromDocString";
 
 export function constructDocument(blocks: Block[]) {
   //@ts-expect-error We are not allowed to pass 'undefined' here, but we want to construct the document only without the mapping.
