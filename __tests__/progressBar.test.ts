@@ -20,12 +20,12 @@ describe("constructor", () => {
     expect(root.querySelector("#progress")).not.toBeNull();
   });
 
-  test("hides the progress bar and spinner on creation", () => {
+  test("shows the progress bar and spinner on creation", () => {
     const { root } = makeBar();
     const barContainer = root.querySelector<HTMLElement>(".progress-bar")!;
     const spinner = root.querySelector<HTMLElement>(".spinner-container")!;
-    expect(barContainer.style.display).toBe("none");
-    expect(spinner.style.display).toBe("none");
+    expect(barContainer.style.display).not.toBe("none");
+    expect(spinner.style.display).not.toBe("none");
   });
 
   test("reuses an existing #progress element when already in the DOM", () => {
@@ -133,7 +133,9 @@ describe("startSpinner / stopSpinner", () => {
     bar.startSpinner();
     bar.stopSpinner();
     expect(
-      root.querySelector(".spinner-container")!.classList.contains("spinner"),
+      root
+        .querySelector(".spinner-container")!
+        .classList.contains("spinner-active"),
     ).toBe(false);
   });
 
@@ -141,7 +143,9 @@ describe("startSpinner / stopSpinner", () => {
     const { bar, root } = makeBar();
     bar.stopSpinner();
     expect(
-      root.querySelector(".spinner-container")!.classList.contains("spinner"),
+      root
+        .querySelector(".spinner-container")!
+        .classList.contains("spinner-active"),
     ).toBe(false);
   });
 });

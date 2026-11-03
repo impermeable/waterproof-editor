@@ -46,7 +46,7 @@ export class ProgressBar {
 
       this.containerElem = mainContainer;
       this.spinnerContainer = document.createElement("div");
-      this.spinnerContainer.classList.add("spinner-container");
+      this.spinnerContainer.classList.add("spinner-container", "spinner");
       this.progressBarContainer = document.createElement("div");
       this.progressBarContainer.classList.add("progress-bar");
 
@@ -60,8 +60,6 @@ export class ProgressBar {
       this.containerElem.appendChild(this.progressBarContainer);
       this.containerElem.appendChild(this.spinnerContainer);
     }
-
-    this.hide(); // Initially hide the progress bar and spinner
   }
 
   /**
@@ -101,13 +99,13 @@ export class ProgressBar {
    * Starts the spinner
    */
   public startSpinner() {
-    this.spinnerContainer.classList.add("spinner");
+    this.spinnerContainer.classList.add("spinner-active");
   }
 
   /**
    * Stops the spinner
    */
   public stopSpinner() {
-    this.spinnerContainer.classList.remove("spinner");
+    this.spinnerContainer.classList.remove("spinner-active");
   }
 }
