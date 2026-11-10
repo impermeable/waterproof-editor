@@ -196,9 +196,17 @@ export class WaterproofEditor implements MessageHandlerEditor {
     this._editorConfig.api.editorReady();
   }
 
-  refreshDocument(content: string, version: number = 1) {
+  /**
+   * Replace the content of the editor, keeping the view (and with it the scroll position).
+   * @param content The new content of the document.
+   * @param version The version of the document that `content` belongs to.
+   * @param force Replace the content even when `version` equals the version of the editor. By
+   *   default the refresh is skipped then, assuming the editor already shows that version; the
+   *   host can use this when the content may differ nonetheless.
+   */
+  refreshDocument(content: string, version: number = 1, force = false) {
     if (!this._view) return;
-    if (this._mapping?.version == version) return;
+    if (!force && this._mapping?.version == version) return;
 
     const blocks = this._editorConfig.documentConstructor(content);
     const proseDoc = constructDocument(blocks);

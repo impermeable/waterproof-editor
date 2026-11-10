@@ -19,7 +19,7 @@ export interface MessageHandlerEditor {
   setShowMenuItems: (show: boolean) => void;
   handleHistoryChange: (historyChange: HistoryChange) => void;
   setTeacherMode: (teacherModeEnabled: boolean) => void;
-  refreshDocument: (content: string, version: number) => void;
+  refreshDocument: (content: string, version: number, force?: boolean) => void;
   removeBusyIndicators: () => void;
   reportProgress: (at: number, numberOfLines: number, label: string) => void;
   setBusyIndicator: (from: number) => void;
