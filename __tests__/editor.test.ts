@@ -262,6 +262,52 @@ describe("applyEdit", () => {
   });
 });
 
+describe("refreshDocument", () => {
+  function makeContentEditor(content: string, version: number) {
+    const el = document.createElement("div");
+    jest.spyOn(WaterproofEditor.prototype, "handleScroll").mockImplementation();
+    jest
+      //@ts-expect-error private method
+      .spyOn(WaterproofEditor.prototype, "informCodemirrorViews")
+      .mockImplementation();
+    const editor = new WaterproofEditor(
+      el,
+      {
+        ...cfg,
+        documentConstructor: (text: string) => [
+          new CodeBlock(
+            text,
+            { from: 0, to: text.length },
+            { from: 0, to: text.length },
+            0,
+          ),
+        ],
+      },
+      ThemeStyle.Light,
+    );
+    editor.init(content, version);
+    return editor;
+  }
+
+  test("replaces the content for a new version", () => {
+    const editor = makeContentEditor("Hello world.", 1);
+    editor.refreshDocument("Bye world.", 2);
+    expect(editor.serializeDocument()).toContain("Bye world.");
+  });
+
+  test("skips the refresh when the version is unchanged", () => {
+    const editor = makeContentEditor("Hello world.", 1);
+    editor.refreshDocument("Bye world.", 1);
+    expect(editor.serializeDocument()).toContain("Hello world.");
+  });
+
+  test("replaces the content for an unchanged version when forced", () => {
+    const editor = makeContentEditor("Hello world.", 1);
+    editor.refreshDocument("Bye world.", 1, true);
+    expect(editor.serializeDocument()).toContain("Bye world.");
+  });
+});
+
 // ── early returns without an initialized view ─────────────────────────────────
 
 describe("methods with no view initialised", () => {
