@@ -413,7 +413,7 @@ describe("student_hidden plugin decorations", () => {
 
   function makeState(
     doc: PNode,
-    plugins: Plugin[] = [inputAreaPlugin, studentHiddenPlugin],
+    plugins: Plugin[] = [inputAreaPlugin(false), studentHiddenPlugin],
   ): EditorState {
     return EditorState.create({ schema: WaterproofSchema, doc, plugins });
   }

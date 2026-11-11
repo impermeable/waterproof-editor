@@ -70,6 +70,7 @@ import { Mapping, pmIndex, textOffset } from "./mapping";
 import { ProgressBar } from "./progressBar";
 import { studentHiddenPlugin } from "./student-hidden";
 import { constructDocAndMapping } from "./constructFromDocString";
+import { ViewportObserver } from "./viewportObserver";
 
 /** Type that contains a diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {
@@ -141,16 +142,14 @@ export class WaterproofEditor implements MessageHandlerEditor {
 
   private oldOffsetChecked: number | null = null;
 
+  private readonly viewportHintObserver: ViewportObserver;
+
   /**
    * Create a new WaterproofEditor instance.
    * @param editorElement The HTML element where the editor will be inserted in the document
    * @param config The configuration of the editor to use.
    */
-  constructor(
-    editorElement: HTMLElement,
-    config: WaterproofEditorConfig,
-    private readonly initialThemeStyle: ThemeStyle,
-  ) {
+  constructor(editorElement: HTMLElement, config: WaterproofEditorConfig) {
     this._editorElem = editorElement;
     this.currentProseDiagnostics = [];
     this._editorConfig = config;
@@ -165,6 +164,11 @@ export class WaterproofEditor implements MessageHandlerEditor {
     if (userAgent.includes("Linux")) this._userOS = OS.Linux;
 
     this._progressBar = new ProgressBar(editorElement);
+    this.viewportHintObserver = new ViewportObserver(
+      () => this._view,
+      () => this._mapping,
+      (from, to) => this._editorConfig.api.viewportHint(from, to),
+    );
   }
 
   init(content: string, version: number = 1) {
@@ -184,21 +188,17 @@ export class WaterproofEditor implements MessageHandlerEditor {
       version,
       this._editorConfig.tagConfiguration,
       this._serializer,
+      () => this.viewportHintObserver.reobserve(this._view?.dom),
     );
 
     this._mapping = mapping;
 
-    // this._mapping = new Mapping(
-    //   blocks,
-    //   version,
-    //   this._editorConfig.tagConfiguration,
-    //   this._serializer,
-    // );
     this.createProseMirrorEditor(proseDoc);
 
     /** Ask for line numbers */
     this.updateLineNumbers();
-    this.handleScroll(window.innerHeight);
+
+    this.viewportHintObserver.reobserve(this._view?.dom);
 
     // notify host that the editor is ready
     console.log("Editor ready, notifying extension");
@@ -216,18 +216,11 @@ export class WaterproofEditor implements MessageHandlerEditor {
       version,
       this._editorConfig.tagConfiguration,
       this._serializer,
+      () => this.viewportHintObserver.reobserve(this._view?.dom),
     );
 
     this._mapping = mapping;
 
-    // const proseDoc = constructDocument(blocks);
-
-    // this._mapping = new Mapping(
-    //   blocks,
-    //   version,
-    //   this._editorConfig.tagConfiguration,
-    //   this._serializer,
-    // );
     const newState = EditorState.create({
       doc: proseDoc,
       plugins: this._view.state.plugins,
@@ -238,7 +231,6 @@ export class WaterproofEditor implements MessageHandlerEditor {
 
     /** Ask for line numbers */
     this.updateLineNumbers();
-    this.handleScroll(window.innerHeight);
   }
 
   private get state(): EditorState | undefined {
@@ -396,7 +388,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
     return [
       history(),
       createHintPlugin(),
-      inputAreaPlugin,
+      inputAreaPlugin(this._editorConfig.initialValues.teacherMode),
       updateStatusPlugin(this),
       mathPlugin,
       switchableViewPlugin(this._editorConfig),
@@ -405,7 +397,8 @@ export class WaterproofEditor implements MessageHandlerEditor {
         this._editorConfig.completions,
         this._editorConfig.symbols,
         this,
-        this.initialThemeStyle,
+        this._editorConfig.initialValues.themeStyle,
+        this._editorConfig.initialValues.showLineNrs,
         this._editorConfig.emptyCodePlaceholders,
         this._editorConfig.languageConfig,
       ),
@@ -415,6 +408,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
         this._editorConfig.tagConfiguration,
         this._editorConfig.menubarEntries,
         this._editorConfig.templates,
+        this._editorConfig.initialValues.showMenuItems,
       ),
       keymap({
         "Mod-h": () => {
@@ -608,52 +602,6 @@ export class WaterproofEditor implements MessageHandlerEditor {
     if (!view) return;
     const func = type === HistoryChange.Undo ? undo : redo;
     func(view.state, view.dispatch, view);
-  }
-
-  public handleScroll(innerHeight: number) {
-    if (!this._view) return;
-    const posTop = this._view.posAtCoords({ left: 10, top: 80 }) ?? {
-      pos: 0,
-      inside: -1,
-    };
-    const posBottom = this._view.posAtCoords({
-      left: 10,
-      top: innerHeight,
-    }) ?? { pos: this._view.state.doc.content.size, inside: -1 };
-
-    if (posBottom == null || posTop == null) {
-      console.log(
-        "Invalid positions, skipping viewport hint.",
-        posTop,
-        posBottom,
-      );
-      return;
-    }
-
-    // Get the offset before/after the node to overestimate the viewport
-    const pmOffsetStart = this._view.state.doc.resolve(posTop.pos).start();
-    const pmOffsetEnd = this._view.state.doc.resolve(posBottom.pos).end();
-
-    // Translate postions to line/offset
-    let offsetStart;
-    try {
-      offsetStart = this._mapping?.pmIndexToTextOffset(pmIndex(pmOffsetStart));
-    } catch {
-      offsetStart = pmOffsetStart;
-    }
-    let offsetEnd;
-    try {
-      offsetEnd = this._mapping?.pmIndexToTextOffset(pmIndex(pmOffsetEnd));
-    } catch {
-      offsetEnd = pmOffsetEnd;
-    }
-
-    if (offsetStart == null || offsetEnd == null) {
-      console.log("Invalid offsets, skipping viewport hint.");
-      return;
-    }
-
-    this._editorConfig.api.viewportHint(offsetStart, offsetEnd);
   }
 
   /**

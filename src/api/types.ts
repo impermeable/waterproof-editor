@@ -221,6 +221,27 @@ export type WaterproofEditorConfig = {
    */
   emptyCodePlaceholders?: EmptyCodePlaceholders;
   templates: TemplateConfiguration;
+
+  /** Used to determine the initial state for the following variables:
+   * * `themeStyle: ThemeStyle` - Whether to initialize the editor with the light or dark theme. See {@linkcode ThemeStyle}.
+   * * `showLineNrs: boolean` - Set this to true to start the editor with line numbers shown in the code regions of the document.
+   * * `showMenuItems: boolean` - Set this to true to show menu buttons to students.
+   * * `teacherMode: boolean` - Set this to `true` to start the editor in `teacherMode`. Content outside of input areas will be editable.
+   */
+  initialValues: InitialValues;
+
+  /**
+   * When enabled the editor will use the {@linkcode WaterproofCallbacks.viewportHint} callback to
+   * send information on the positions of the document that are currently visible to the user.
+   */
+  sendViewPortHints: boolean;
+};
+
+export type InitialValues = {
+  themeStyle: ThemeStyle;
+  showLineNrs: boolean;
+  showMenuItems: boolean;
+  teacherMode: boolean;
 };
 
 export enum HistoryChange {

@@ -47,7 +47,10 @@ function textPos(doc: PNode, text: string): number {
   return found;
 }
 
-function makeState(teacher: boolean, plugins: Plugin[] = [inputAreaPlugin]) {
+function makeState(
+  teacher: boolean,
+  plugins: Plugin[] = [inputAreaPlugin(false)],
+) {
   let state = EditorState.create({
     doc: buildDoc(),
     schema: WaterproofSchema,
@@ -92,7 +95,7 @@ describe("isPositionEditable", () => {
 describe("inputAreaPlugin editable prop", () => {
   test("tracks isPositionEditable at the current selection", () => {
     let state = makeState(false);
-    const editableProp = inputAreaPlugin.props.editable as (
+    const editableProp = inputAreaPlugin(false).props.editable as (
       s: EditorState,
     ) => boolean;
 

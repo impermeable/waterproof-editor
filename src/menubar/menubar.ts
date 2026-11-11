@@ -410,6 +410,7 @@ export function menuPlugin(
   tagConf: TagConfiguration,
   customEntries: Array<MenuBarEntry> | undefined,
   templates: TemplateConfiguration,
+  showMenuItems: boolean,
 ) {
   return new Plugin({
     // This plugin has an associated `view`. This allows it to add DOM elements.
@@ -439,7 +440,7 @@ export function menuPlugin(
     state: {
       init(_config, _instance) {
         return {
-          showMenuItems: false,
+          showMenuItems,
         };
       },
       apply(tr, value, _oldState, _newState) {

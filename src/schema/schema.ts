@@ -40,7 +40,6 @@ export const WaterproofSchema = new Schema<SchemaNames | "doc" | "text">({
       block: true,
       content: "text*",
       group: "cell hintinputcontent containercontent",
-      parseDOM: [{ tag: "markdown", preserveWhitespace: "full" }],
       atom: true,
       toDOM: () => {
         return ["WaterproofMarkdown", 0];

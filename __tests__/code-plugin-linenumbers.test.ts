@@ -25,7 +25,7 @@ test("After lift, stale NodeViews in activeNodeViews prevent line numbers from r
   ]);
 
   // Create the code plugin (dummy completions/symbols/editor — apply doesn't use them)
-  const plugin = codePlugin([], [], null as any, ThemeStyle.Light);
+  const plugin = codePlugin([], [], null as any, ThemeStyle.Light, false);
   const state = EditorState.create({
     schema: WaterproofSchema,
     plugins: [plugin],

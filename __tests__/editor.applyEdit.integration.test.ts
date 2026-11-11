@@ -8,6 +8,13 @@
 jest.mock("prosemirror-dev-tools", () => ({ applyDevTools: () => {} }));
 jest.spyOn(global.console, "log").mockImplementation();
 
+//@ts-ignore
+global.IntersectionObserver = jest.fn(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
 import { WaterproofEditor } from "../src/editor";
 import { ThemeStyle, WaterproofEditorConfig } from "../src/api";
 import { configuration, parse } from "../src/markdown-defaults";
@@ -37,6 +44,13 @@ const cfg: WaterproofEditorConfig = {
     exercise: { statement: "", closing: "" },
     containerOpenTag: "",
   },
+  initialValues: {
+    showLineNrs: false,
+    showMenuItems: false,
+    teacherMode: false,
+    themeStyle: ThemeStyle.Light,
+  },
+  sendViewPortHints: false,
 };
 
 function makeEditor(
@@ -44,16 +58,11 @@ function makeEditor(
   overrides: Partial<WaterproofEditorConfig> = {},
 ) {
   const el = document.createElement("div");
-  jest.spyOn(WaterproofEditor.prototype, "handleScroll").mockImplementation();
   jest
     //@ts-expect-error private method
     .spyOn(WaterproofEditor.prototype, "informCodemirrorViews")
     .mockImplementation();
-  const editor = new WaterproofEditor(
-    el,
-    { ...cfg, ...overrides },
-    ThemeStyle.Light,
-  );
+  const editor = new WaterproofEditor(el, { ...cfg, ...overrides });
   editor.init(customSource);
   return editor;
 }

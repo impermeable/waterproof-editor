@@ -45,6 +45,7 @@ export class Mapping {
     tMap: TagConfiguration,
     serializer: DocumentSerializer,
     tree: Tree,
+    private nodeChangeCallback: () => void,
   ) {
     this.serializer = serializer;
     this.textUpdate = new TextUpdate();
@@ -201,6 +202,7 @@ export class Mapping {
         this.serializer,
         currentDoc,
       );
+      this.nodeChangeCallback();
     }
 
     this.tree = result.newTree;

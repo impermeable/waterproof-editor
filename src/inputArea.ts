@@ -22,36 +22,40 @@ export const INPUT_AREA_PLUGIN_KEY = new PluginKey<IInputAreaPluginState>(
 );
 
 // The plugin spec describing this plugin.
-const InputAreaPluginSpec: PluginSpec<IInputAreaPluginState> = {
-  // Assign the plugin key.
-  key: INPUT_AREA_PLUGIN_KEY,
-  state: {
-    init(_config, _instance) {
-      // Initially set the mode to be student (content outside of input areas is locked)
-      return {
-        teacher: false,
-      };
-    },
-    apply(
-      tr: Transaction,
-      value: IInputAreaPluginState,
-      _oldState: EditorState,
-      _newState: EditorState,
-    ) {
-      // produce updated state field for this plugin
-      const meta = tr.getMeta(INPUT_AREA_PLUGIN_KEY);
-      if (meta === undefined || meta.teacher === undefined) {
-        return value;
-      } else {
+const InputAreaPluginSpec: (
+  teacherMode: boolean,
+) => PluginSpec<IInputAreaPluginState> = (teacherMode: boolean) => {
+  return {
+    // Assign the plugin key.
+    key: INPUT_AREA_PLUGIN_KEY,
+    state: {
+      init(_config, _instance) {
+        // We get the initial teacherMode value from the initial values passed to WaterproofEditor
         return {
-          teacher: meta.teacher,
+          teacher: teacherMode,
         };
-      }
+      },
+      apply(
+        tr: Transaction,
+        value: IInputAreaPluginState,
+        _oldState: EditorState,
+        _newState: EditorState,
+      ) {
+        // produce updated state field for this plugin
+        const meta = tr.getMeta(INPUT_AREA_PLUGIN_KEY);
+        if (meta === undefined || meta.teacher === undefined) {
+          return value;
+        } else {
+          return {
+            teacher: meta.teacher,
+          };
+        }
+      },
     },
-  },
-  props: {
-    editable: (state) => isPositionEditable(state, state.selection.$from.pos),
-  },
+    props: {
+      editable: (state) => isPositionEditable(state, state.selection.$from.pos),
+    },
+  };
 };
 
 /**
@@ -81,4 +85,5 @@ export function isPositionEditable(state: EditorState, pos: number): boolean {
 }
 
 // Export the input area plugin for use in the editor.
-export const inputAreaPlugin = new Plugin(InputAreaPluginSpec);
+export const inputAreaPlugin = (teacherMode: boolean) =>
+  new Plugin(InputAreaPluginSpec(teacherMode));

@@ -33,7 +33,10 @@ function buildDoc(): PNode {
   return WaterproofSchema.nodes.doc.create(null, [outsideMarkdown, inputNode]);
 }
 
-function makeState(teacher: boolean, plugins: Plugin[] = [inputAreaPlugin]) {
+function makeState(
+  teacher: boolean,
+  plugins: Plugin[] = [inputAreaPlugin(false)],
+) {
   let state = EditorState.create({
     doc: buildDoc(),
     schema: WaterproofSchema,
