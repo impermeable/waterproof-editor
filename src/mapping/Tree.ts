@@ -177,48 +177,12 @@ export class Tree {
   }
 
   /**
-   * Find the most specific node that contains the given ProseMirror position, this function is biased to find the
-   * first node (in terms of position) containing the position. I.e. in a tree with a code cell that ends at 28 and a newline that
-   * starts at 28, we will return the code cell when searching for position 28.
-   *
-   * When using this method, be careful of the cases where you can get the first child of some node,
-   * since these might need some special casing. We suspect that changing this function to have a
-   * right-bias rather than a left-bias shifts the above issue to concern the final child.
-   *
-   * @param pos ProseMirror position to search for
-   * @param node The node to start the search from, defaults to the root node of the tree
-   * @returns The most specific node containing the position, or null if no such node exists
-   */
-  // findNodeByProsePos(pos: number, node: TreeNode = this.root): TreeNode | null {
-  //   if (pos < node.pmRange.from || pos > node.pmRange.to) return null;
-
-  //   // Binary search among children
-  //   let left = 0;
-  //   let right = node.children.length - 1;
-  //   while (left <= right) {
-  //     const mid = Math.floor((left + right) / 2);
-  //     const child = node.children[mid];
-  //     if (pos === child.pmRange.from && mid > 0) {
-  //       return node.children[mid - 1];
-  //     } else if (pos >= child.pmRange.from && pos <= child.pmRange.to) {
-  //       if (child.children.length === 0) return child;
-  //       return this.findNodeByProsePos(pos, child);
-  //     } else if (pos <= child.pmRange.to) {
-  //       right = mid - 1;
-  //     } else if (pos > child.pmRange.to) {
-  //       left = mid + 1;
-  //     }
-  //   }
-  //   // If no child contains pos, return current node
-  //   return node;
-  // }
-
-  /**
-   *
-   * @param pos
-   * @param node
-   * @param boundaryResolutionStrategy
-   * @returns
+   * Find the most specific (highest depth in the tree) that contains the given ProseMirror position.
+   * @param pos ProseMirror index to search for in the tree.
+   * @param boundaryResolutionStrategy The strategy to use when multiple nodes exist that contain this position.
+   * This only happens when `pos` is located on the boundary of two consecutive nodes.
+   * @param node The node to start the search from, defaults to the root node of the tree if left undefined.
+   * @returns The most specific node containing `pos`, or `null` if no such node exists.
    */
   findNodeByProsePos(
     pos: number,
@@ -281,13 +245,16 @@ export class Tree {
       // TODO: This comparison is useless here, right?
       //       At this point this is the only thing that can happen
       // if (pos > child.pmRange.from && pos < child.pmRange.to) {
+
       // * if there are no children, this must be the node
       if (child.children.length === 0) return child;
       // * otherwise search within the children of child
       return this.findNodeByProsePos(pos, boundaryResolutionStrategy, child);
+      // TODO: See comment above
       // }
     }
-    // TODO: Shouldn't this error?
+    // TODO: Shouldn't this error? I.e. return null?
+    // The old function said: "If no child contains pos, return current node", but child nodes are handled explicitly
     return node;
   }
 

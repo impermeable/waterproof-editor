@@ -19,9 +19,15 @@ jest.mock("../src/mapping/mapping", () => {
 
 jest.spyOn(global.console, "log").mockImplementation();
 
+//@ts-ignore
+global.IntersectionObserver = jest.fn(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
 import { WaterproofEditor } from "../src/editor";
 import {
-  HistoryChange,
   OffsetMessageSegment,
   OffsetDiagnostic,
   Severity,
@@ -51,16 +57,27 @@ const cfg: WaterproofEditorConfig = {
   ],
   symbols: [],
   tagConfiguration: configuration("coq"),
+  initialValues: {
+    showLineNrs: false,
+    showMenuItems: false,
+    teacherMode: false,
+    themeStyle: ThemeStyle.Light,
+  },
+  sendViewPortHints: false,
+  templates: {
+    containerOpenTag: "",
+    example: "",
+    exercise: { closing: "", statement: "" },
+  },
 };
 
 function makeEditor(): WaterproofEditor {
   const el = document.createElement("div");
-  jest.spyOn(WaterproofEditor.prototype, "handleScroll").mockImplementation();
   jest
     //@ts-expect-error private method
     .spyOn(WaterproofEditor.prototype, "informCodemirrorViews")
     .mockImplementation();
-  const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+  const editor = new WaterproofEditor(el, cfg);
   editor.init("");
   return editor;
 }
@@ -267,7 +284,7 @@ describe("applyEdit", () => {
 describe("methods with no view initialised", () => {
   function makeUninitializedEditor(): WaterproofEditor {
     const el = document.createElement("div");
-    return new WaterproofEditor(el, cfg, ThemeStyle.Light);
+    return new WaterproofEditor(el, cfg);
   }
 
   test("serializeDocument returns undefined", () => {

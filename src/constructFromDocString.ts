@@ -9,6 +9,7 @@ export function constructDocAndMapping(
   version: number,
   tagConf: TagConfiguration,
   serializer: DocumentSerializer,
+  nodeChangeCallback?: () => void,
 ): [Node, Mapping] {
   // Start building the tree and document for the blocks on the top level.
   // Blocks in our representation are not stored in a 'doc' or 'root' node.
@@ -23,7 +24,13 @@ export function constructDocAndMapping(
     0,
     treeNodes,
   );
-  const mapping = new Mapping(version, tagConf, serializer, tree);
+  const mapping = new Mapping(
+    version,
+    tagConf,
+    serializer,
+    tree,
+    nodeChangeCallback ?? (() => {}),
+  );
 
   return [proseDoc, mapping];
 }

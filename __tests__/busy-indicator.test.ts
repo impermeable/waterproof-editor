@@ -16,6 +16,13 @@ const MOCK_MAPPING_OFFSET = 67;
 
 jest.mock("prosemirror-dev-tools", () => ({ applyDevTools: () => {} }));
 
+//@ts-ignore
+global.IntersectionObserver = jest.fn(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
 jest.mock("../src/mapping/mapping", () => {
   const actual = jest.requireActual("../src/mapping/mapping");
   return {
@@ -51,12 +58,26 @@ const cfg: WaterproofEditorConfig = {
   ],
   symbols: [],
   tagConfiguration: configuration("coq"),
+  initialValues: {
+    themeStyle: ThemeStyle.Light,
+    teacherMode: false,
+    showLineNrs: false,
+    showMenuItems: false,
+  },
+  sendViewPortHints: false,
+  templates: {
+    containerOpenTag: "",
+    example: "",
+    exercise: {
+      closing: "",
+      statement: "",
+    },
+  },
 };
 
 function makeWaterproofEditor(): WaterproofEditor {
   const el = document.createElement("div");
-  jest.spyOn(WaterproofEditor.prototype, "handleScroll").mockImplementation();
-  const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+  const editor = new WaterproofEditor(el, cfg);
   editor.init("");
   return editor;
 }

@@ -92,6 +92,7 @@ const codePluginSpec = (
   symbols: Array<Completion>,
   editorInstance: WaterproofEditor,
   initialThemeStyle: ThemeStyle,
+  showLines: boolean,
   emptyCodePlaceholders?: EmptyCodePlaceholders,
   languageConfig?: LanguageConfiguration,
 ): PluginSpec<ICodePluginState> => {
@@ -102,7 +103,7 @@ const codePluginSpec = (
         return {
           macros: {},
           activeNodeViews: new Set<CodeBlockView>(),
-          showLines: false,
+          showLines,
           schema: instance.schema,
           lines: [],
         };
@@ -182,6 +183,7 @@ export const codePlugin = (
   symbols: Array<WaterproofSymbol>,
   editorInstance: WaterproofEditor,
   initialThemeStyle: ThemeStyle,
+  showLines: boolean,
   emptyCodePlaceholders?: EmptyCodePlaceholders,
   languageConfig?: LanguageConfiguration,
 ) => {
@@ -196,6 +198,7 @@ export const codePlugin = (
       symbols,
       editorInstance,
       initialThemeStyle,
+      showLines,
       emptyCodePlaceholders,
       languageConfig,
     ),

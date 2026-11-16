@@ -21,6 +21,13 @@ jest.mock("../src/mapping/mapping", () => {
 // Note that this prevents console log statements from showing
 jest.spyOn(global.console, "log").mockImplementation();
 
+//@ts-ignore
+global.IntersectionObserver = jest.fn(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
 import { DiagnosticObjectProse, WaterproofEditor } from "../src/editor";
 import { configuration } from "../src/markdown-defaults";
 import {
@@ -52,6 +59,18 @@ const cfg: WaterproofEditorConfig = {
   ],
   symbols: [],
   tagConfiguration: configuration("coq"),
+  initialValues: {
+    showLineNrs: false,
+    showMenuItems: false,
+    teacherMode: false,
+    themeStyle: ThemeStyle.Light,
+  },
+  sendViewPortHints: false,
+  templates: {
+    containerOpenTag: "",
+    example: "",
+    exercise: { closing: "", statement: "" },
+  },
 };
 
 type inType = Array<OffsetDiagnostic>;
@@ -59,7 +78,6 @@ type outType = Array<DiagnosticObjectProse>;
 
 {
   const el = document.createElement("div");
-  jest.spyOn(WaterproofEditor.prototype, "handleScroll").mockImplementation();
 
   test("Basic diagnostics in range", () => {
     const diags: inType = [
@@ -75,7 +93,7 @@ type outType = Array<DiagnosticObjectProse>;
       .spyOn(WaterproofEditor.prototype, "informCodemirrorViews")
       .mockImplementation();
 
-    const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+    const editor = new WaterproofEditor(el, cfg);
     editor.init("");
     expect(editor.diagnosticsVersion).toBe(0);
 
@@ -116,7 +134,7 @@ type outType = Array<DiagnosticObjectProse>;
       .spyOn(WaterproofEditor.prototype, "informCodemirrorViews")
       .mockImplementation();
 
-    const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+    const editor = new WaterproofEditor(el, cfg);
     editor.init("");
     expect(editor.diagnosticsVersion).toBe(0);
 
@@ -157,7 +175,7 @@ type outType = Array<DiagnosticObjectProse>;
       .spyOn(WaterproofEditor.prototype, "informCodemirrorViews")
       .mockImplementation();
 
-    const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+    const editor = new WaterproofEditor(el, cfg);
     editor.init("");
 
     expect(editor.diagnosticsVersion).toBe(0);
@@ -209,7 +227,7 @@ type outType = Array<DiagnosticObjectProse>;
       .spyOn(WaterproofEditor.prototype, "informCodemirrorViews")
       .mockImplementation();
 
-    const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+    const editor = new WaterproofEditor(el, cfg);
     editor.init("");
     expect(editor.diagnosticsVersion).toBe(0);
 
@@ -271,7 +289,7 @@ type outType = Array<DiagnosticObjectProse>;
       .spyOn(WaterproofEditor.prototype, "informCodemirrorViews")
       .mockImplementation();
 
-    const editor = new WaterproofEditor(el, cfg, ThemeStyle.Light);
+    const editor = new WaterproofEditor(el, cfg);
     editor.init("");
     expect(editor.diagnosticsVersion).toBe(0);
 
