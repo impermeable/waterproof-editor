@@ -67,9 +67,19 @@ import {
 } from "./commands/insert-command";
 import { InsertionPlace } from "./commands";
 import { deleteSelection } from "./commands/commands";
+
 import { Mapping } from "./mapping";
 import { ProgressBar } from "./progressBar";
 import { studentHiddenPlugin } from "./student-hidden";
+
+/** The cursor and scroll position of the editor, kept when the view is rebuilt. */
+interface ViewPosition {
+  scrollY: number;
+  hadFocus: boolean;
+  /** The selection, as text offsets. */
+  anchor?: number;
+  head?: number;
+}
 
 /** Type that contains a diagnostics object fit for use in the ProseMirror editor context. */
 export type DiagnosticObjectProse = {
@@ -167,12 +177,20 @@ export class WaterproofEditor implements MessageHandlerEditor {
     this._progressBar = new ProgressBar(editorElement);
   }
 
+  /**
+   * Show `content`, building a new ProseMirror view.
+   *
+   * When a view exists already, it is replaced: the cursor and the scroll position are kept (as
+   * far as they still exist in the new content), but the undo history is cleared.
+   * @param content The content of the document.
+   * @param version The version of the document that `content` belongs to.
+   */
   init(content: string, version: number = 1) {
-    // Initialize the file translator given the fileformat.
+    let position: ViewPosition | undefined;
     if (this._view) {
-      if (this._mapping?.version == version) return;
-      // Hack to forcefully remove the 'old' menubar
-      document.querySelector(".progress-bar")?.remove();
+      position = this.viewPosition();
+      // Destroying the view also removes the DOM of its plugins, such as the menubar.
+      this._view.destroy();
       this._view.dom.remove();
     }
 
@@ -186,6 +204,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
       this._serializer,
     );
     this.createProseMirrorEditor(proseDoc);
+    if (position) this.restoreViewPosition(position);
 
     /** Ask for line numbers */
     this.updateLineNumbers();
@@ -196,30 +215,48 @@ export class WaterproofEditor implements MessageHandlerEditor {
     this._editorConfig.api.editorReady();
   }
 
-  refreshDocument(content: string, version: number = 1) {
-    if (!this._view) return;
-    if (this._mapping?.version == version) return;
+  /** The cursor and scroll position, in terms that survive rebuilding the view. */
+  private viewPosition(): ViewPosition {
+    const position: ViewPosition = {
+      scrollY: window.scrollY,
+      hadFocus: this._view?.hasFocus() ?? false,
+    };
+    const selection = this._view?.state.selection;
+    if (selection && this._mapping) {
+      try {
+        position.anchor = this._mapping.pmIndexToTextOffset(selection.anchor);
+        position.head = this._mapping.pmIndexToTextOffset(selection.head);
+      } catch {
+        // The selection is not in text, e.g. a node selection; don't restore it.
+      }
+    }
+    return position;
+  }
 
-    const blocks = this._editorConfig.documentConstructor(content);
-    const proseDoc = constructDocument(blocks);
-
-    this._mapping = new Mapping(
-      blocks,
-      version,
-      this._editorConfig.tagConfiguration,
-      this._serializer,
-    );
-    const newState = EditorState.create({
-      doc: proseDoc,
-      plugins: this._view.state.plugins,
-      schema: WaterproofSchema,
-    });
-
-    this._view.updateState(newState);
-
-    /** Ask for line numbers */
-    this.updateLineNumbers();
-    this.handleScroll(window.innerHeight);
+  /** Restore a position taken with {@linkcode viewPosition} after the view was rebuilt. */
+  private restoreViewPosition(position: ViewPosition): void {
+    const view = this._view;
+    if (!view || !this._mapping) return;
+    if (position.anchor !== undefined && position.head !== undefined) {
+      try {
+        const doc = view.state.doc;
+        const clamp = (pos: number) =>
+          Math.max(0, Math.min(pos, doc.content.size));
+        const anchor = clamp(
+          this._mapping.textOffsetToPmIndex(position.anchor),
+        );
+        const head = clamp(this._mapping.textOffsetToPmIndex(position.head));
+        view.dispatch(
+          view.state.tr.setSelection(
+            TextSelection.between(doc.resolve(anchor), doc.resolve(head)),
+          ),
+        );
+      } catch {
+        // The offsets don't exist in the new content; keep the default selection.
+      }
+    }
+    if (position.hadFocus) view.focus();
+    window.scrollTo(window.scrollX, position.scrollY);
   }
 
   private get state(): EditorState | undefined {
