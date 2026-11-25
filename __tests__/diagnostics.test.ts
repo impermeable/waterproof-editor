@@ -2,6 +2,7 @@
  * @jest-environment jsdom
  */
 import { expect } from "@jest/globals";
+import { intersectionObserverMock } from "./intersectionObserverMock";
 
 jest.mock("prosemirror-dev-tools", () => ({ applyDevTools: () => {} }));
 
@@ -22,11 +23,7 @@ jest.mock("../src/mapping/mapping", () => {
 jest.spyOn(global.console, "log").mockImplementation();
 
 //@ts-ignore
-global.IntersectionObserver = jest.fn(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
+global.IntersectionObserver = intersectionObserverMock;
 
 import { DiagnosticObjectProse, WaterproofEditor } from "../src/editor";
 import { configuration } from "../src/markdown-defaults";

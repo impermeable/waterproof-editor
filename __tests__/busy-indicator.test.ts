@@ -1,6 +1,7 @@
 /**
  * @jest-environment jsdom
  */
+import { intersectionObserverMock } from "./intersectionObserverMock";
 import { EditorView, GutterMarker } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import {
@@ -17,11 +18,7 @@ const MOCK_MAPPING_OFFSET = 67;
 jest.mock("prosemirror-dev-tools", () => ({ applyDevTools: () => {} }));
 
 //@ts-ignore
-global.IntersectionObserver = jest.fn(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
+global.IntersectionObserver = intersectionObserverMock;
 
 jest.mock("../src/mapping/mapping", () => {
   const actual = jest.requireActual("../src/mapping/mapping");

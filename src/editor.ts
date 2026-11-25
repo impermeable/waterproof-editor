@@ -267,9 +267,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
               this._editorConfig.api.documentChange(change);
             } catch (error: unknown) {
               const err = error as
-                | MappingError
-                | TextUpdateError
-                | NodeUpdateError;
+                MappingError | TextUpdateError | NodeUpdateError;
               console.error(
                 "Error while applying step to mapping, the edit will **not** be applied!",
               );
@@ -457,48 +455,75 @@ export class WaterproofEditor implements MessageHandlerEditor {
   }
 
   /**
-   * Returns the text content of specified parts of the document as well as the positions where the text starts.
+   * Returns the text content of (parts of) the document as well as the positions where the text starts and ends.
    *
    * Does not use the serializer, but extracts the text content directly from the nodes.
-   * @param include Types of content to include.
+   * @param include Types of content to include. The default option {@linkcode TextContentOfSpecifier.ALL} selects all text content in the document!
+   * For the container nodes, the specifier indicates if the text content of the children should be included as well (in accordance with the specifier).
+   * Examples:
+   * - if the specifier is `TextContentOfSpecifier.MARKDOWN | TextContentOfSpecifier.CODE`, then the text content of all markdown and code nodes will be included, but not the text content of math nodes.
+   * - if the specifier is `TextContentOfSpecifier.CODE` then the text content of all code nodes on the top level will be included, but not the text content of markdown or math nodes, nor the text content of code cells inside containers (like input areas).
+   * - if the `TextContentOfSpecifier.CODE | TextContentOfSpecifier.INPUT_AREA` is used, then the text content of all code nodes on the top level will be included, as well as the text content of code cells inside input areas.
+   * @returns An array containing the text contents of the selected nodes.
+   * The array contains subarrays which contain the text content in the first slot and information on the node in
+   * the second.
+   * The information on the node is an object specifying:
+   * - `start`: The start of the text in the text document (before the first character).
+   * - `end`: The end of the text in the text document (after the last character in the document).
+   * - `parent`: The type of the parent node.
    */
-  public textContentOfInputAreas(
-    include: number = 0,
-  ): Array<[string, { start: number; end: number }]> {
+  public textContent(
+    include: number = TextContentOfSpecifier.ALL,
+  ): Array<[string, { start: number; end: number; parent: string }]> {
     if (!this._view || this._mapping === undefined) return [];
     const mapping = this._mapping;
-    const contents: Array<[string, { start: number; end: number }]> = [];
+    const contents: Array<
+      [
+        string,
+        {
+          start: number;
+          end: number;
+          parent: string;
+        },
+      ]
+    > = [];
 
-    const includeMarkdown = include & TextContentOfSpecifier.MARKDOWN;
-    const includeCode = include & TextContentOfSpecifier.CODE;
-    const includeMath = include & TextContentOfSpecifier.MATH_DISPLAY;
+    const includedTypes = new Set([
+      ...(include & TextContentOfSpecifier.MARKDOWN
+        ? [WaterproofSchema.nodes.markdown]
+        : []),
+      ...(include & TextContentOfSpecifier.CODE
+        ? [WaterproofSchema.nodes.code]
+        : []),
+      ...(include & TextContentOfSpecifier.MATH_DISPLAY
+        ? [WaterproofSchema.nodes.math_display]
+        : []),
+    ]);
+    const descendableTypes = new Set([
+      ...(include & TextContentOfSpecifier.INPUT_AREA
+        ? [WaterproofSchema.nodes.input]
+        : []),
+      ...(include & TextContentOfSpecifier.HINT
+        ? [WaterproofSchema.nodes.hint]
+        : []),
+    ]);
 
-    this._view.state.doc.descendants((node, _pos, parent) => {
-      // node type should be in include
-      if (
-        parent !== null &&
-        parent.type === WaterproofSchema.nodes.input &&
-        (include === undefined ||
-          (node.type === WaterproofSchema.nodes.markdown && includeMarkdown) ||
-          (node.type === WaterproofSchema.nodes.code && includeCode) ||
-          (node.type === WaterproofSchema.nodes.math_display && includeMath))
-      ) {
-        // TODO: This is a bit strange since we are converting the positions using the mapping.
-        // Should we *always* do this, even in cases where we are not necessarily dealing with the raw text file?
-
+    this._view.state.doc.descendants((node, pos, parent) => {
+      if (parent !== null && includedTypes.has(node.type)) {
         // The +1 gives us the prose position inside the text node
         contents.push([
           node.textContent,
           {
-            start: mapping.pmIndexToTextOffset(pmIndex(_pos + 1)),
-            end: mapping.pmIndexToTextOffset(pmIndex(_pos + 1 + node.nodeSize)),
+            start: mapping.pmIndexToTextOffset(pmIndex(pos + 1)),
+            end: mapping.pmIndexToTextOffset(pmIndex(pos + node.nodeSize - 1)),
+            parent: parent.type.name,
           },
         ]);
-        return false;
       }
-      const shouldDescend =
-        parent !== null && node.type === WaterproofSchema.nodes.input;
-      return shouldDescend;
+      return (
+        node.type === WaterproofSchema.nodes.doc ||
+        descendableTypes.has(node.type)
+      );
     });
     return contents;
   }

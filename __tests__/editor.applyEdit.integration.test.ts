@@ -4,16 +4,13 @@
 
 // Integration tests for applyEdit: unlike editor.test.ts, this file does
 // not mock Mapping.
+import { intersectionObserverMock } from "./intersectionObserverMock";
 
 jest.mock("prosemirror-dev-tools", () => ({ applyDevTools: () => {} }));
 jest.spyOn(global.console, "log").mockImplementation();
 
 //@ts-ignore
-global.IntersectionObserver = jest.fn(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
+global.IntersectionObserver = intersectionObserverMock;
 
 import { WaterproofEditor } from "../src/editor";
 import { ThemeStyle, WaterproofEditorConfig } from "../src/api";

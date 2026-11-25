@@ -3,6 +3,7 @@
  */
 
 // AI-generated tests
+import { intersectionObserverMock } from "./intersectionObserverMock";
 
 jest.mock("prosemirror-dev-tools", () => ({ applyDevTools: () => {} }));
 
@@ -20,11 +21,7 @@ jest.mock("../src/mapping/mapping", () => {
 jest.spyOn(global.console, "log").mockImplementation();
 
 //@ts-ignore
-global.IntersectionObserver = jest.fn(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
+global.IntersectionObserver = intersectionObserverMock;
 
 import { WaterproofEditor } from "../src/editor";
 import {
@@ -292,9 +289,7 @@ describe("methods with no view initialised", () => {
   });
 
   test("textContentOfInputAreas returns empty array", () => {
-    expect(makeUninitializedEditor().textContentOfInputAreas()).toStrictEqual(
-      [],
-    );
+    expect(makeUninitializedEditor().textContent()).toStrictEqual([]);
   });
 
   test("replaceRange returns false", () => {
