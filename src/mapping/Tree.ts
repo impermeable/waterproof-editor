@@ -212,11 +212,6 @@ export class Tree {
       }
 
       // - The position lies on the left or right boundary of the node
-
-      // TODO: What if mid - 1 < 0?
-      // TODO: Are there cases where this position is then inside of a child node?
-      //       No right, as the position must be necessarilly on the boundary which is
-      //       always part of the parent (incl for newlines, which dont have content anyway
       if (
         pos === child.pmRange.from &&
         boundaryResolutionStrategy === BoundaryResolutionStrategy.Left &&
@@ -227,9 +222,7 @@ export class Tree {
         // ...|1--3|3--5|...
         // But we want the node on the left.
         return node.children[mid - 1];
-      }
-      // TODO: What if mid + 1 >= children.length?
-      else if (
+      } else if (
         pos === child.pmRange.to &&
         boundaryResolutionStrategy === BoundaryResolutionStrategy.Right &&
         mid < node.children.length - 1
@@ -242,19 +235,12 @@ export class Tree {
       }
 
       // - The position lies within this node
-      // TODO: This comparison is useless here, right?
-      //       At this point this is the only thing that can happen
-      // if (pos > child.pmRange.from && pos < child.pmRange.to) {
-
       // * if there are no children, this must be the node
       if (child.children.length === 0) return child;
       // * otherwise search within the children of child
       return this.findNodeByProsePos(pos, boundaryResolutionStrategy, child);
-      // TODO: See comment above
-      // }
     }
-    // TODO: Shouldn't this error? I.e. return null?
-    // The old function said: "If no child contains pos, return current node", but child nodes are handled explicitly
+    // If no child contains pos, return current node
     return node;
   }
 

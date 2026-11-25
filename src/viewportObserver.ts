@@ -8,7 +8,7 @@ export class ViewportObserver {
   private observer: IntersectionObserver;
   private pmPosOfVisibleNodes: Set<number> = new Set();
 
-  /** 
+  /**
    * @param getView Function used to return the current view.
    * @param getMapping Function used to return the current mapping.
    * @param onViweportHint The `ViewportObserver` will use this callback to notify about a new viewport hint.

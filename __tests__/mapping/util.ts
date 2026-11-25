@@ -1,4 +1,4 @@
-import { TreeNode } from "../../src/mapping";
+import { Tree, TreeNode } from "../../src/mapping";
 
 export function sanityCheckTree(node: TreeNode, parent?: TreeNode) {
   expect(node.contentRange.from).toBeLessThanOrEqual(node.contentRange.to);
@@ -51,4 +51,36 @@ export function sanityCheckTree(node: TreeNode, parent?: TreeNode) {
   }
 
   node.children.forEach((child) => sanityCheckTree(child, node));
+}
+
+export function fromJSON(json: any): Tree {
+  const parseNode = (obj: any): TreeNode => {
+    const node = new TreeNode(
+      obj.type,
+      obj.innerRange,
+      obj.range,
+      obj.title,
+      obj.pmRange,
+      obj.lineStart,
+      [],
+    );
+    if (obj.children && Array.isArray(obj.children)) {
+      for (const childObj of obj.children) {
+        node.addChild(parseNode(childObj));
+      }
+    }
+    return node;
+  };
+  const rootObj = json.root;
+  const tree = new Tree(
+    rootObj.innerRange,
+    rootObj.range,
+    rootObj.pmRange,
+    rootObj.lineStart,
+    [],
+  );
+  for (const childObj of rootObj.children) {
+    tree.root.addChild(parseNode(childObj));
+  }
+  return tree;
 }

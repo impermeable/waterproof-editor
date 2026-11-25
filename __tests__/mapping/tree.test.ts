@@ -1,37 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Tree, TreeNode } from "../../src/mapping";
-
-function fromJSON(json: any): Tree {
-  const parseNode = (obj: any): TreeNode => {
-    const node = new TreeNode(
-      obj.type,
-      obj.innerRange,
-      obj.range,
-      obj.title,
-      obj.pmRange,
-      obj.lineStart,
-      [],
-    );
-    if (obj.children && Array.isArray(obj.children)) {
-      for (const childObj of obj.children) {
-        node.addChild(parseNode(childObj));
-      }
-    }
-    return node;
-  };
-  const rootObj = json.root;
-  const tree = new Tree(
-    rootObj.innerRange,
-    rootObj.range,
-    rootObj.pmRange,
-    rootObj.lineStart,
-    [],
-  );
-  for (const childObj of rootObj.children) {
-    tree.root.addChild(parseNode(childObj));
-  }
-  return tree;
-}
+import { BoundaryResolutionStrategy } from "../../src/mapping/types";
+import { fromJSON } from "./util";
 
 // TODO: Update the trees, add where the tree came from and test line number logic.
 const treeJSON = {
@@ -551,4 +521,48 @@ test("nodesInProseRange returns only top-level nodes in range, not their childre
   // If the bug is present, result.length would be 3.
   expect(result.length).toBe(1);
   expect(result[0]).toBe(container);
+});
+
+test("findNodeByProsePos handles outer boundaries with no neighbor sibling", () => {
+  // Tree structure:
+  //   root        pmRange {0, 20}
+  //     firstNode pmRange {0, 10}
+  //     lastNode  pmRange {10, 20}
+  const firstNode = new TreeNode(
+    "markdown",
+    { from: 0, to: 10 },
+    { from: 0, to: 10 },
+    null,
+    { from: 0, to: 10 },
+    0,
+    [],
+  );
+  const lastNode = new TreeNode(
+    "code",
+    { from: 10, to: 20 },
+    { from: 10, to: 20 },
+    null,
+    { from: 10, to: 20 },
+    0,
+    [],
+  );
+  const tree = new Tree(
+    { from: 0, to: 20 },
+    { from: 0, to: 20 },
+    { from: 0, to: 20 },
+    0,
+    [firstNode, lastNode],
+  );
+
+  // Left edge of firstNode (mid === 0) with a Left BoundaryResolutionStrategy
+  // no previous sibling exists, so we stay on firstNode.
+  expect(tree.findNodeByProsePos(0, BoundaryResolutionStrategy.Left)).toBe(
+    firstNode,
+  );
+
+  // Right edge of lastNode (mid === length - 1) with a Right BoundaryResolutionStrategy
+  // no next sibling exists, so we stay on lastNode.
+  expect(tree.findNodeByProsePos(20, BoundaryResolutionStrategy.Right)).toBe(
+    lastNode,
+  );
 });
