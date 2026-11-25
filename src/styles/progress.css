@@ -64,13 +64,20 @@
   width: 0.8rem;
   height: 0.8rem;
   background-color: var(--wp-quickInputBackground);
-  transition: border-top-color 0.3s ease;
+  border-top-color: var(--wp-quickInputBackground);
+  animation: spin 1.5s linear infinite;
+  animation-play-state: paused;
 }
 
 /* Spinner active */
 .spinner.spinner-active {
-  border-top-color: var(--wp-quickInputBackground);
-  animation: spin 1.5s linear infinite;
+  animation-play-state: running;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner.spinner-active {
+    animation-duration: 6s;
+  }
 }
 
 /* Keyframes for the spinner animation */
