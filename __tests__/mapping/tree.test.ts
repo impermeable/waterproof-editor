@@ -566,3 +566,63 @@ test("findNodeByProsePos handles outer boundaries with no neighbor sibling", () 
     lastNode,
   );
 });
+
+test("findNodeByProsePos length == 1", () => {
+  // Tree structure:
+  //   root        pmRange {0, 10}
+  //     child     pmRange {1, 9}
+  const child = new TreeNode(
+    "markdown",
+    { from: 1, to: 9 },
+    { from: 1, to: 9 },
+    null,
+    { from: 1, to: 9 },
+    0,
+    [],
+  );
+  const tree = new Tree(
+    { from: 0, to: 10 },
+    { from: 0, to: 10 },
+    { from: 0, to: 10 },
+    0,
+    [child],
+  );
+
+  expect(tree.findNodeByProsePos(1, BoundaryResolutionStrategy.Left)).toBe(
+    child,
+  );
+  expect(tree.findNodeByProsePos(1, BoundaryResolutionStrategy.Right)).toBe(
+    child,
+  );
+
+  expect(tree.findNodeByProsePos(9, BoundaryResolutionStrategy.Left)).toBe(
+    child,
+  );
+  expect(tree.findNodeByProsePos(9, BoundaryResolutionStrategy.Right)).toBe(
+    child,
+  );
+
+  const expected = new TreeNode(
+    "root",
+    { from: 0, to: 10 },
+    { from: 0, to: 10 },
+    null,
+    { from: 0, to: 10 },
+    0,
+    [child],
+  );
+
+  expect(
+    tree.findNodeByProsePos(0, BoundaryResolutionStrategy.Left),
+  ).toStrictEqual(expected);
+  expect(
+    tree.findNodeByProsePos(0, BoundaryResolutionStrategy.Right),
+  ).toStrictEqual(expected);
+
+  expect(
+    tree.findNodeByProsePos(10, BoundaryResolutionStrategy.Left),
+  ).toStrictEqual(expected);
+  expect(
+    tree.findNodeByProsePos(10, BoundaryResolutionStrategy.Right),
+  ).toStrictEqual(expected);
+});
