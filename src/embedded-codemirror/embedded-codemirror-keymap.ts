@@ -51,7 +51,6 @@ import {
   acceptCompletion,
   completionKeymap,
   completionStatus,
-  currentCompletions,
 } from "@codemirror/autocomplete";
 
 function changeFirstLine(
@@ -189,24 +188,6 @@ export const keybindings: KeyBinding[] = [
       }
       // if not, we fall back to the indent behaviour of the tab key
       return indentMoreCustom(target);
-    },
-  },
-  {
-    key: "Space",
-    run: (target) => {
-      const status = completionStatus(target.state);
-      const anyProofStep = currentCompletions(target.state).some(
-        (c) => c.detail === "proof step",
-      );
-
-      // Accept completion on space, unless no completion active or it's a proof step
-      // (proof steps can contain spaces :D)
-      if (status !== null && !anyProofStep) {
-        acceptCompletion(target);
-      }
-
-      // Return false so space character is always inserted
-      return false;
     },
   },
 ];

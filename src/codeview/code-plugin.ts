@@ -178,8 +178,8 @@ const codePluginSpec = (
 };
 
 export const codePlugin = (
-  completions: Array<WaterproofCompletion>,
-  symbols: Array<WaterproofSymbol>,
+  wpTacticCompletions: Array<WaterproofCompletion>,
+  wpSymbolCompletions: Array<WaterproofSymbol>,
   editorInstance: WaterproofEditor,
   initialThemeStyle: ThemeStyle,
   emptyCodePlaceholders?: EmptyCodePlaceholders,
@@ -187,13 +187,20 @@ export const codePlugin = (
 ) => {
   // Here we turn the waterproof completions into proper codemirror completions
   //   with template 'holes'
-  const cmCompletions = completions.map((value) => {
-    return snippetCompletion(value.template, value);
-  });
+  const cmTacticCompletions: Array<Completion> = wpTacticCompletions.map(
+    (value) => {
+      return snippetCompletion(value.template, value);
+    },
+  );
+  const cmSymbolCompletions: Array<Completion> = wpSymbolCompletions.map(
+    (c) => {
+      return { ...c, commitCharacters: [" "] };
+    },
+  );
   return new ProsePlugin(
     codePluginSpec(
-      cmCompletions,
-      symbols,
+      cmTacticCompletions,
+      cmSymbolCompletions,
       editorInstance,
       initialThemeStyle,
       emptyCodePlaceholders,

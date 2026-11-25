@@ -41,7 +41,7 @@ The schema `WaterproofSchema` defined in [`src/schema/schema.ts`](../src/schema/
 The `WaterproofEditorConfig` object is used to configure an `WaterproofEditor` instance. The user is required to supply:
 
 - `documentConstructor`: a [document constructor](#document-constructor).
-- `symbols`: symbol completions, completion starts when the `\` character is pressed and are used for notation symbols (in the style of LaTeX commands, like `\alpha` for `α`).
+- `symbols`: symbol completions, completion starts when the `\` character is pressed and are used for notation symbols (in the style of LaTeX commands, like `\alpha` for `α`). The symbols cannot contain spaces, instead they are commited (inserted) on typing space.
 - `completions`: language completions, in the case of `waterproof-vscode` used for entering "proof steps" (eg. `We take that ...`).
 - `api`: an object specifying different callbacks that the editor uses to communicate to the containing process (in the case of `waterproof-vscode` this is used to communicate back to the vscode extension). See [below](#api-object) for more information.
 
