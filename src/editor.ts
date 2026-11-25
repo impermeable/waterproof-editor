@@ -369,6 +369,8 @@ export class WaterproofEditor implements MessageHandlerEditor {
       schema: WaterproofSchema,
       doc: proseDoc,
       plugins: this.createPluginsArray(),
+      // We start without any selection in the document
+      selection: TextSelection.create(proseDoc, 1),
     });
   }
 
