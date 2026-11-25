@@ -256,9 +256,7 @@ export class WaterproofEditor implements MessageHandlerEditor {
               this._editorConfig.api.documentChange(change);
             } catch (error: unknown) {
               const err = error as
-                | MappingError
-                | TextUpdateError
-                | NodeUpdateError;
+                MappingError | TextUpdateError | NodeUpdateError;
               console.error(
                 "Error while applying step to mapping, the edit will **not** be applied!",
               );
@@ -358,6 +356,11 @@ export class WaterproofEditor implements MessageHandlerEditor {
     const nodeAtDomTarget = view.state.doc.resolve(posAtDomTarget).node();
     if (nodeAtDomTarget.type === WaterproofSchema.nodes.math_display) {
       return !isPositionEditable(view.state, posAtDomTarget);
+    }
+
+    if (nodeAtDomTarget.type === WaterproofSchema.nodes.code) {
+      event.preventDefault();
+      return true;
     }
 
     event.preventDefault();

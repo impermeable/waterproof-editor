@@ -51,6 +51,14 @@ const cfg: WaterproofEditorConfig = {
   ],
   symbols: [],
   tagConfiguration: configuration("coq"),
+  templates: {
+    containerOpenTag: "",
+    example: "",
+    exercise: {
+      closing: "",
+      statement: "",
+    },
+  },
 };
 
 function makeEditor(): WaterproofEditor {
@@ -363,6 +371,16 @@ describe("handleMouseDown", () => {
 
     expect(result).toBe(false);
     expect(preventDefaultSpy).not.toHaveBeenCalled();
+  });
+
+  test("code cells consume mousedown before ProseMirror handles selection", () => {
+    const { result, preventDefaultSpy } = simulateMouseDown(
+      WaterproofSchema.nodes.code,
+      true,
+    );
+
+    expect(result).toBe(true);
+    expect(preventDefaultSpy).toHaveBeenCalled();
   });
 
   test("other nodes (e.g. code_block) -> prevents default and returns undefined", () => {
